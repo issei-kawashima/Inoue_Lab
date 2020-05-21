@@ -32,7 +32,7 @@
 !2020.05.13 格子伸長をはずしたら計算ができるか試してみる。Ma=0.5,dt=2.d-3,Tjet=1.12Tempに戻してみた
 !2020.05.13 亜音速なので、NeumannからNSCBC_xに戻した。M=245でNan.格子伸長ありの場合よりも早くNanになったので格子幅の関係で計算できるかどうか決まってるかも。
 !じゃあ細かくしたら計算できるかも？
-!2020.05.21 流入条件や微分が全体でうまくできているか調べるために中央に円柱の高圧部を初期条件としてz導入し、Shock Tube問題を解いてみる
+!2020.05.21 流入条件や微分が全体でうまくできているか調べるために中央に円柱の高圧部(半径4)を初期条件としてz導入し、Shock Tube問題を解いてみる
 !2020.05.21 x方向の境界を全て流出条件にするために,x座標を中心が0の軸対象座標に変更する！！！！！x=dx*dble(i)からx=-Lx+dx+dble(i)
 !2020.05.21 変更完了。NSCBC_xのx=9を流入条件から流出条件に、Buffer_xを軸対象に両側に設置するように変更。NSCBCのoutflow subroutineも
 !x=0の部分を追加。inflow subroutineもcallするのをキャンセル。Lx=18にして、全体で36にするためにCx=6に変更
@@ -973,7 +973,7 @@ end module threedim
           do i = 0,Nx
             x = -Lx + dx * dble(i)
             !円柱
-            if((x **2.d0 + y **2.d0) <= ((1.d0/4.d0) ** 2.d0)) then
+            if((x **2.d0 + y **2.d0) <= (4.d0 ** 2.d0)) then
             !角柱
             !if((-5.d-1 <= x) .and. (x <= 5.d-1).and.(-5.d-1 <= y) .and. (y <= 5.d-1))then
                 G(0,i,j,:) = 1.d0!ρ
@@ -1294,7 +1294,7 @@ end module threedim
                y = -Ly + dy * dble(ii)
                do jj = 0,Nx
                  ! x = dx * dble(jj)
-                 x = -Lx + dx * dble(j)!4方向流出
+                 x = -Lx + dx * dble(jj)!4方向流出
                  write(10,'(6f24.16)') x,y,z,G(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2),dp(jj,ii,Nz/2)
                enddo
                write(10,*)
