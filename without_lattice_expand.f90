@@ -50,7 +50,7 @@ module threedim
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
   integer,parameter :: Mmax = t_end / dt
-  integer,parameter :: output_count = int(0.1d0/dt)!出力ファイルを1sec間隔で出力するように設定
+  integer,parameter :: output_count = int(0.1d0/dt)!出力ファイルを0.1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
   ! double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
   double precision,parameter :: Cx = 6.d0*b !x軸の幅の設定>>合計で36の幅にするために計算領域を狭くする
