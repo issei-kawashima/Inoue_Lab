@@ -32,6 +32,11 @@
 !2020.05.13 格子伸長をはずしたら計算ができるか試してみる。Ma=0.5,dt=2.d-3,Tjet=1.12Tempに戻してみた
 !2020.05.13 亜音速なので、NeumannからNSCBC_xに戻した。M=245でNan.格子伸長ありの場合よりも早くNanになったので格子幅の関係で計算できるかどうか決まってるかも。
 !じゃあ細かくしたら計算できるかも？
+!2020.05.21 流入条件や微分が全体でうまくできているか調べるために中央に円柱の高圧部を初期条件としてz導入し、Shock Tube問題を解いてみる
+!2020.05.21 x方向の境界を全て流出条件にするために,x座標を中心が0の軸対象座標に変更する！！！！！x=dx*dble(i)からx=-Lx+dx+dble(i)
+!2020.05.21 変更完了。NSCBC_xのx=9を流入条件から流出条件に、Buffer_xを軸対象に両側に設置するように変更。NSCBCのoutflow subroutineも
+!x=0の部分を追加。inflow subroutineもcallするのをキャンセル。Lx=18にして、全体で36にするためにCx=6に変更
+!2020.05.21 前回(5/13)に計算したときはBuffer_yのy座標の設定方法が間違えていたので、今回はそこも修正した。
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -47,14 +52,16 @@ module threedim
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(0.1d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
-  double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
+  ! double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
+  double precision,parameter :: Cx = 6.d0*b !x軸の幅の設定>>合計で36の幅にするために計算領域を狭くする
   double precision,parameter :: Cy = 8.d0*b !y軸の幅の設定
   !Buffer領域の幅は常にWx<=Cxと計算領域よりも小さくてはならない
   double precision,parameter :: Wrx = 12.d0*b!Buffer領域x方向右側の幅
   double precision,parameter :: Wlx = Wrx!Buffer領域x方向左側の幅
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
-  double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
+  double precision,parameter :: Lx = Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
+  !!!x方向も軸対象座標に変更するので、Lxの定義は変更なし.値自体はLx=36から18に変更。18*2=36で長さ自体は一緒。
   double precision,parameter :: Ly = Cy+Wry!y方向の長さを定義 計算領域がy軸対称なのでWyも片方だけ
   double precision,parameter :: Lz = 1.d0
 
@@ -134,11 +141,11 @@ contains
         !Lax-Friedrichの流速分割を用いる
             Fpz(:,:,:,:) = (Fz(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
             Fmz(:,:,:,:) = (Fz(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
-      endsubroutine F_matrix
+  endsubroutine F_matrix
 !du/dx,dT.dxを求めるためにまずはuとTの設定。一行目は他と係数を合わせ易くするために0だが含めている
 !UVWT,myuの計算はrho,u,pをそのまま代入しても良いがその場合は求めたtQから毎回rho_u_pのsubroutineを
 !呼び出して計算しなければいけないので今回はQから直接計算できるようにプログラムを組んだ
-    subroutine variable_setting(UVWT,Q,myu)
+  subroutine variable_setting(UVWT,Q,myu)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: UVWT,Q
       double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: myu
         UVWT(0,:,:,:) = 0.d0
@@ -148,12 +155,12 @@ contains
         UVWT(4,:,:,:) = (Ma**2.d0)*(gamma * (gamma - 1.d0) * (Q(4,:,:,:) - (((Q(1,:,:,:) **2.d0)+ &
         &(Q(2,:,:,:) **2.d0)+(Q(3,:,:,:)**2.d0)) / (2.d0 * Q(0,:,:,:))))) / Q(0,:,:,:)!T
         !Tの値はMa^2*gamma*p/rhoこれは速度で無次元化したもの
-!V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
-!UVWTからTの値を代入することで計算を簡略化している
+        !V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
+        !UVWTからTの値を代入することで計算を簡略化している
         myu(:,:,:) = (UVWT(4,:,:,:) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,:,:,:) + Sc)
-    end subroutine variable_setting
+  end subroutine variable_setting
 
-    subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
+  subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
       !粘性項の設定(x方向)
       !基礎式右辺をV行列として設定
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vx,Vy,Vz,dUVWTx,dUVWTy,dUVWTz,UVWT
@@ -181,10 +188,10 @@ contains
         Vz(4,:,:,:) = Vz(1,:,:,:)*UVWT(1,:,:,:) + Vz(2,:,:,:)* UVWT(2,:,:,:)+ &
                       Vz(3,:,:,:)*UVWT(3,:,:,:)+((myu(:,:,:) * dUVWTz(4,:,:,:))&
                       / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
-    endsubroutine V_matrix
+  endsubroutine V_matrix
     !求めたQnから時間毎のrho,u,v,w,pを求めるサブルーチン
     !ある指定した時間の時の計算結果のみを取り出せばグラフが作成できるので毎回は使用しない
-    subroutine rho_u_p(G,Qn)
+  subroutine rho_u_p(G,Qn)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Qn,G
         G=0.d0
         G(0,:,:,:) = Qn(0,:,:,:)
@@ -193,10 +200,10 @@ contains
         G(3,:,:,:) = Qn(3,:,:,:) / Qn(0,:,:,:)
         G(4,:,:,:) = (gamma-1.d0)*(Qn(4,:,:,:)-(Qn(1,:,:,:)**2.d0+&
                       Qn(2,:,:,:)**2.d0+Qn(3,:,:,:)**2.d0)/(2.d0*Qn(0,:,:,:)))!p
-    endsubroutine rho_u_p
+  endsubroutine rho_u_p
     !DCS用の行列Aの設定(左辺の設定)
     !５次精度DCSと6次精度CCSの両方に対応
-    subroutine LU_DecompoNonP(N,sigma,LU)
+  subroutine LU_DecompoNonP(N,sigma,LU)
       integer i,N,j,k
       double precision sigma
       double precision Usum,Lsum
@@ -229,7 +236,7 @@ contains
       !N行目 片側DCS
       A(N,N-1) = 3.d0
       A(N,N) = 1.d0
-    !LU分解
+      !LU分解
       !まずL,Uの初期値を設定
       do i = 0,N
         U(0,i) = A(0,i)
@@ -261,12 +268,12 @@ contains
           L(j,i) = (A(j,i) - Lsum) / U(i,i)
         enddo
       enddo
-!LU行列の圧縮　L,U行列の対角成分のみをLU行列に保存する
-!LU(-1,i)にL行列の対角成分L(i,i-1)を保存
-!L(i,i)=1.d0は全身代入では使用しないので圧縮した行列には含めない
-!LU(0,i)にU_i,iの成分を保存
-!LU(1,i)にU_i,i+1の成分を保存
-!これは6次制度CCSと5次制度DCSにのみ対応しているのでそれ以上の精度で計算する場合には変更が必要
+      !LU行列の圧縮　L,U行列の対角成分のみをLU行列に保存する
+      !LU(-1,i)にL行列の対角成分L(i,i-1)を保存
+      !L(i,i)=1.d0は全身代入では使用しないので圧縮した行列には含めない
+      !LU(0,i)にU_i,iの成分を保存
+      !LU(1,i)にU_i,i+1の成分を保存
+      !これは6次制度CCSと5次制度DCSにのみ対応しているのでそれ以上の精度で計算する場合には変更が必要
       LU(-1,0) = 0.d0
       LU(0,N) = U(N,N)
       LU(1,N) = 0.d0
@@ -279,12 +286,12 @@ contains
         enddo
       enddo
       deallocate(A,L,U)
-    endsubroutine LU_DecompoNonP
+  endsubroutine LU_DecompoNonP
 
     !z方向用の周期条件で計算するA,L,Uの設定subroutine
     !DCS用の行列Aの設定(左辺の設定)
     !５次精度DCSと6次精度CCSの両方に対応
-    subroutine LU_DecompoPiriodic(N,sigma,LU)
+  subroutine LU_DecompoPiriodic(N,sigma,LU)
       integer i,N,j,k
       double precision sigma
       double precision Usum,Lsum
@@ -309,7 +316,7 @@ contains
       A(N-1,0) = alpha5 * (1.d0 + Dalpha * sigma)
       A(N-1,N-2) = alpha5*(1.d0-sigma*Dalpha)
       A(N-1,N-1) = 1.d0
-    !LU分解
+      !LU分解
       !まずL,Uの初期値を設定
       do i = 0,N-1
         U(0,i) = A(0,i)
@@ -341,15 +348,15 @@ contains
           L(j,i) = (A(j,i) - Lsum) / U(i,i)
         enddo
       enddo
-!===============================================
-!LU圧縮は周期なので-(2:2,0:N-1)の幅でLUをとればできる
-!===============================================
-!LU行列の圧縮　L,U行列の対角成分のみをLU行列に保存する
-!LU(-1,i)にL行列の対角成分L(i,i-1)を保存
-!L(i,i)=1.d0は全身代入では使用しないので圧縮した行列には含めない
-!LU(0,i)にU_i,iの成分を保存
-!LU(1,i)にU_i,i+1の成分を保存
-!これは6次制度CCSと5次制度DCSにのみ対応しているのでそれ以上の精度で計算する場合には変更が必要
+      !===============================================
+      !LU圧縮は周期なので-(2:2,0:N-1)の幅でLUをとればできる
+      !===============================================
+      !LU行列の圧縮　L,U行列の対角成分のみをLU行列に保存する
+      !LU(-1,i)にL行列の対角成分L(i,i-1)を保存
+      !L(i,i)=1.d0は全身代入では使用しないので圧縮した行列には含めない
+      !LU(0,i)にU_i,iの成分を保存
+      !LU(1,i)にU_i,i+1の成分を保存
+      !これは6次制度CCSと5次制度DCSにのみ対応しているのでそれ以上の精度で計算する場合には変更が必要
       LU(-2,N-2:N-1) = 0.d0
       LU(-1,0) = 0.d0
       LU(0,N-1) = U(N-1,N-1)
@@ -369,11 +376,11 @@ contains
         enddo
       enddo
       deallocate(A,L,U)
-    endsubroutine LU_DecompoPiriodic
+  endsubroutine LU_DecompoPiriodic
 
   !DCS右辺の計算(RHS)サブルーチン
   !x方向
-    subroutine dif_x(sigma,dx,Fx,x,LU)
+  subroutine dif_x(sigma,dx,Fx,x,LU)
       integer i
       double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: RHS_x,Fx
       double  precision,dimension(0:4,2:Nx-2,0:Ny,0:Nz-1) :: D2,D4,D6,D8
@@ -408,7 +415,7 @@ contains
          !7次精度DCS用のため不要
          RHS_x(:,i,:,:)=ra*D2(:,i,:,:)+rb*D4(:,i,:,:)+sigma*(da*D6(:,i,:,:)+db*D8(:,i,:,:))
        enddo
-     !前進代入法、後退代入法の計算サブルーチン(x方向)
+       !前進代入法、後退代入法の計算サブルーチン(x方向)
             !前進代入
             y(:,0,:,:) = RHS_x(:,0,:,:)!例外の境界値
             do i = 1,Nx!y(:,k)でk=0は上で定義したので残りの1〜Nxを定義する
@@ -420,11 +427,11 @@ contains
             do i = Nx-1, 0, -1!後退するので-1ずつ進む
               x(:,i,:,:) = (y(:,i,:,:) - LU(1,i)*x(:,i+1,:,:)) / LU(0,i)
             enddo
-!          call combine(dzeta_inx,x,dFzeta)
-      end subroutine dif_x
+            ! call combine(dzeta_inx,x,dFzeta)
+  endsubroutine dif_x
    !DCS右辺の計算(RHS)サブルーチン
    !y方向
-     subroutine dif_y(sigma,dy,Fy,x,LU)
+  subroutine dif_y(sigma,dy,Fy,x,LU)
        integer i
        double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: RHS_y,Fy
        double  precision,dimension(0:4,0:Nx,2:Ny-2,0:Nz-1) :: D2,D4,D6,D8
@@ -471,10 +478,10 @@ contains
         do i = Ny-1, 0, -1!後退するので-1ずつ進む
           x(:,:,i,:) = (y(:,:,i,:) - LU(1,i)*x(:,:,i+1,:)) / LU(0,i)
         enddo
-!        call combine(dzeta_iny,x,dFzeta)!y方向の格子伸長を適用　微分変換をしている
-       end subroutine dif_y
+        ! call combine(dzeta_iny,x,dFzeta)!y方向の格子伸長を適用　微分変換をしている
+  endsubroutine dif_y
 
-       subroutine dif_z(sigma,dz,Fz,x,LU)
+  subroutine dif_z(sigma,dz,Fz,x,LU)
          integer i,j,r,k,im1,im2,ip1,ip2
          double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: RHS_z,Fz
          double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: D2,D4,D6,D8
@@ -525,7 +532,7 @@ contains
               do i = Nz-3, 0, -1!後退するので-1ずつ進む
                 x(:,:,:,i) = (y(:,:,:,i) - LU(1,i)*x(:,:,:,i+1)-LU(-2,i)*x(:,:,:,Nz-1)) / LU(0,i)
               enddo
-       endsubroutine dif_z
+  endsubroutine dif_z
     !境界条件をNSCBCで設定
     !L,d行列を設定することでdfx(0:2,0)とdFx(0:2,Nx)の値を定める
     !定めたdFxをxm,xpをそれぞれ求めた時点でi=0とNxで置き換える
@@ -534,11 +541,12 @@ contains
     !そしてそのままQ1,Q2,Qnを求める
     !まずはx方向用のNSCBC　subrouitineを作成
     !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
-    subroutine NSCBC_x(G,dGx,dFx,pNx_infty)
+  subroutine NSCBC_x(G,dGx,dFx,pNx_infty,p0x_infty)
+    ! subroutine NSCBC_x(G,dGx,dFx,pNx_infty)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGx,dFx
       double precision,dimension(1:5,0:Ny,0:Nz-1,0:1) :: L,d
       double precision,dimension(0:Ny,0:Nz-1,0:1) :: c_NS,Ma_NS
-      double precision pNx_infty
+      double precision pNx_infty,p0x_infty!(4方向流出のため追加)
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:,0) = sqrt(gamma * G(4,0,:,:) / G(0,0,:,:))
@@ -546,20 +554,36 @@ contains
       !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
       Ma_NS(:,:,0) = G(1,0,:,:) / c_NS(:,:,0)!uを使う
       Ma_NS(:,:,1) = G(1,Nx,:,:) / c_NS(:,:,1)
-      !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
-      L(1,:,:,0)=(G(1,0,:,:)-c_NS(:,:,0))*(-G(0,0,:,:)*c_NS(:,:,0)*dGx(1,0,:,:)+dGx(4,0,:,:))
-!      L(2,:,:,0)=G(1,0,:,:)*((c_NS(:,:,0)**2.d0)*dGx(0,0,:,:)-dGx(3,0,:,:))
-!      L(3,:,:,0)=0.d0!L3=u*dv/dxで流入速度
-      L(3,:,:,0)=0.d0!G(1,0,:,:)*dGx(2,0,:,:)
-      L(4,:,:,0)=0.d0!G(1,0,:,:)*dGx(3,0,:,:)
-      L(5,:,:,0)=L(1,:,:,0) !-2.d0*c_NS(:,:,0)*du/dtが本来はあるが
-      !流入速度uを時間変動させないので今回はdu/dt=0となるため省略
-!      L(5,:,:,0)=msigma*c_NS(:,:,0)*(1.d0-(Ma_NS(:,:,0)**2.d0))*(G(3,0,:,:)-p0x_infty)/Lx
-      L(2,:,:,0)=(0.5d0)*(gamma-1.d0)*(L(5,:,:,0)+L(1,:,:,0))!+G(0,0,:,:)*c_NS(:,:,0)**2.d0/T*dT/dtが本来はあるが
-      !境界温度Tを時間変動させないので今回はdT/dt=0となるため省略
+      ! !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
+      ! L(1,:,:,0)=(G(1,0,:,:)-c_NS(:,:,0))*(-G(0,0,:,:)*c_NS(:,:,0)*dGx(1,0,:,:)+dGx(4,0,:,:))
+      ! ! L(2,:,:,0)=G(1,0,:,:)*((c_NS(:,:,0)**2.d0)*dGx(0,0,:,:)-dGx(3,0,:,:))
+      ! ! L(3,:,:,0)=0.d0!L3=u*dv/dxで流入速度
+      ! L(3,:,:,0)=0.d0!G(1,0,:,:)*dGx(2,0,:,:)
+      ! L(4,:,:,0)=0.d0!G(1,0,:,:)*dGx(3,0,:,:)
+      ! L(5,:,:,0)=L(1,:,:,0) !-2.d0*c_NS(:,:,0)*du/dtが本来はあるが
+      ! !流入速度uを時間変動させないので今回はdu/dt=0となるため省略
+      ! ! L(5,:,:,0)=msigma*c_NS(:,:,0)*(1.d0-(Ma_NS(:,:,0)**2.d0))*(G(3,0,:,:)-p0x_infty)/Lx
+      ! L(2,:,:,0)=(0.5d0)*(gamma-1.d0)*(L(5,:,:,0)+L(1,:,:,0))!+G(0,0,:,:)*c_NS(:,:,0)**2.d0/T*dT/dtが本来はあるが
+      ! !境界温度Tを時間変動させないので今回はdT/dt=0となるため省略
+      !=========================================================================
+      !4方向流出のため追加
+      !x方向右側つまりi=0の点において無反射流出条件でL行列を設定する
+      L(1,:,:,0) = (G(2,0,:,:) - c_NS(:,:,0)) * (-G(0,0,:,:)*c_NS(:,:,0)*dGx(2,0,:,:)+dGx(4,0,:,:))
+      L(2,:,:,0) = G(2,0,:,:) * ((c_NS(:,:,0) ** 2.d0)*dGx(0,0,:,:) - dGx(4,0,:,:))
+      L(3,:,:,0) = G(2,0,:,:) * dGx(1,0,:,:)
+      L(4,:,:,0) = G(2,0,:,:) * dGx(3,0,:,:)
+      L(5,:,:,0) = NS_sigma * c_NS(:,:,0) * (1.d0 - (Ma_NS(:,:,0) ** 2.d0))*(G(4,0,:,:) - &
+      &p0x_infty) / (2.d0*Lx)
+      !=========================================================================
+
       !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
+      ! L(1,:,:,1)=NS_sigma*c_NS(:,:,1)*(1.d0-(Ma_NS(:,:,1)**2.d0))*(G(4,Nx,:,:)-&
+      ! &pNx_infty)/Lx
+      !=========================================================================
+      !4方向流出のため追加
       L(1,:,:,1)=NS_sigma*c_NS(:,:,1)*(1.d0-(Ma_NS(:,:,1)**2.d0))*(G(4,Nx,:,:)-&
-      &pNx_infty)/Lx
+      &pNx_infty)/(2.d0*Lx)
+      !=========================================================================
       L(2,:,:,1)=G(1,Nx,:,:)*((c_NS(:,:,1)**2.d0)*dGx(0,Nx,:,:)-dGx(4,Nx,:,:))
       L(3,:,:,1)=G(1,Nx,:,:)*dGx(2,Nx,:,:)
       L(4,:,:,1)=G(1,Nx,:,:)*dGx(3,Nx,:,:)
@@ -597,9 +621,9 @@ contains
                   dFx(:,0,Ny,:) = dFx(:,0,Ny,:) * 0.5d0
                   dFx(:,Nx,0,:) = dFx(:,Nx,0,:) * 0.5d0
                   dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) * 0.5d0
-    endsubroutine NSCBC_x
+  endsubroutine NSCBC_x
     !次にy方向のNSCBC　sunrouineを作成
-    subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
+  subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGy,dFy
       double precision,dimension(1:5,0:Nx,0:Nz-1,0:1) :: L,d
       double precision,dimension(0:Nx,0:Nz-1,0:1) :: c_NS,Ma_NS
@@ -620,7 +644,7 @@ contains
       &p0y_infty) / (2.d0*Ly)
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
       L(1,:,:,1) = NS_sigma * c_NS(:,:,1) * (1.d0 - (Ma_NS(:,:,1) ** 2.d0))*(G(4,:,Ny,:) - &
-    &  pNy_infty) / (2.d0*Ly)
+        pNy_infty) / (2.d0*Ly)
       L(2,:,:,1) = G(2,:,Ny,:) * ((c_NS(:,:,1) ** 2.d0)*dGy(0,:,Ny,:) - dGy(4,:,Ny,:))
       L(3,:,:,1) = G(2,:,Ny,:) * dGy(1,:,Ny,:)
       L(4,:,:,1) = G(2,:,Ny,:) * dGy(3,:,Ny,:)
@@ -656,7 +680,7 @@ contains
                     dFy(:,0,Ny,:) = dFy(:,0,Ny,:) * 0.5d0
                     dFy(:,Nx,0,:) = dFy(:,Nx,0,:) * 0.5d0
                     dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) * 0.5d0
-    endsubroutine NSCBC_y
+  endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann(Q)
@@ -673,7 +697,7 @@ contains
      Q(3,0,:,:) = in_G(0,:,:)*in_G(3,:,:)!rho*w
      Q(4,0,:,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
                  +in_G(0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
-    !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
+      !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
       ! Q(1,0,:,:) = Q(0,0,:,:)*in_G(1,:,:)!rho*u
       ! Q(2,0,:,:) = Q(0,0,:,:)*in_G(2,:,:)!rho*v
       ! Q(3,0,:,:) = Q(0,0,:,:)*in_G(3,:,:)!rho*w
@@ -687,6 +711,14 @@ contains
       !τ11=Vx(1),τ12=Vx(2),τ13=Vx(3)
       !τ21=Vy(1),τ22=Vy(2),τ23=Vy(3)
       !dτ12/dx,dτ13/dx,dτ21/dy,dτ23/dy,dq/dx,dq/dyの全てが0(境界のみ)
+      !=========================================================================
+      !4方向流出のために追加
+      !x方向左側の条件設定
+      dVx(2,0,:,:) = 0.d0!dτ12/dx
+      dVx(3,0,:,:) = 0.d0!dτ13/dx
+      dVx(4,0,:,:) = dVx(1,0,:,:)*UVWT(1,0,:,:)+dUVWTx(1,0,:,:)*Vx(1,0,:,:)&
+                    +dUVWTx(2,0,:,:)*Vx(2,0,:,:)+dUVWTx(3,0,:,:)*Vx(3,0,:,:)
+      !=========================================================================
       !x方向右側の条件設定
       dVx(2,Nx,:,:) = 0.d0!dτ12/dx
       dVx(3,Nx,:,:) = 0.d0!dτ13/dx
@@ -718,22 +750,34 @@ contains
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Ux,sigma_x
       double precision,dimension(0:Nx) :: zeta_fx
       double precision,parameter ::alpha_u=1.5d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
-      Xmax = Lx;Xmin = 0.d0
+      Xmax = Lx;Xmin = -Lx!Xmin = 0.d0
       do i = 0,Nx
         !x1 = zeta_fx(i)
-        x1 = dx*dble(i)
+        ! x1 = dx*dble(i)
+        x1 = -Lx + dx*dble(i)
         !Uxは本来0:Nxの一次の配列で十分だが座標変換の際に他の配列と計算する際に配列が揃っていないと:で省略して計算できないので
         !無駄に同じ値を入れて4次の配列にしている
         Ux(:,i,:,:) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(x1-Xmax)/(-Wrx))&
         -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(x1-Xmin)/Wlx))
-        if(x1<(Xmax-Wrx)) then
-          sigma_x(:,i,:,:) = 0.d0!流出部にのみBufferをつけるのでx左側もσは0となる
-        else
+        ! if(x1<(Xmax-Wrx)) then
+        !   sigma_x(:,i,:,:) = 0.d0!流出部にのみBufferをつけるのでx左側もσは0となる
+        ! else
+        !   sigma_x(:,i,:,:) = alpha_sigma*c_infty*((x1-(Xmax-Wrx))/Wrx)**3.d0
+        ! endif
+
+        if(x1<(Wlx+Xmin)) then
+          sigma_x(:,i,:,:) = alpha_sigma*c_infty*((-x1+Xmin+Wlx)/Wlx)**3.d0
+        elseif((x1>=(Wlx+Xmin)).and.(x1<(Xmax-Wrx))) then
+          sigma_x(:,i,:,:) = 0.d0
+        elseif(x1>=(Xmax-Wrx)) then
           sigma_x(:,i,:,:) = alpha_sigma*c_infty*((x1-(Xmax-Wrx))/Wrx)**3.d0
         endif
       enddo
        !dx不要かも？
-     Ux(:,0:90,:,:) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
+       !========================================================================
+       !Uxは片側のみにある必要はないので今回は0クリアしない(4方向流出)
+       !========================================================================
+     ! Ux(:,0:90,:,:) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
       !open(100,file="ux-check.csv")
       !do i=0,Nx
       !write(100,*) zeta_fx(i),",",Ux(0,i,0)
@@ -752,7 +796,7 @@ contains
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
       do i = 0,Ny
         !y1 = zeta_fy(i)
-        y1 = dy*dble(i)
+        y1 = -Ly + dy*dble(i)
         Uy(:,:,i,:) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(y1-Ymax)/(-Wry))&
         -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(y1-Ymin)/Wly))
         if(y1<(Wly+Ymin)) then
@@ -852,7 +896,7 @@ end module threedim
       double precision,dimension(0:3,0:Ny,0:Nz-1) :: in_G
       !x方向
       double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGx,dFx
-      double precision  dx,x,pNx_infty
+      double precision  dx,x,pNx_infty,p0x_infty
       !y方向
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGy,dFy
       double precision dy,y,p0y_infty,pNy_infty
@@ -880,7 +924,9 @@ end module threedim
       !z_axis
       allocate(LUmz(-2:2,0:Nz-1),LUpz(-2:2,0:Nz-1))
       allocate(LUccsz(-2:2,0:Nz-1))
-      dx = Lx /dble(Nx)
+      ! dx = Lx /dble(Nx)
+      !4方向流出のため
+      dx = 2.d0*Lx /dble(Nx)
       dy = 2.d0*Ly /dble(Ny)
       dz = Lz / dble(Nz)
 !一応ゼロクリア
@@ -888,6 +934,7 @@ end module threedim
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;in_G=0.d0;ur=0.d0;Tu=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
+      p0x_infty=0.d0
 
       !y方向の格子伸長のための座標設定
 !      call lattice_y(dy,zeta_fy,dzeta_iny)
@@ -911,13 +958,38 @@ end module threedim
       ur(i) = ur(Ny-i)
       Tu(i) = Tu(Ny-i)
     enddo
-    !初期値
-    !全体にまず初期値を入れてしまう
-      G(0,:,:,:) = 1.d0!ρ
-      G(1,:,:,:) = 0.d0!u
-      G(2,:,:,:) = 0.d0!v
-      G(3,:,:,:) = 0.d0!w
-      G(4,:,:,:) = G(0,:,:,:)*Temp/((Ma**2.d0)*gamma)!p
+    ! !初期値
+    ! !全体にまず初期値を入れてしまう
+    !   G(0,:,:,:) = 1.d0!ρ
+    !   G(1,:,:,:) = 0.d0!u
+    !   G(2,:,:,:) = 0.d0!v
+    !   G(3,:,:,:) = 0.d0!w
+    !   G(4,:,:,:) = G(0,:,:,:)*Temp/((Ma**2.d0)*gamma)!p
+
+
+    !初期値の設定
+        do j = 0,Ny
+          y = -Ly + dy * dble(j)
+          do i = 0,Nx
+            x = -Lx + dx * dble(i)
+            !円柱
+            if((x **2.d0 + y **2.d0) <= ((1.d0/4.d0) ** 2.d0)) then
+            !角柱
+            !if((-5.d-1 <= x) .and. (x <= 5.d-1).and.(-5.d-1 <= y) .and. (y <= 5.d-1))then
+                G(0,i,j,:) = 1.d0!ρ
+                G(1,i,j,:) = 0.d0!u
+                G(2,i,j,:) = 0.d0!v
+                G(3,i,j,:) = 0.d0!w
+                G(4,i,j,:) = 1.d0!p
+            else
+                G(0,i,j,:) = 125.d-3
+                G(1,i,j,:) = 0.d0
+                G(2,i,j,:) = 0.d0
+                G(3,i,j,:) = 0.d0
+                G(4,i,j,:) = 1.d-1
+              endif
+          enddo
+        enddo
       !Bufferの計算のための初期値を用いて無限遠方での音速を定義
       c_infty = sqrt(Temp/Ma**2.d0)
       !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
@@ -942,7 +1014,8 @@ end module threedim
               do i = 0,Ny
                 y = -Ly + dy * dble(i)
                 do j = 0,Nx
-                  x = dx * dble(j)
+                  ! x = dx * dble(j)
+                  x = -Lx + dx * dble(j)!4方向流出
                   write(10,'(6f24.16)') x,y,z,G(0,j,i,Nz/2),omega_3(j,i,Nz/2),dp(j,i,Nz/2)/dt
                 enddo
                 write(10,*)
@@ -952,6 +1025,7 @@ end module threedim
 !      open(20,file = "result_3D/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
+      p0x_infty = G(4,0,0,0)!4方向流出のため設定
       pNx_infty = G(4,Nx,0,0)
       p0y_infty = G(4,0,0,0)
       pNy_infty = G(4,0,Ny,0)
@@ -1032,7 +1106,11 @@ end module threedim
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        ! call NSCBC_x(G,dGx,dFx,pNx_infty)
+        !=======================================================================
+        !4方向流出のため追加
+        call NSCBC_x(G,dGx,dFx,pNx_infty,p0x_infty)
+        !=======================================================================
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1051,7 +1129,10 @@ end module threedim
               -sigma_y(:,:,:,:)*(Q(:,:,:,:)-Q0(:,:,:,:))-Ux(:,:,:,:)*dQx(:,:,:,:)-Uy(:,:,:,:)*dQy(:,:,:,:))
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(Q1,in_G)!dirichlet条件で流入部を固定
+      !=======================================================================
+      !4方向流出のため
+      ! call inflow(Q1,in_G)!dirichlet条件で流入部を固定
+      !=======================================================================
       !==========
       !NSCBC_xを上書きしてNeumannにしてしまう
       !===========
@@ -1097,7 +1178,11 @@ end module threedim
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        ! call NSCBC_x(G,dGx,dFx,pNx_infty)
+        !=======================================================================
+        !4方向流出のため追加
+        call NSCBC_x(G,dGx,dFx,pNx_infty,p0x_infty)
+        !=======================================================================
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1110,7 +1195,10 @@ end module threedim
             -dFz(:,:,:,:)-sigma_x(:,:,:,:)*(Q1(:,:,:,:)-Q0(:,:,:,:))&
             -sigma_y(:,:,:,:)*(Q1(:,:,:,:)-Q0(:,:,:,:))-Ux(:,:,:,:)*dQx(:,:,:,:)-Uy(:,:,:,:)*dQy(:,:,:,:))
 !        call Q_boundary(Q2)
-        call inflow(Q2,in_G)
+        !=======================================================================
+        !4方向流出のため
+        ! call inflow(Q2,in_G)
+        !=======================================================================
         !==========
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
@@ -1155,7 +1243,11 @@ end module threedim
         call rho_u_p(G,Q2)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        ! call NSCBC_x(G,dGx,dFx,pNx_infty)
+        !=======================================================================
+        !4方向流出のため追加
+        call NSCBC_x(G,dGx,dFx,pNx_infty,p0x_infty)
+        !=======================================================================
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1168,7 +1260,10 @@ end module threedim
             -dFy(:,:,:,:)-dFz(:,:,:,:)-sigma_x(:,:,:,:)*(Q2(:,:,:,:)-Q0(:,:,:,:))&
             -sigma_y(:,:,:,:)*(Q2(:,:,:,:)-Q0(:,:,:,:))-Ux(:,:,:,:)*dQx(:,:,:,:)-Uy(:,:,:,:)*dQy(:,:,:,:))
 !        call Q_boundary(Qn)
-        call inflow(Qn,in_G)
+        !=======================================================================
+        !4方向流出のため
+        ! call inflow(Qn,in_G)
+        !=======================================================================
         !==========
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
@@ -1198,7 +1293,8 @@ end module threedim
              do ii = 0,Ny
                y = -Ly + dy * dble(ii)
                do jj = 0,Nx
-                 x = dx * dble(jj)
+                 ! x = dx * dble(jj)
+                 x = -Lx + dx * dble(j)!4方向流出
                  write(10,'(6f24.16)') x,y,z,G(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2),dp(jj,ii,Nz/2)
                enddo
                write(10,*)
@@ -1238,7 +1334,8 @@ end module threedim
                       do ii = 0,Ny
                         y = -Ly + dy * dble(ii)
                         do jj = 0,Nx
-                          x = dx * dble(jj)
+                          ! x = dx * dble(jj)
+                          x = -Lx + dx * dble(jj)!4方向流出
 !                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2)
                           write(10,'(6f24.16)') x,y,z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
                         enddo
