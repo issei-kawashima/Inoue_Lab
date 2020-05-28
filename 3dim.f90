@@ -37,6 +37,12 @@
 !ただそのためにはメモリが足りないのでallocatableに配列を変更しないといけない。
 !2020.05.14 一旦allocateは変更しないで、Nx=360,その他は5/13(最後)と同様にして計算。M=135でNan.精度あげたのに...
 !2020.05.14 格子幅をx方向は細かくしたのに、より早くNanになったので格子幅の問題ではないと仮定して、配列の動的設定(allocate)に関しては一旦辞める。
+!2020.05.28 dFの角処理をx,y,zで1/3づつにして計算し直し。Nx=180,Ny=100,Nz=20,dt=2.d-3,Ma=0.5,tjet=1.12Temp
+!2020.05.28 M=307でNan.　角処理を変更しても変化なし。
+!2020.05.28 格子伸長なしのプログラムで、Shock Tube問題を4辺流出条件で計算したがそちらでもNan.
+!また、Nan直前でもどこにも振動しそうなrhoがなかった。したがって、z方向の周期条件が問題なのでは？
+!z_checkというz=0とz=10のold_G(0,i,j)の差を計算した。>>全て0であった(z方向は全て同じように計算できている)
+!それではk=0とk=Nz-1の周期条件の際にk=Nzができてしまっていてミスっているのか？
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -872,6 +878,7 @@ end module threedim
       double precision,dimension(0:Nx) :: zeta_fx
       double precision,dimension(0:Ny) :: zeta_fy
       double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
       call cpu_time(t0)
 
@@ -1239,9 +1246,16 @@ end module threedim
                     call dif_x(ccs_sigma,dx,oldG,dGx,LUccsx,dzeta_inx)
                     call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
                     call dif_z(ccs_sigma,dz,oldG,dGz,LUccsz)
-                    omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
-                    omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
-                    omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
+                    !今はまだ見ないので渦度は計算しない
+                    ! omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
+                    ! omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
+                    ! omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
+                    !z_checkでz方向の出力結果に差があるかどうか見る
+                    ! do ii = 0,Ny
+                    !   do jj = 0,Nx
+                    !     z_check(jj,ii,1) = oldG(0,jj,ii,0) - oldG(0,jj,ii,10)
+                    !   enddo
+                    ! enddo
                     !dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt Gは計算破綻時間には常にNaNなのでdpは計算不能
                     write(filename, '(i6.6)') M
                     !Mの計算毎に出力ファイル名を変更して出力する
