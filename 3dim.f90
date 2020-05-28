@@ -599,10 +599,10 @@ contains
       (G(0,Nx,:,:)*G(1,Nx,:,:)*d(3,:,:,1))+(G(0,Nx,:,:)*G(2,Nx,:,:)*d(4,:,:,1))+&
                     (G(0,Nx,:,:)*G(3,Nx,:,:)*d(5,:,:,1))
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため半分ずつ加える)
-                  dFx(:,0,0,:) = dFx(:,0,0,:) * 0.5d0
-                  dFx(:,0,Ny,:) = dFx(:,0,Ny,:) * 0.5d0
-                  dFx(:,Nx,0,:) = dFx(:,Nx,0,:) * 0.5d0
-                  dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) * 0.5d0
+    dFx(:,0,0,:) = dFx(:,0,0,:) / 3.d0
+    dFx(:,0,Ny,:) = dFx(:,0,Ny,:) / 3.d0
+    dFx(:,Nx,0,:) = dFx(:,Nx,0,:) / 3.d0
+    dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) / 3.d0
     endsubroutine NSCBC_x
     !次にy方向のNSCBC　sunrouineを作成
     subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -658,10 +658,10 @@ contains
                   d(2,:,:,1)/(gamma-1.d0)+(G(0,:,Ny,:)*G(1,:,Ny,:)*d(3,:,:,1))+&
       (G(0,:,Ny,:)*G(2,:,Ny,:)*d(4,:,:,1))+(G(0,:,Ny,:)*G(3,:,Ny,:)*d(5,:,:,1))
       !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため半分ずつ加える)
-                    dFy(:,0,0,:) = dFy(:,0,0,:) * 0.5d0
-                    dFy(:,0,Ny,:) = dFy(:,0,Ny,:) * 0.5d0
-                    dFy(:,Nx,0,:) = dFy(:,Nx,0,:) * 0.5d0
-                    dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) * 0.5d0
+      dFy(:,0,0,:) = dFy(:,0,0,:) / 3.d0
+      dFy(:,0,Ny,:) = dFy(:,0,Ny,:) / 3.d0
+      dFy(:,Nx,0,:) = dFy(:,Nx,0,:) / 3.d0
+      dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) / 3.d0
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
@@ -1013,6 +1013,12 @@ end module threedim
                 dFx = xm + xp
                 dFy = ym + yp
                 dFz = zm + zp
+        !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
+        !main program内で1/3にする
+                dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+                dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+                dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+                dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q,myu)
@@ -1077,6 +1083,12 @@ end module threedim
               dFx = xm + xp
               dFy = ym + yp
               dFz = zm + zp
+      !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
+      !main program内で1/3にする
+              dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+              dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+              dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+              dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q1,myu)
@@ -1135,6 +1147,12 @@ end module threedim
               dFx = xm + xp
               dFy = ym + yp
               dFz = zm + zp
+      !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
+      !main program内で1/3にする
+              dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+              dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+              dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+              dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q2,myu)

@@ -1098,7 +1098,7 @@ end module threedim
                 dFy = ym + yp
                 dFz = zm + zp
           !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
-          !0を代入して角のみではdFはdFxとdFyで構成することにする
+          !main program内で1/3にする
           dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
           dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
           dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
@@ -1175,7 +1175,7 @@ end module threedim
               dFy = ym + yp
               dFz = zm + zp
         !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
-        !0を代入して角のみではdFはdFxとdFyで構成することにする
+        !main program内で1/3にする
         dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
         dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
         dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
@@ -1246,7 +1246,7 @@ end module threedim
               dFy = ym + yp
               dFz = zm + zp
         !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
-        !0を代入して角のみではdFはdFxとdFyで構成することにする
+        !main program内で1/3にする
         dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
         dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
         dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
