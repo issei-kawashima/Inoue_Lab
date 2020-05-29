@@ -25,7 +25,7 @@ close(10)
 close(20)
 ! close(30)
 
-compare_dim(:,:) = dim2(:,:,3) - dim3(:,:,4)
+compare_dim(:,:) = dim2(:,:,3) - dim3(:,:,4)3   
 ! compare_dim(:,:) = dim310(:,:,4) - dim3(:,:,4)
 
 !特に差が大きいもののみを出力する
