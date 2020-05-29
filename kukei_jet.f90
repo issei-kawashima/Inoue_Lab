@@ -57,7 +57,7 @@
 !2020.05.30 研究室のPCはM=3000(T=6)を突破したので、今度はz=8~10の部分にのみ流入させた矩型Jetでの条件を再度試してみる。
 !加えて、1秒間隔での出力の際にz方向全て出力させることにしたので、出力形式を変更した。Z方向の格子点ごとに個別にファイル出力をする
 
-module threedim
+module kukei
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -840,10 +840,10 @@ contains
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
         Q(:,:,Ny,:) = Q(:,:,Ny-1,:)
     endsubroutine Q_boundary
-end module threedim
+end module kukei
 
     program main
-      use threedim
+      use kukei
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -966,8 +966,8 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_3D/parameter000000_"//trim(z_name)//".d")
-             ! open(10, file = "result_3D/parameter_initial000000.d")
+             open(10, file = "result_kukei/parameter000000_"//trim(z_name)//".d")
+             ! open(10, file = "result_kukei/parameter_initial000000.d")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -978,7 +978,7 @@ end module threedim
               write(10,*)
              close(10)
            enddo
-!      open(20,file = "result_3D/1pressure.d")
+!      open(20,file = "result_kukei/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1240,7 +1240,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".d")
+             open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".d")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1282,14 +1282,14 @@ end module threedim
                     ! write(filename, '(i6.6)') M
                     !Mの計算毎に出力ファイル名を変更して出力する
                     !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-!                    open(10, file = "result_3D/parameter"//trim(filename)//".d")
+!                    open(10, file = "result_kukei/parameter"//trim(filename)//".d")
                     write(filename, '(i6.6)') M-1!計算破綻直前の値を出力するので1step前の結果になる
                     do kk= 0,Nz-1
 !                      z=dz*dble(Nz/2)
                       z=dz*dble(kk)
                       write(z_name, '(i6.6)') kk
-                      open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".d")
-                      ! open(10, file = "result_3D/parameter"//trim(filename)//".d")
+                      open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".d")
+                      ! open(10, file = "result_kukei/parameter"//trim(filename)//".d")
                       do ii = 0,Ny
                         do jj = 0,Nx
 !                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2)
