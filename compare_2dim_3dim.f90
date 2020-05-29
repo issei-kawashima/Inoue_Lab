@@ -1,3 +1,4 @@
+!2次元と3次元の計算結果を比較するためのプログラム
 program main
 implicit none
 integer,parameter :: Nx = 181
@@ -31,7 +32,7 @@ compare_dim(:,:) = dim2(:,:,3) - dim3(:,:,4)
 !特に差が大きいもののみを出力する
 do i =0,Ny
   do j =0,Nx
-    if(abs(compare_dim(j,i)) >= 1.d-1) then
+    if(abs(compare_dim(j,i)) >= 5.d-3) then
       write(*,*) dim3(j,i,1),dim3(j,i,2),compare_dim(j,i)
     endif
   end do
