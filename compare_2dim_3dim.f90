@@ -6,8 +6,8 @@ integer i, j,x,y!変数の宣言
 double precision,dimension(0:Nx,0:Ny) :: compare_dim
 double precision,dimension(0:Nx,0:Ny,3) :: dim2
 double precision,dimension(0:Nx,0:Ny,4) :: dim3,dim310
-open(10, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_2D/parameter000306.d")!入力ファイルを選択
-open(20, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter000000.d")!1/3角処理
+open(10, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_2D/parameter000300.d")!入力ファイルを選択
+open(20, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter000300.d")!1/3角処理
 ! open(30, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D_1/parameter000000.d")!1/2角処理
 !上はdim3のz方向同士の比較もできるように書いた
 ! open(3, file = "comparison_result.d")!出力ファイルの選択
@@ -25,7 +25,7 @@ close(10)
 close(20)
 ! close(30)
 
-compare_dim(:,:) = dim2(:,:,3) - dim3(:,:,4)3   
+compare_dim(:,:) = dim2(:,:,3) - dim3(:,:,4)
 ! compare_dim(:,:) = dim310(:,:,4) - dim3(:,:,4)
 
 !特に差が大きいもののみを出力する

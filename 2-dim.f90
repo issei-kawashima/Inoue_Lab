@@ -624,7 +624,7 @@ end module dimension
       dx = Lx /dble(Nx)
       dy = 2.d0*Ly /dble(Ny)
       Mmax = t_end / dt
-      output_count = 306!int(0.1d0/dt)!出力ファイルを0.1sec間隔で出力するように設定
+      output_count = int(0.1d0/dt)!出力ファイルを0.1sec間隔で出力するように設定
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Q0=0.d0
       Q1=0.d0;Q2=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0
