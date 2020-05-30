@@ -975,7 +975,6 @@ end module kukei
                 enddo
                 write(10,*)
               enddo
-              write(10,*)
              close(10)
            enddo
 !      open(20,file = "result_kukei/1pressure.d")
@@ -1248,12 +1247,11 @@ end module kukei
                  write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
                enddo
                write(10,*)
+               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
              enddo
              write(10,'(2A1,1I7)') "#","M",M
              write(10,'(7A10)')"#","x","y","z","rho","vorticity","dp/dt"
              close(10)
-             ! write(10,*)
-             !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
             enddo
          endif
         !計算が破綻している場合に計算を終了させるプログラム
@@ -1268,28 +1266,30 @@ end module kukei
                     call dif_x(ccs_sigma,dx,oldG,dGx,LUccsx,dzeta_inx)
                     call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
                     call dif_z(ccs_sigma,dz,oldG,dGz,LUccsz)
-                    !今はまだ見ないので渦度は計算しない
-                    ! omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
-                    ! omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
-                    ! omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
+                    omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
+                    omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
+                    omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
+                    !===========================================================
                     !z_checkでz方向の出力結果に差があるかどうか見る
                     ! do ii = 0,Ny
                     !   do jj = 0,Nx
                     !     z_check(jj,ii,1) = oldG(0,jj,ii,0) - oldG(0,jj,ii,10)
                     !   enddo
                     ! enddo
-                    !dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt Gは計算破綻時間には常にNaNなのでdpは計算不能
-                    ! write(filename, '(i6.6)') M
-                    !Mの計算毎に出力ファイル名を変更して出力する
+                    !===========================================================
+
+                    !dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt
+                    !Gは計算破綻時間には常にNaNなのでdpは計算不能
+
                     !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-!                    open(10, file = "result_kukei/parameter"//trim(filename)//".d")
-                    write(filename, '(i6.6)') M-1!計算破綻直前の値を出力するので1step前の結果になる
+                    write(filename, '(i6.6)') M-1
+                    !Mの計算毎に出力ファイル名を変更して出力する
+                    !計算破綻直前の値を出力するので1step前の結果になる
                     do kk= 0,Nz-1
 !                      z=dz*dble(Nz/2)
                       z=dz*dble(kk)
-                      write(z_name, '(i6.6)') kk
+                      write(z_name, '(i2.2)') kk
                       open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".d")
-                      ! open(10, file = "result_kukei/parameter"//trim(filename)//".d")
                       do ii = 0,Ny
                         do jj = 0,Nx
 !                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2)
@@ -1301,9 +1301,6 @@ end module kukei
                       write(10,'(7A10)')"#","x","y","z","rho","vorticity"
                       close(10)
                     enddo
-!                    write(10,'(2A1,1I7)') "#","M",M
-!                    write(10,'(7A10)')"#","x","y","z","rho","vorticity"
-!                    close(10)
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M
                     call cpu_time(t1)
                     write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
