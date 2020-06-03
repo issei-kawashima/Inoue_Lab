@@ -47,6 +47,8 @@
 !M=491でNan,.ダメだった。dFx,dFy,dFz全てを1/3で計算してみる。
 !2020.05.22 M=508でNan.　ちょっとすすんだ！
 !2020.05.29 Nx-1を求める3次精度差分で*が/になっていた。(1/2するのを*0.5に変更したが、ミスっていた)
+!2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
+!ただし、データの出力内容はz=Nz/2の面での2次元データの出力のままになってる
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -1018,7 +1020,7 @@ end module threedim
 !      !Doループ内でin_G(2,:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_3D/parameter000000.d")
+      open(10, file = "result_3D/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       !      do k=0,Nz-1
       !        z = dz*dble(k)
@@ -1317,7 +1319,7 @@ end module threedim
            write(filename, '(i6.6)') M
            !Mの計算毎に出力ファイル名を変更して出力する
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-           open(10, file = "result_3D/parameter"//trim(filename)//".d")
+           open(10, file = "result_3D/parameter"//trim(filename)//".txt")
            !do kk= 0,Nz-1
              !z=dz*dble(kk)
              z=dz*dble(Nz/2)
@@ -1356,12 +1358,12 @@ end module threedim
                     write(filename, '(i6.6)') M
                     !Mの計算毎に出力ファイル名を変更して出力する
                     !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-!                    open(10, file = "result_3D/parameter"//trim(filename)//".d")
+!                    open(10, file = "result_3D/parameter"//trim(filename)//".txt")
                     do kk= 0,Nz-1
 !                      z=dz*dble(Nz/2)
                       z=dz*dble(kk)
                       write(filename, '(i6.6)') kk
-                      open(10, file = "result_3D/parameter"//trim(filename)//".d")
+                      open(10, file = "result_3D/parameter"//trim(filename)//".txt")
                       do ii = 0,Ny
                         y = -Ly + dy * dble(ii)
                         do jj = 0,Nx

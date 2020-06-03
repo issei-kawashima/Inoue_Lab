@@ -56,6 +56,8 @@
 !M=2000(T=4)までは計算できたので、研究室のPCにリモートで計算させることにした。
 !2020.05.30 研究室のPCはM=3000(T=6)を突破したので、今度はz=8~10の部分にのみ流入させた矩型Jetでの条件を再度試してみる。
 !加えて、1秒間隔での出力の際にz方向全て出力させることにしたので、出力形式を変更した。Z方向の格子点ごとに個別にファイル出力をする
+!M=75000(T=150)まで計算終了！
+!2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
 
 module kukei
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -966,12 +968,13 @@ end module kukei
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_kukei/parameter000000_"//trim(z_name)//".d")
+             open(10, file = "result_kukei/parameter000000_"//trim(z_name)//".txt")
              ! open(10, file = "result_kukei/parameter_initial000000.d")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
-                  write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),z,G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt
+                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                  f24.16)') zeta_fx(j),zeta_fy(i),z,G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt
                 enddo
                 write(10,*)
               enddo
@@ -1239,12 +1242,13 @@ end module kukei
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".d")
+             open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
                do jj = 0,Nx
-                 write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
+                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                 f24.16)') zeta_fx(jj),zeta_fy(ii),z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -1289,11 +1293,11 @@ end module kukei
 !                      z=dz*dble(Nz/2)
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".d")
+                      open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
-!                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2)
-                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
+                          write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                          f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
