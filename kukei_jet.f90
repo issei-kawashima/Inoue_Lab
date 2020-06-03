@@ -53,10 +53,13 @@
 !これがビンゴ！！！！！！！！ Nx-1を求める3次精度差分で*が/になっていた。(1/2するのを*0.5に変更したが、ミスっていた)
 !Nx=180,Ny=100,Nz=20,dt=2.d-3,Tjet=1/12Temp,NSCBC,1/3角処理,Runge-Kutta,Top-Hat型のJetをz方向全ての流入させて計算。
 !M=307を過ぎても問題なく計算できていた。しかもM=300でabs(5.d-5)以上の差があるrhoは存在しないほど計算結果は一致していた。
+!M=2000(T=4)までは計算できたので、研究室のPCにリモートで計算させることにした。
+!2020.05.30 研究室のPCはM=3000(T=6)を突破したので、今度はz=8~10の部分にのみ流入させた矩型Jetでの条件を再度試してみる。
+!加えて、1秒間隔での出力の際にz方向全て出力させることにしたので、出力形式を変更した。Z方向の格子点ごとに個別にファイル出力をする
 !M=75000(T=150)まで計算終了！
 !2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
 
-module threedim
+module kukei
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -689,27 +692,16 @@ contains
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
     endsubroutine Neumann
-
-    !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
-    subroutine Q_boundary(Q)
-      integer i
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
-        Q(:,0,:,:) = Q(:,1,:,:)
-        Q(:,:,0,:) = Q(:,:,1,:)
-        Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
-        Q(:,:,Ny,:) = Q(:,:,Ny-1,:)
-    endsubroutine Q_boundary
-
     subroutine inflow(Q,in_G)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
       double precision,dimension(0:3,0:Ny,0:Nz-1) :: in_G
       !Z方向 k=8~10の部分にのみ矩型Jetを流入させる
-     Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
-     Q(1,0,:,:) = in_G(0,:,:)*in_G(1,:,:)!rho*u
-     Q(2,0,:,:) = in_G(0,:,:)*in_G(2,:,:)!rho*v
-     Q(3,0,:,:) = in_G(0,:,:)*in_G(3,:,:)!rho*w
-     Q(4,0,:,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                 +in_G(0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
+     Q(0,0,:,8:10) = in_G(0,:,8:10)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
+     Q(1,0,:,8:10) = in_G(0,:,8:10)*in_G(1,:,8:10)!rho*u
+     Q(2,0,:,8:10) = in_G(0,:,8:10)*in_G(2,:,8:10)!rho*v
+     Q(3,0,:,8:10) = in_G(0,:,8:10)*in_G(3,:,8:10)!rho*w
+     Q(4,0,:,8:10) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
+                 +in_G(0,:,8:10)*(in_G(1,:,8:10)**2.d0+in_G(2,:,8:10)**2.d0+in_G(3,:,8:10)**2.d0)*0.5d0!Et
     !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
       ! Q(1,0,:,:) = Q(0,0,:,:)*in_G(1,:,:)!rho*u
       ! Q(2,0,:,:) = Q(0,0,:,:)*in_G(2,:,:)!rho*v
@@ -842,10 +834,18 @@ contains
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta_in,dFzeta,dF
       dFzeta = dF * dzeta_in
     endsubroutine combine
-end module threedim
+    subroutine Q_boundary(Q)
+      integer i
+      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
+        Q(:,0,:,:) = Q(:,1,:,:)
+        Q(:,:,0,:) = Q(:,:,1,:)
+        Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
+        Q(:,:,Ny,:) = Q(:,:,Ny-1,:)
+    endsubroutine Q_boundary
+end module kukei
 
     program main
-      use threedim
+      use kukei
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -879,7 +879,7 @@ end module threedim
       ! NSCBC用
       double precision,dimension(0:3,0:Ny,0:Nz-1) :: in_G
       !x方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGx,dFx
+      double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGx,dFx
       double precision  dx,x,pNx_infty
       !y方向
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGy,dFy
@@ -953,7 +953,9 @@ end module threedim
       call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
     !流入条件
     !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
-    do i =0,Nz-1
+    !矩型JetをZ方向 k=8~10のみに流入させる
+    ! do i =0,Nz-1
+    do i =8,10
       in_G(0,:,i) = 1.d0/Tu(:)!密度ρは理想気体状態方程式に従うから
       in_G(1,:,i) = ur(:)! NSCBC流入条件で使う流入値のみを保存する配列
       in_G(2,:,i) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
@@ -966,7 +968,8 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_3D/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_kukei/parameter000000_"//trim(z_name)//".txt")
+             ! open(10, file = "result_kukei/parameter_initial000000.d")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -975,9 +978,9 @@ end module threedim
                 enddo
                 write(10,*)
               enddo
-              close(10)
+             close(10)
            enddo
-!      open(20,file = "result_3D/1pressure.d")
+!      open(20,file = "result_kukei/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1008,16 +1011,20 @@ end module threedim
         !このDoループ内に入れる必要がある。
             !移流方程式の導出
             !3次精度Runge-Kutta法での導出！
-      !========================================================================
-       !  !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-       ! theta = 2.d0*pi*dble(M)*dt
-       ! !計算高速化
-       ! do i = 0,Ny
-       !   if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-       !     in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-       !   endif
-       ! enddo
-       !========================================================================
+        !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
+!        theta = 2.d0*pi*dble(M)*dt
+!        in_G(2,:,:)=0.d0
+!        !計算高速化
+!        do i = 0,Ny
+!          !if(zeta_fy(i) < -b) then
+!          !  in_G(2,i,:) = 0.d0
+!          if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+!          !elseif((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+!            in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+!          !elseif(zeta_fy(i) >= b) then
+!          !  in_G(2,i,:) = 0.d0
+!          endif
+!        enddo
         !Q1
         !F行列のdfx/dxの計算
         !x_axis
@@ -1235,7 +1242,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1249,13 +1256,14 @@ end module threedim
              write(10,'(2A1,1I7)') "#","M",M
              write(10,'(7A10)')"#","x","y","z","rho","vorticity","dp/dt"
              close(10)
-           enddo
+            enddo
          endif
         !計算が破綻している場合に計算を終了させるプログラム
         do k = 0,Nz-1
             do j = 0,Ny
               do i = 0,Nx
                   if(isnan(Qn(0,i,j,k))) then
+!                  if(isnan(Q1(0,i,j,k))) then
                     !渦度用のdGの計算
                     oldG=0;dGx=0.d0;dGy=0.d0;dGz=0.d0
                     call rho_u_p(oldG,Q)
@@ -1282,9 +1290,10 @@ end module threedim
                     !Mの計算毎に出力ファイル名を変更して出力する
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk= 0,Nz-1
+!                      z=dz*dble(Nz/2)
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_kukei/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&

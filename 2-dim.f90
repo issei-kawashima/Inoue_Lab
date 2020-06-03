@@ -16,7 +16,7 @@ module dimension
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 180
   integer,parameter :: Ny = 100
-  double precision,parameter :: dt = 5.d-3
+  double precision,parameter :: dt = 2.d-3
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
   double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
   double precision,parameter :: Cy = 8.d0*b !y軸の幅の設定
@@ -624,7 +624,7 @@ end module dimension
       dx = Lx /dble(Nx)
       dy = 2.d0*Ly /dble(Ny)
       Mmax = t_end / dt
-      output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
+      output_count = int(0.1d0/dt)!出力ファイルを0.1sec間隔で出力するように設定
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Q0=0.d0
       Q1=0.d0;Q2=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0
