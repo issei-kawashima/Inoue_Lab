@@ -4,6 +4,9 @@
 !対策としては、配列を全てallocatableに配列を変更しないといけない。
 !M=75000(T=150)まで計算をすることが亜音速では少なくともできた。(3dim.f90で)
 !2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
+!2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
+!Pr=0.71>Pr=1へ変更。Ma数を0.5から1.4に変更(超音速化)
+!Nx=180,Ny=100,Nz=19,dt=2.d-3で計算。
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -38,11 +41,11 @@ module threedim
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   !亜音速流入のためRe数は小さめに
-  double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 0.5d0
+  double precision,parameter :: Pr = 1.0d0
+  double precision,parameter :: Ma = 1.4d0
   !Ma数も同様に小さめに
   double precision,parameter :: Temp = 1.d0
-  double precision,parameter :: Tjet = 1.12d0*Temp
+  double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
@@ -915,7 +918,7 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_3D/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_super/parameter000000_"//trim(z_name)//".txt")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -926,7 +929,7 @@ end module threedim
               enddo
               close(10)
            enddo
-!      open(20,file = "result_3D/1pressure.d")
+!      open(20,file = "result_super/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1032,9 +1035,10 @@ end module threedim
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
       call inflow(Q1,in_G)!dirichlet条件で流入部を固定
       !==========
+      !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
       !NSCBC_xを上書きしてNeumannにしてしまう
       !===========
-      !call Neumann(Q1)
+      call Neumann(Q1)
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1097,9 +1101,10 @@ end module threedim
 !        call Q_boundary(Q2)
         call inflow(Q2,in_G)
         !==========
+        !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        !call Neumann(Q2)
+        call Neumann(Q2)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1161,9 +1166,10 @@ end module threedim
 !        call Q_boundary(Qn)
         call inflow(Qn,in_G)
         !==========
+        !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        !call Neumann(Qn)
+        call Neumann(Qn)
         call rho_u_p(G,Qn)
 !        if (mod(M,p_output) == 0) then
 !          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2,Nz/2)
@@ -1184,7 +1190,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1233,7 +1239,7 @@ end module threedim
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&

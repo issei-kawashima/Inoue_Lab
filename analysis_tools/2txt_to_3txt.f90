@@ -1,4 +1,7 @@
 !2次元と3次元の計算結果を比較するためのプログラム
+!2020.06.03 3次元コードのデバックが完了したので2次元と3次元の比較は行なわない。
+!今後は_0~_19(Nz-1)までの複数の2次元txtファイルを1つのtxtファイルにまとめるプログラム。
+!それにより、oara viewで3次元での可視化を可能にするファイルが生成される
 program main
 implicit none
 integer,parameter :: Nx = 181
@@ -12,28 +15,28 @@ double precision,dimension(0:Nx,0:Ny,6,0:19) :: dim_kukei
 ! open(10, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_2D/parameter000300.d")!入力ファイルを選択
 ! open(20, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter000300.d")!1/3角処理
 ! open(30, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D_1/parameter000000.d")!1/2角処理
-open(41, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_00.d")
-open(42, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_01.d")
-open(43, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_02.d")
-open(44, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_03.d")
-open(45, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_04.d")
-open(46, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_05.d")
-open(47, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_06.d")
-open(48, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_07.d")
-open(49, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_08.d")
-open(50, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_09.d")
-open(51, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_10.d")
-open(52, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_11.d")
-open(53, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_12.d")
-open(54, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_13.d")
-open(55, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_14.d")
-open(56, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_15.d")
-open(57, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_16.d")
-open(58, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_17.d")
-open(59, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_18.d")
-open(60, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_kukei/parameter050500_19.d")
+open(41, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_00.d")
+open(42, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_01.d")
+open(43, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_02.d")
+open(44, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_03.d")
+open(45, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_04.d")
+open(46, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_05.d")
+open(47, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_06.d")
+open(48, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_07.d")
+open(49, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_08.d")
+open(50, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_09.d")
+open(51, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_10.d")
+open(52, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_11.d")
+open(53, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_12.d")
+open(54, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_13.d")
+open(55, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_14.d")
+open(56, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_15.d")
+open(57, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_16.d")
+open(58, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_17.d")
+open(59, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_18.d")
+open(60, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_3D/parameter075000_19.d")
 
-open(99, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_analysis/parameter50500.csv")
+open(99, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/result_analysis/parameter75000.txt")
 !上はdim3のz方向同士の比較もできるように書いた
 ! open(3, file = "comparison_result.d")!出力ファイルの選択
   !入力データの読み込みと確認
@@ -98,8 +101,10 @@ do k = 0,Nz-1
       if((dim_kukei(j,i,3,k) == 0.d0) .and. (dim_kukei(j,i,1,k) == 0.d0) .and.&
        (dim_kukei(j,i,2,k) == 0.d0) .and. (dim_kukei(j,i,4,k) == 0.d0)) then
       else
-        write(99,*) dim_kukei(j,i,1,k),",",dim_kukei(j,i,2,k),",",dim_kukei(j,i,3,k)&
-        ,",",dim_kukei(j,i,4,k),",",dim_kukei(j,i,5,k),",",dim_kukei(j,i,6,k)
+        write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+        f24.16)') &
+        dim_kukei(j,i,1,k),dim_kukei(j,i,2,k),dim_kukei(j,i,3,k)&
+        ,dim_kukei(j,i,4,k),dim_kukei(j,i,5,k),dim_kukei(j,i,6,k)
       endif
     end do
   end do
