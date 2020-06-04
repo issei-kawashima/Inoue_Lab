@@ -5,8 +5,10 @@
 !M=75000(T=150)まで計算をすることが亜音速では少なくともできた。(3dim.f90で)
 !2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
 !2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
-!Pr=0.71>Pr=1へ変更。Ma数を0.5から1.4に変更(超音速化)
-!Nx=180,Ny=100,Nz=19,dt=2.d-3で計算。
+!超音速なので、x=Nxの境界条件では逆流が起きないとして、Neumann条件を適用することにする
+!計算時間短縮のために、NSCBCのx=Nxの部分は計算しなくて済むようにNSCBC_xのsubroutineを_0と_Nxに分割した。
+!Pr=0.71>Pr=1へ変更。Ma数を0.5から2.4に変更(超音速化)。2次元では計算できなかった条件。
+!Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -42,7 +44,7 @@ module threedim
   double precision,parameter :: c = 1.d0
   !亜音速流入のためRe数は小さめに
   double precision,parameter :: Pr = 1.0d0
-  double precision,parameter :: Ma = 1.4d0
+  double precision,parameter :: Ma = 2.4d0
   !Ma数も同様に小さめに
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
@@ -511,70 +513,86 @@ contains
     !そしてそのままQ1,Q2,Qnを求める
     !まずはx方向用のNSCBC　subrouitineを作成
     !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
-    subroutine NSCBC_x(G,dGx,dFx,pNx_infty)
+    subroutine NSCBC_x_0(G,dGx,dFx)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGx,dFx
-      double precision,dimension(1:5,0:Ny,0:Nz-1,0:1) :: L,d
-      double precision,dimension(0:Ny,0:Nz-1,0:1) :: c_NS,Ma_NS
-      double precision pNx_infty
+      double precision,dimension(1:5,0:Ny,0:Nz-1) :: L,d
+      double precision,dimension(0:Ny,0:Nz-1) :: c_NS,Ma_NS
+      ! double precision pNx_infty
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
-      c_NS(:,:,0) = sqrt(gamma * G(4,0,:,:) / G(0,0,:,:))
-      c_NS(:,:,1) = sqrt(gamma * G(4,Nx,:,:) / G(0,Nx,:,:))
+      c_NS(:,:) = sqrt(gamma * G(4,0,:,:) / G(0,0,:,:))
       !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
-      Ma_NS(:,:,0) = G(1,0,:,:) / c_NS(:,:,0)!uを使う
-      Ma_NS(:,:,1) = G(1,Nx,:,:) / c_NS(:,:,1)
+      Ma_NS(:,:) = G(1,0,:,:) / c_NS(:,:)!uを使う
       !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
-      L(1,:,:,0)=(G(1,0,:,:)-c_NS(:,:,0))*(-G(0,0,:,:)*c_NS(:,:,0)*dGx(1,0,:,:)+dGx(4,0,:,:))
-!      L(2,:,:,0)=G(1,0,:,:)*((c_NS(:,:,0)**2.d0)*dGx(0,0,:,:)-dGx(3,0,:,:))
-!      L(3,:,:,0)=0.d0!L3=u*dv/dxで流入速度
-      L(3,:,:,0)=0.d0!G(1,0,:,:)*dGx(2,0,:,:)
-      L(4,:,:,0)=0.d0!G(1,0,:,:)*dGx(3,0,:,:)
-      L(5,:,:,0)=L(1,:,:,0) !-2.d0*c_NS(:,:,0)*du/dtが本来はあるが
+      L(1,:,:)=(G(1,0,:,:)-c_NS(:,:))*(-G(0,0,:,:)*c_NS(:,:)*dGx(1,0,:,:)+dGx(4,0,:,:))
+!      L(2,:,:)=G(1,0,:,:)*((c_NS(:,:)**2.d0)*dGx(0,0,:,:)-dGx(3,0,:,:))
+!      L(3,:,:)=0.d0!L3=u*dv/dxで流入速度
+      L(3,:,:)=0.d0!G(1,0,:,:)*dGx(2,0,:,:)
+      L(4,:,:)=0.d0!G(1,0,:,:)*dGx(3,0,:,:)
+      L(5,:,:)=L(1,:,:) !-2.d0*c_NS(:,:)*du/dtが本来はあるが
       !流入速度uを時間変動させないので今回はdu/dt=0となるため省略
-!      L(5,:,:,0)=msigma*c_NS(:,:,0)*(1.d0-(Ma_NS(:,:,0)**2.d0))*(G(3,0,:,:)-p0x_infty)/Lx
-      L(2,:,:,0)=(0.5d0)*(gamma-1.d0)*(L(5,:,:,0)+L(1,:,:,0))!+G(0,0,:,:)*c_NS(:,:,0)**2.d0/T*dT/dtが本来はあるが
+!      L(5,:,:)=msigma*c_NS(:,:)*(1.d0-(Ma_NS(:,:)**2.d0))*(G(3,0,:,:)-p0x_infty)/Lx
+      L(2,:,:)=(0.5d0)*(gamma-1.d0)*(L(5,:,:)+L(1,:,:))!+G(0,0,:,:)*c_NS(:,:)**2.d0/T*dT/dtが本来はあるが
       !境界温度Tを時間変動させないので今回はdT/dt=0となるため省略
-      !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
-      L(1,:,:,1)=NS_sigma*c_NS(:,:,1)*(1.d0-(Ma_NS(:,:,1)**2.d0))*(G(4,Nx,:,:)-&
-      &pNx_infty)/Lx
-      L(2,:,:,1)=G(1,Nx,:,:)*((c_NS(:,:,1)**2.d0)*dGx(0,Nx,:,:)-dGx(4,Nx,:,:))
-      L(3,:,:,1)=G(1,Nx,:,:)*dGx(2,Nx,:,:)
-      L(4,:,:,1)=G(1,Nx,:,:)*dGx(3,Nx,:,:)
-      L(5,:,:,1)=(G(1,Nx,:,:)+c_NS(:,:,1))*(G(0,Nx,:,:)*c_NS(:,:,1)*dGx(1,Nx,:,:)+dGx(4,Nx,:,:))
       !設定したL行列からd1~5をi=0,Nxの両点においてそれぞれ設定する
-        d(1,:,:,:) = (1.d0 / (c_NS(:,:,:) **2.d0)) * ((L(1,:,:,:)+L(5,:,:,:))*0.5d0 + L(2,:,:,:))
-        d(2,:,:,:) = (L(1,:,:,:)+L(5,:,:,:))*0.5d0
+        d(1,:,:) = (1.d0 / (c_NS(:,:) **2.d0)) * ((L(1,:,:)+L(5,:,:))*0.5d0 + L(2,:,:))
+        d(2,:,:) = (L(1,:,:)+L(5,:,:))*0.5d0
         !d3のみrhoを含むので個別で設定しなければいけない
-        d(3,:,:,0) = 0.5d0/(G(0,0,:,:) * c_NS(:,:,0)) * (-L(1,:,:,0) + L(5,:,:,0))
-        d(3,:,:,1) = 0.5d0/(G(0,Nx,:,:) * c_NS(:,:,1)) * (-L(1,:,:,1) + L(5,:,:,1))
-        d(4,:,:,:) = L(3,:,:,:)
-        d(5,:,:,:) = L(4,:,:,:)
+        d(3,:,:) = 0.5d0/(G(0,0,:,:) * c_NS(:,:)) * (-L(1,:,:) + L(5,:,:))
+        d(4,:,:) = L(3,:,:)
+        d(5,:,:) = L(4,:,:)
       !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
       !i=0の時の差し替えdFx
-      dFx(0,0,:,:) = d(1,:,:,0)
-      dFx(1,0,:,:) = G(1,0,:,:)*d(1,:,:,0)+G(0,0,:,:)*d(3,:,:,0)
-      dFx(2,0,:,:) = G(2,0,:,:)*d(1,:,:,0)+G(0,0,:,:)*d(4,:,:,0)
-      dFx(3,0,:,:) = G(3,0,:,:)*d(1,:,:,0)+G(0,0,:,:)*d(5,:,:,0)
+      dFx(0,0,:,:) = d(1,:,:)
+      dFx(1,0,:,:) = G(1,0,:,:)*d(1,:,:)+G(0,0,:,:)*d(3,:,:)
+      dFx(2,0,:,:) = G(2,0,:,:)*d(1,:,:)+G(0,0,:,:)*d(4,:,:)
+      dFx(3,0,:,:) = G(3,0,:,:)*d(1,:,:)+G(0,0,:,:)*d(5,:,:)
       dFx(4,0,:,:) =(0.5d0)*((G(1,0,:,:)**2.d0)+(G(2,0,:,:)**2.d0)+&
-                    (G(3,0,:,:)**2.d0))*d(1,:,:,0)+d(2,:,:,0)/(gamma-1.d0)+&
-      (G(0,0,:,:)*G(1,0,:,:)*d(3,:,:,0)) + (G(0,0,:,:)*G(2,0,:,:)*d(4,:,:,0))+&
-                    (G(0,0,:,:)*G(3,0,:,:)*d(5,:,:,0))
-
-      !i=Nxの時の差し替えF
-      dFx(0,Nx,:,:) = d(1,:,:,1)
-      dFx(1,Nx,:,:) = (G(1,Nx,:,:)*d(1,:,:,1)) + (G(0,Nx,:,:)*d(3,:,:,1))
-      dFx(2,Nx,:,:) = (G(2,Nx,:,:)*d(1,:,:,1)) + (G(0,Nx,:,:)*d(4,:,:,1))
-      dFx(3,Nx,:,:) = (G(3,Nx,:,:)*d(1,:,:,1)) + (G(0,Nx,:,:)*d(5,:,:,1))
-      dFx(4,Nx,:,:) =(0.5d0)*((G(1,Nx,:,:)**2.d0)+(G(2,Nx,:,:)**2.d0)+&
-                    (G(3,Nx,:,:)**2.d0))*d(1,:,:,1)+d(2,:,:,1)/(gamma-1.d0)+ &
-      (G(0,Nx,:,:)*G(1,Nx,:,:)*d(3,:,:,1))+(G(0,Nx,:,:)*G(2,Nx,:,:)*d(4,:,:,1))+&
-                    (G(0,Nx,:,:)*G(3,Nx,:,:)*d(5,:,:,1))
+                    (G(3,0,:,:)**2.d0))*d(1,:,:)+d(2,:,:)/(gamma-1.d0)+&
+      (G(0,0,:,:)*G(1,0,:,:)*d(3,:,:)) + (G(0,0,:,:)*G(2,0,:,:)*d(4,:,:))+&
+                    (G(0,0,:,:)*G(3,0,:,:)*d(5,:,:))
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,0,0,:) = dFx(:,0,0,:) / 3.d0
     dFx(:,0,Ny,:) = dFx(:,0,Ny,:) / 3.d0
+  endsubroutine NSCBC_x_0
+    subroutine NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
+      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGx,dFx
+      double precision,dimension(1:5,0:Ny,0:Nz-1) :: L,d
+      double precision,dimension(0:Ny,0:Nz-1) :: c_NS,Ma_NS
+      double precision pNx_infty
+      L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
+      !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
+      c_NS(:,:) = sqrt(gamma * G(4,Nx,:,:) / G(0,Nx,:,:))
+      !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
+      Ma_NS(:,:) = G(1,Nx,:,:) / c_NS(:,:)
+      !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
+      L(1,:,:)=NS_sigma*c_NS(:,:)*(1.d0-(Ma_NS(:,:)**2.d0))*(G(4,Nx,:,:)-&
+      &pNx_infty)/Lx
+      L(2,:,:)=G(1,Nx,:,:)*((c_NS(:,:)**2.d0)*dGx(0,Nx,:,:)-dGx(4,Nx,:,:))
+      L(3,:,:)=G(1,Nx,:,:)*dGx(2,Nx,:,:)
+      L(4,:,:)=G(1,Nx,:,:)*dGx(3,Nx,:,:)
+      L(5,:,:)=(G(1,Nx,:,:)+c_NS(:,:))*(G(0,Nx,:,:)*c_NS(:,:)*dGx(1,Nx,:,:)+dGx(4,Nx,:,:))
+      !設定したL行列からd1~5をi=0,Nxの両点においてそれぞれ設定する
+        d(1,:,:) = (1.d0 / (c_NS(:,:) **2.d0)) * ((L(1,:,:)+L(5,:,:))*0.5d0 + L(2,:,:))
+        d(2,:,:) = (L(1,:,:)+L(5,:,:))*0.5d0
+        !d3のみrhoを含むので個別で設定しなければいけない
+        d(3,:,:) = 0.5d0/(G(0,Nx,:,:) * c_NS(:,:)) * (-L(1,:,:) + L(5,:,:))
+        d(4,:,:) = L(3,:,:)
+        d(5,:,:) = L(4,:,:)
+      !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
+      !i=Nxの時の差し替えF
+      dFx(0,Nx,:,:) = d(1,:,:)
+      dFx(1,Nx,:,:) = (G(1,Nx,:,:)*d(1,:,:)) + (G(0,Nx,:,:)*d(3,:,:))
+      dFx(2,Nx,:,:) = (G(2,Nx,:,:)*d(1,:,:)) + (G(0,Nx,:,:)*d(4,:,:))
+      dFx(3,Nx,:,:) = (G(3,Nx,:,:)*d(1,:,:)) + (G(0,Nx,:,:)*d(5,:,:))
+      dFx(4,Nx,:,:) =(0.5d0)*((G(1,Nx,:,:)**2.d0)+(G(2,Nx,:,:)**2.d0)+&
+                    (G(3,Nx,:,:)**2.d0))*d(1,:,:)+d(2,:,:)/(gamma-1.d0)+ &
+      (G(0,Nx,:,:)*G(1,Nx,:,:)*d(3,:,:))+(G(0,Nx,:,:)*G(2,Nx,:,:)*d(4,:,:))+&
+                    (G(0,Nx,:,:)*G(3,Nx,:,:)*d(5,:,:))
+    !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,Nx,0,:) = dFx(:,Nx,0,:) / 3.d0
     dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) / 3.d0
-    endsubroutine NSCBC_x
+  endsubroutine NSCBC_x_Nx
     !次にy方向のNSCBC　sunrouineを作成
     subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGy,dFy
@@ -636,11 +654,11 @@ contains
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
-    subroutine  Neumann(Q)
+    subroutine  Neumann_Nx(Q)
       integer i
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
-    endsubroutine Neumann
+    endsubroutine Neumann_Nx
 
     !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
     subroutine Q_boundary(Q)
@@ -918,7 +936,7 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_super/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_super_3/parameter000000_"//trim(z_name)//".txt")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -929,7 +947,7 @@ end module threedim
               enddo
               close(10)
            enddo
-!      open(20,file = "result_super/1pressure.d")
+!      open(20,file = "result_super_3/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1014,7 +1032,8 @@ end module threedim
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0(G,dGx,dFx)
+        ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1038,7 +1057,7 @@ end module threedim
       !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
       !NSCBC_xを上書きしてNeumannにしてしまう
       !===========
-      call Neumann(Q1)
+      call Neumann_Nx(Q1)
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1086,7 +1105,8 @@ end module threedim
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0(G,dGx,dFx)
+        ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1104,7 +1124,7 @@ end module threedim
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        call Neumann(Q2)
+        call Neumann_Nx(Q2)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1151,7 +1171,8 @@ end module threedim
         call rho_u_p(G,Q2)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0(G,dGx,dFx)
+        ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -1169,7 +1190,7 @@ end module threedim
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        call Neumann(Qn)
+        call Neumann_Nx(Qn)
         call rho_u_p(G,Qn)
 !        if (mod(M,p_output) == 0) then
 !          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2,Nz/2)
@@ -1190,7 +1211,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_super_3/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1239,7 +1260,7 @@ end module threedim
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_super_3/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&

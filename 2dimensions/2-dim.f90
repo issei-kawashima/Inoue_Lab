@@ -6,6 +6,7 @@
 !2019.05.27 粘性項の係数μの設定でTがMa数を反映していない状況になっていた。修正済
 !2019.05.27 NSCBC_xのi=0の流入部でのL3の設定がv方向に撹乱を入れない前提で0にしていたが今回は入れているので修正した
 !2019.06.20　計算結果の出力に関して渦度を出していたが誤ったG(Q2から導出したG)でdGx,dGyを計算していたのでQnから計算したdGx,dGyで渦度を求めるように変更した
+!2020.06.04 計算結果出力形式を.dから.txtへ変更した
 module dimension
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -673,11 +674,12 @@ end module dimension
       !Doループ内でin_G(2,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_2D/parameter000000.d")
+      open(10, file = "result_2D/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       do i = 0,Ny
         do j = 0,Nx
-          write(10,'(5f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt
+          write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)') &
+          zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt
         enddo
         write(10,*)
       enddo
@@ -685,8 +687,8 @@ end module dimension
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      open(20,file = "result_2D/1pressure.d")
-      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
+      open(20,file = "result_2D/1pressure.txt")
+      write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
       p0y_infty = G(3,0,0)
@@ -863,7 +865,7 @@ end module dimension
         call inflow(Qn,in_G)
         call rho_u_p(G,Qn)
         if (mod(M,p_output) == 0) then
-          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2)
+          write(20,'(1I7,",",1f24.16)') M,G(3,162,Ny/2)
         endif
           if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
             !渦度用のdGの計算
@@ -876,10 +878,11 @@ end module dimension
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
             !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-            open(10, file = "result_2D/parameter"//trim(filename)//".d")
+            open(10, file = "result_2D/parameter"//trim(filename)//".txt")
             do i = 0,Ny
               do j = 0,Nx
-                write(10,'(5f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)
+                write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)') &
+                zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない

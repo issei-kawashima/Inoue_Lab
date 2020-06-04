@@ -17,6 +17,7 @@
 !ただしFirst Schockを起こさせないために、予め計算場に初期速度uと圧力pを入れている。
 !2020.05.09 全くまっさらな状態でMa=2.4で流入させる状態で上の条件で計算したら、M=601でNaNとなった。636行目あたりで初期値を変更すれば計算を回すことだけは可能になる。
 !Nanになった原因は十中八九first Schockでrhoが0以下になったこと。Nan_rho000600.jpegでNan直前の状態を可視化してある。
+!2020.06.04 計算結果出力形式を.dから.txtへ変更した
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -24,7 +25,7 @@ module supersonic
   implicit none
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
-  integer,parameter :: t_end = 100 !時刻tの設定
+  integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 180
   integer,parameter :: Ny = 100
@@ -642,11 +643,12 @@ end module supersonic
       G(3,:,:) = G(0,:,:)*Temp/((Ma**2.d0)*gamma)!p
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_super/parameter000000.d")
+      open(10, file = "result_super/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       do i = 0,Ny
         do j = 0,Nx
-          write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,G(1,j,i)
+          write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,G(1,j,i)
         enddo
         write(10,*)
       enddo
@@ -654,8 +656,8 @@ end module supersonic
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      open(20,file = "result_super/1pressure.d")
-      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
+      open(20,file = "result_super/1pressure.txt")
+      write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
       p0y_infty = G(3,0,0)
@@ -830,7 +832,7 @@ end module supersonic
         call Neumann(Qn)
         call rho_u_p(G,Qn)
         if (mod(M,p_output) == 0) then
-          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2)
+          write(20,'(1I7,",",1f24.16)') M,G(3,162,Ny/2)
         endif
           if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
           !if(mod(M,561) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
@@ -844,10 +846,11 @@ end module supersonic
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
             !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-            open(10, file = "result_super/parameter"//trim(filename)//".d")
+            open(10, file = "result_super/parameter"//trim(filename)//".txt")
             do i = 0,Ny
               do j = 0,Nx
-                write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),G(1,j,i)
+                write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),G(1,j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
