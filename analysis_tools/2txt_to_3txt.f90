@@ -4,7 +4,8 @@
 !それにより、oara viewで3次元での可視化を可能にするファイルが生成される
 program main
 implicit none
-integer,parameter :: Nx = 181
+!integer,parameter :: Nx = 180 !#Mを出力結果から削除した最新版ではこちら
+integer,parameter :: Nx = 181 !#Mが入っている旧バージョンでの計算結果はこちら。Nx+1にして#Mのせい読み込みがでずれないようにする
 integer,parameter :: Ny = 100
 integer,parameter :: Nz = 20
 integer i, j,k,x,y!変数の宣言
