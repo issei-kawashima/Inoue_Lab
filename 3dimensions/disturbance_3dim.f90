@@ -1194,8 +1194,6 @@ end module threedim
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
              enddo
-             write(10,'(2A1,1I7)') "#","M",M
-             write(10,'(7A10)')"#","x","y","z","rho","vorticity","dp/dt"
              close(10)
            enddo
          endif
@@ -1241,7 +1239,6 @@ end module threedim
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
                       enddo
-                      write(10,'(7A10)')"#","x","y","z","rho","vorticity"
                       close(10)
                     enddo
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M
