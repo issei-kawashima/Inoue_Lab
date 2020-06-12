@@ -96,9 +96,9 @@ contains
     close(10)
     close(11)
     close(12)
-    
 
-  end subroutine zahyou_henkan   
+
+  end subroutine zahyou_henkan
 
 !!!=====Qからrho,u,v,pを求める（亜音速流入用）=======
   subroutine Q_g_in(Q_1,Q_2,Q_3,Q_4,Q_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
@@ -121,15 +121,15 @@ contains
    	Q_3(i,1,k)=g_in(3,i)*Q_1(i,1,k)
     	Q_4(i,1,k)=0d0
     	T_k(i,1,k)=g_in(5,i)
-    	g_5(i,1,k)=Q_1(i,1,k)*g_in(5,i)*gmamaga 
-       
+    	g_5(i,1,k)=Q_1(i,1,k)*g_in(5,i)*gmamaga
+
     	end do
     	do j=1,xk
     	Q_2(1,j,k) =0d0
     	Q_3(1,j,k) =0d0
-    	Q_4(1,j,k) =0d0    
+    	Q_4(1,j,k) =0d0
         T_k(1,j,k) =T_k(2,j,k)
-        Q_1(1,j,k) =Q_1(2,j,k) 
+        Q_1(1,j,k) =Q_1(2,j,k)
         g_5(1,j,k) =T_k(1,j,k)*Q_1(1,j,k)*gmamaga
         Q_5(1,j,k) =g_5(1,j,k) /(gamma-1d0)
     	end do
@@ -138,7 +138,7 @@ contains
 	Q_3(yk,j,k) =0d0
    	Q_4(yk,j,k) =0d0
    	T_k(yk,j,k) =T_k(yk+1,j,k)
-        Q_1(yk,j,k) =Q_1(yk+1,j,k) 
+        Q_1(yk,j,k) =Q_1(yk+1,j,k)
         g_5(yk,j,k) =T_k(yk,j,k)*Q_1(yk,j,k)*gmamaga
         Q_5(yk,j,k) =g_5(yk,j,k) /(gamma-1d0)
    	end do
@@ -147,7 +147,7 @@ contains
         Q_3(i,xk,k) =0d0
         Q_4(i,xk,k) =0d0
         T_k(i,xk,k) =T_k(i,xk-1,k)
-        Q_1(i,xk,k) =Q_1(i,xk-1,k)	       
+        Q_1(i,xk,k) =Q_1(i,xk-1,k)
         g_5(i,xk,k) =T_k(i,xk,k)*Q_1(i,xk,k)*gmamaga
         Q_5(i,xk,k) =g_5(i,xk,k) /(gamma-1d0)
 	end do
@@ -160,7 +160,7 @@ contains
    end do
 	!$omp end parallel do
 !!!----------------------------------------------------------------------
-!!!hunryujouken	
+!!!hunryujouken
    Q_3(1,bx1+1:bx1+1+hx-1,5+1:hz+5)  =0.95d0*vin(1:hx,1:hz)*Q_1(1,bx1+1:bx1+1+hx-1,5+1:hz+5) *time
 !   Q_3(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2)=0.3d0*vin(1:hx,1:hz)*Q_1(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2) *time
    Q_3(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5)=1.05d0*vin(1:hx,1:hz)*Q_1(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5) *time
@@ -168,11 +168,11 @@ contains
    Q_4(1,bx1+1:bx1+1+hx-1,5+1:hz+5)  =-0.1d0*vin(1:hx,1:hz)*Q_1(1,bx1+1:bx1+1+hx-1,5+1:hz+5) *time
 !   Q_4(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2)=-0.d0*vin(:,:)*Q_1(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2) *time
    Q_4(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5)=0.05d0*vin(1:hx,1:hz)*Q_1(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5) *time
-    
+
     T_k(1,bx1+1:bx1+1+hx-1,5+1:hz+5)  =1d0
 !    T_k(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2)=1d0
     T_k(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5)=1d0
-   
+
 !!!-----------------------------------------------------------------
     !$omp parallel do
     do k=1,NZ
@@ -180,13 +180,13 @@ contains
          Q_5(1,j,k)=g_5(1,j,k)/(gamma-1d0)&
          +0.5d0/Q_1(1,j,k)*(Q_2(1,j,k)**2+Q_3(1,j,k)**2+Q_4(1,j,k)**2)
         end do
-    	do i=1,NY    
+    	do i=1,NY
     	Q_5(i,1,k)=g_5(i,1,k)/(gamma-1d0)&
         	 +(1d0/(Q_1(i,1,k))*(Q_2(i,1,k)**2+Q_3(i,1,k)**2+Q_4(i,1,k)**2))*0.5d0
         end do
 
     	do j=1,NX
-    		do i=1,NY	    		
+    		do i=1,NY
     g_1(i,j,k)=Q_1(i,j,k)
     g_2(i,j,k)=Q_2(i,j,k)/Q_1(i,j,k)
     g_3(i,j,k)=Q_3(i,j,k)/Q_1(i,j,k)
@@ -210,7 +210,7 @@ contains
     double precision,dimension(n:NN,1:3),intent(in)::LUcom
     double precision,dimension(n:NN)::fBDCS
     double precision::sig,gdh
-    
+
     do j=n+2,NN-2
        fBDCS(j)=(a51*(F(j+1)-F(j-1))&
             +a52*(F(j+2)-F(j-2))&
@@ -234,7 +234,7 @@ contains
          +sig*b31*(F(n)-2d0*F(n+1)+F(n+2)))*gdh
     fBDCS(NN-1)=(a31*(F(NN)-F(NN-2))&
          +sig*b31*(F(NN-2)-2d0*F(NN-1)+F(NN)))*gdh
-    
+
     do j=n+1,NN
        fBDCS(j)=fBDCS(j)-LUcom(j-1,1)*fBDCS(j-1)
     end do
@@ -259,7 +259,7 @@ contains
        CCS(j)=(a51*(F(j+1)-F(j-1))&
             +a52*(F(j+2)-F(j-2)))*gdh
     end do
- 
+
 !!!片側CCS
     CCS(n)=(a111*F(n)+a112*F(n+1)&
          +a113*F(n+2)+a114*F(n+3))*gdh
@@ -268,11 +268,11 @@ contains
 !!!CCS_4
     CCS(n+1)=a31*(F(n+2)-F(n))*gdh
     CCS(NN-1)=a31*(F(NN)-F(NN-2))*gdh
-    
+
     do j=n+1,NN
        CCS(j)=(CCS(j)-LUc(j-1,1)*CCS(j-1))
     end do
-    
+
     CCS(NN)=CCS(NN)/LUc(NN,2)
     do j=NN-1,n,-1
        CCS(j)=(CCS(j)-LUc(j,3)*CCS(j+1))/LUc(j,2)
@@ -289,19 +289,19 @@ contains
     double precision::sig,sum
     allocate(DCSz(NZ))
     sum=0d0
-    
+
     do j=3,NZ-2
        DCSz(j)=(a51*(F(j+1)-F(j-1))&
             +a52*(F(j+2)-F(j-2))&
             +sig*(b51*(F(j+1)-2.d0*F(j)+F(j-1))&
             +b52*(F(j+2)-2.d0*F(j)+F(j-2))))*gdz
     end do
-    
+
        DCSz(1)=(a51*(F(2)-F(NZ))&
             +a52*(F(3)-F(NZ-1))&
             +sig*(b51*(F(2)-2.d0*F(1)+F(NZ))&
             +b52*(F(3)-2.d0*F(1)+F(NZ-1))))*gdz
-       
+
        DCSz(2)=(a51*(F(3)-F(1))&
             +a52*(F(4)-F(NZ))&
             +sig*(b51*(F(3)-2.d0*F(2)+F(1))&
@@ -316,15 +316,15 @@ contains
             +a52*(F(2)-F(NZ-2))&
             +sig*(b51*(F(1)-2.d0*F(NZ)+F(NZ-1))&
             +b52*(F(2)-2.d0*F(NZ)+F(NZ-2))))*gdz
- 	
+
     do i=2,NZ
        DCSz(i)=-DCSz(i-1)*L(i,i-1)+DCSz(i)
     end do
-    
+
     do i=1,NZ-2
        DCSz(NZ)=DCSz(NZ)-DCSz(i)*L(NZ,i)
     end do
-    
+
     DCSz(NZ)=DCSz(NZ)/U(NZ,NZ)
     DCSz(NZ-1)=(DCSz(NZ-1)-DCSz(NZ)*U(NZ-1,NZ))/U(NZ-1,NZ-1)
     do i=NZ-2,1,-1
@@ -343,52 +343,52 @@ contains
     double precision::sum
     allocate(CCSz(NZ))
     sum=0d0
-    !CCS_6次    
+    !CCS_6次
     do j=3,NZ-2
        CCSz(j)=(a51*(F(j+1)-F(j-1))&
             +a52*(F(j+2)-F(j-2)))*gdz
     end do
-    
+
     CCSz(1)=(a51*(F(2)-F(NZ))&
          +a52*(F(3)-F(NZ-1)))*gdz
-    
+
     CCSz(2)=(a51*(F(3)-F(1))&
          +a52*(F(4)-F(NZ)))*gdz
-    
+
     CCSz(NZ-1)=(a51*(F(NZ)-F(NZ-2))&
          +a52*(F(1)-F(NZ-3)))*gdz
-    
+
     CCSz(NZ)=(a51*(F(1)-F(NZ-1))&
          +a52*(F(2)-F(NZ-2)))*gdz
-    
+
     CCSz(1)=CCSz(1)
     do i=2,NZ
        CCSz(i)=-CCSz(i-1)*L(i,i-1)+CCSz(i)
     end do
-    
+
     do i=1,NZ-2
        CCSz(NZ)=CCSz(NZ)-CCSz(i)*L(NZ,i)
     end do
-    
+
     CCSz(NZ)=CCSz(NZ)/U(NZ,NZ)
     CCSz(NZ-1)=(CCSz(NZ-1)-CCSz(NZ)*U(NZ-1,NZ))/U(NZ-1,NZ-1)
     do i=NZ-2,1,-1
        CCSz(i)=(-CCSz(NZ)*U(i,NZ)-CCSz(i+1)*U(i,i+1)+CCSz(i))/(U(i,i))
     end do
    end function CCSz
-  
+
   subroutine NSCBC_xhoukou(g_1,g_2,g_3,g_4,g_5,dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,dF1,dF2,dF3,dF4,dF5,c)
     implicit none
     integer ::i,j,k,t
     double precision,dimension(:,:,:),intent(inout)::g_1,g_2,g_3,g_4,g_5
-    double precision,dimension(:,:,:),intent(inout)::dxg_1,dxg_2,dxg_3,dxg_4,dxg_5 
-    double precision,dimension(:,:,:),intent(inout)::dF1,dF2,dF3,dF4,dF5 
+    double precision,dimension(:,:,:),intent(inout)::dxg_1,dxg_2,dxg_3,dxg_4,dxg_5
+    double precision,dimension(:,:,:),intent(inout)::dF1,dF2,dF3,dF4,dF5
     double precision,allocatable,dimension(:,:,:,:)::L,d  !L＿番号＿NX＿左側と右側
-    
+
     double precision,dimension(:,:,:),intent(in)::c
     double precision,allocatable,dimension(:,:)::Ma1
     allocate(L(1:5,NY,1,NZ),d(1:5,NY,1,NZ),Ma1(NY,NZ))
-    
+
 !!!亜音速流入条件
  !$omp parallel do
 	do k=1,NZ
@@ -438,7 +438,7 @@ end do
     implicit none
     integer ::i,j,k
     double precision,allocatable,dimension(:,:,:)::g_1,g_2,g_3,g_4,g_5,dyg_1,dyg_2,dyg_3,dyg_4,dyg_5,dF1,dF2,dF3,dF4,dF5
-    double precision,allocatable,dimension(:,:,:,:)::L,d  
+    double precision,allocatable,dimension(:,:,:,:)::L,d
     double precision,dimension(:,:,:),intent(in)::c
     double precision,allocatable,dimension(:,:,:)::Ma1
     allocate(L(1:5,1,NX,NZ),d(1:5,1,NX,NZ),Ma1(NY,NX,NZ))
@@ -447,11 +447,11 @@ end do
 !!!NSCBCの適用i=0
 
 !    dF1(1,1:xk-1,:)=1d0/(c(1,1:xk-1,:)**2)*(g_3(1,1:xk-1,:) - c(1,1:xk-1,:))&
-!         *(-g_1(1,1:xk-1,:)*c(1,1:xk-1,:)*dyg_3(1,1:xk-1,:)+dyg_5(1,1:xk-1,:))  
+!         *(-g_1(1,1:xk-1,:)*c(1,1:xk-1,:)*dyg_3(1,1:xk-1,:)+dyg_5(1,1:xk-1,:))
 !    dF1(yk,xk:NX,:)=1d0/(c(yk,xk:NX,:)**2)*(g_3(yk,xk:NX,:) - c(yk,xk:NX,:))&
-!         *(-g_1(yk,xk:NX,:)*c(yk,xk:NX,:)*dyg_3(yk,xk:NX,:)+dyg_5(yk,xk:NX,:))  
+!         *(-g_1(yk,xk:NX,:)*c(yk,xk:NX,:)*dyg_3(yk,xk:NX,:)+dyg_5(yk,xk:NX,:))
 !    dF1(yk,xk,:)=dF1(yk,xk,:)
-    
+
 !    dF1(1,bx1+1:bx1+1+hx-1,5+1:hz+5)=dF1(1,bx1+1:bx1+1+hx-1,5+1:hz+5)*1.4d0
 !    dF1(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2)=dF1(1,bx1+1:bx1+1+hx-1,NZ2-hz2+1:NZ2+hz2)*1.4d0
 !    dF1(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5)=dF1(1,bx1+1:bx1+1+hx-1,NZ-hz-4:NZ-5)*1.4d0
@@ -463,10 +463,10 @@ end do
 	do j=1,NX
     L(1,1,j,k)=sigma_y*(1d0-Ma1(NY,j,k)**2d0)*c(NY,j,k)*(g_5(NY,j,k)-p_inf)/Ly
     L(5,1,j,k)=(g_3(NY,j,k) + c(NY,j,k))&
-         *(g_1(NY,j,k)*c(NY,j,k)*dyg_3(NY,j,k)+dyg_5(NY,j,k))   
+         *(g_1(NY,j,k)*c(NY,j,k)*dyg_3(NY,j,k)+dyg_5(NY,j,k))
     L(2,1,j,k)=g_3(NY,j,k)*(c(NY,j,k)**2d0*dyg_1(NY,j,k)-dyg_5(NY,j,k))
     L(3,1,j,k)=g_3(NY,j,k)*dyg_2(NY,j,k)
-    L(4,1,j,k)=g_3(NY,j,k)*dyg_4(NY,j,k) 
+    L(4,1,j,k)=g_3(NY,j,k)*dyg_4(NY,j,k)
 !!!流入d行列の計算i=NY
     d(1,1,j,k)=1d0/(c(NY,j,k)**2)*(0.5d0*(L(1,1,j,k)+L(5,1,j,k))+L(2,1,j,k))
     d(2,1,j,k)=0.5d0*(L(1,1,j,k)+L(5,1,j,k))
@@ -518,8 +518,8 @@ end do
     character(len=17)xz1_name
     allocate(avg_u(NY,NX),q_y(NY,NX),q_z(ny,nx),q_x(ny,nx),uv(NY,NX),uu(NY,NX))
     allocate(uzu_w(NY,NX,NZ))
-    
-    avg_u=0d0    
+
+    avg_u=0d0
      do k=1,NZ
      avg_u(:,:)=avg_u+g_2(:,:,k)
      end do
@@ -552,9 +552,9 @@ end do
     	    	avg_u(i,j)=0d0
 	end do
     	end do
-   end do 
+   end do
    !$omp end parallel do
-   
+
        uzu_w=dxg_2(:,:,:)*dyg_3(:,:,:)+dyg_3(:,:,:)*dzg_4(:,:,:)+dzg_4(:,:,:)*dxg_2(:,:,:)&
             -(dxg_3(:,:,:)*dyg_2(:,:,:)+dzg_2(:,:,:)*dxg_4(:,:,:)+dyg_4(:,:,:)*dzg_3(:,:,:))
 	do j=1,xk
@@ -573,9 +573,9 @@ end do
 		uu(i,:)=CCS(1,NX,gdx,g_2(i,:,5)**2d0,LU_x)*dx_k
 	        q_x(i,:)=CCS(1,Nx,gdx,T_k(i,:,5),LU_x)*dx_k
 	end do
-     
+
     if (xydanmen==1)then
-       
+
        k=NZ/2
        xy1_name='xy1_000000_nn.txt'
        xy2_name='xy2_000000_nn.txt'
@@ -589,14 +589,15 @@ end do
        open(111,file=xy1_name)
   !     open(112,file=xy2_name)
        open(113,file=xz1_name)
-       
+
        !!!ライトヒルテンソル音源項
        do j=1,NX
           do i=1,NY
              write(111,'(19E25.15e3)') x_k(j),y_k(i),&
                   g_2(i,j,k),g_2(i,j,k)-avg_u(i,j),dxg_2(i,j,k)+dyg_3(i,j,k)+dzg_4(i,j,k),&
 		 g_1(i,j,k),g_3(i,j,k),g_4(i,j,k),g_5(i,j,k)-g_old(i,j)&
-		 ,g_5(i,j,k),T_k(i,j,k),dxg_2(i,j,k),dyg_3(i,j,k),dzg_4(i,j,k),g_5(i,j,k)-avg_p(i,j),dyg_2(i,j,k),dxg_3(i,j,k)-dyg_2(i,j,k),uzu_w(i,j,k)
+		 ,g_5(i,j,k),T_k(i,j,k),dxg_2(i,j,k),dyg_3(i,j,k),dzg_4(i,j,k),g_5(i,j,k)-avg_p(i,j),&
+     dyg_2(i,j,k),dxg_3(i,j,k)-dyg_2(i,j,k),uzu_w(i,j,k)
           end do
           write(111,'(14E23.13e3)')
        end do
@@ -604,15 +605,16 @@ end do
         i=yk+15
        do j=1,NX
           do k=1,NZ
-             write(113,'(9E20.10e3)') x_k(j),dble(k-1)*dz,&
-                  g_2(i,j,k),g_2(i,j,k)-avg_u(i,j),dxg_2(i,j,k)+dyg_3(i,j,k)+dzg_4(i,j,k),g_5(i,j,k)-avg_p(i,j),dxg_3(i,j,k)-dyg_2(i,j,k),uzu_w(i,j,k),dyg_2(i,j,k)
-		          end do
+             write(113,'(9E20.10e3)') x_k(j),dble(k-1)*dz,g_2(i,j,k),&
+             g_2(i,j,k)-avg_u(i,j),dxg_2(i,j,k)+dyg_3(i,j,k)+dzg_4(i,j,k),&
+             g_5(i,j,k)-avg_p(i,j),dxg_3(i,j,k)-dyg_2(i,j,k),uzu_w(i,j,k),dyg_2(i,j,k)
+          end do
          write(113,'(7E20.10e3)')
      end do
     close(113)
-       
+
     end if
-     
+
      if(mod(t,Mmod*3)==0)then
     open(31,file='data_rho3D1.txt',status='replace')
     open(32,file='data_u3D1.txt',status='replace')
@@ -728,13 +730,13 @@ end subroutine result_rms
              	g_h3(i,j),g_h4(i,j),g_h5(i,j),g_h6(i,j)
           end do
           write(31,'(8E30.15e3)')
-          
+
        end do
        close(31)
        avg_p=g_h5(:,:)
     end if
   end subroutine result_final_2
-  
+
   subroutine result_bunseki(G_H1,G_H2,G_H3,G_H4,G_H5,G_h6,LUy,LUyk,x_k,y_k,dy_k,rmsg1,rmsg2,rmsg3,rmsg4,rmsg5,rmsg6)
     implicit none
     integer::i,j,k,n
@@ -757,7 +759,7 @@ end subroutine result_rms
 	U_p=0d0
 	U_t=0d0
 	dyUD=0d0
-	
+
     do j=1,xk-1
     	do i=1,NY
        		omomi(i,j)=dsqrt(G_h1(i,j)/G_h1(1,j))
@@ -783,7 +785,7 @@ end subroutine result_rms
     end do
 
     U_t=dsqrt(tauw)
-    
+
     do j=1,xk-1
 	    do i=1,NY
        		U_p(i,j)=G_H2(i,j)/U_t(j)
@@ -794,7 +796,7 @@ end subroutine result_rms
        		U_p(i,j)=G_H2(i,j)/U_t(j)
 	    end do
     end do
-   
+
     do i=1,xk-1
        x_kRE(i)=(x_k(i)-x_k(1))*RE+(RE/1.7208d0)**2d0
        y_p(:,i)=y_k(:)*U_t(i)/mu1
@@ -803,7 +805,7 @@ end subroutine result_rms
        x_kRE(i)=(x_k(i)-x_k(1))*RE+(RE/1.7208d0)**2d0
        y_p(yk:NY,i)=(y_k(yk:NY)-y_k(yk))*U_t(i)/mu1
     end do
-    
+
     open(200,file='bunsekiy=-1.csv')
     do j=1,xk-1
        write(200,*)'x=',dble(j)*dx
@@ -827,11 +829,11 @@ end subroutine result_rms
           write(201,'(6E20.10e3)')x_k(j),y_k(i),y_p(i,j),omomi(i,j)*rmsg2(i,j)/U_t(j),omomi(i,j)*rmsg3(i,j)/U_t(j)&
           ,omomi(i,j)*rmsg4(i,j)/U_t(j)
        end do
-       
+
        write(201,*)
     end do
     close(201)
-    
+
     open(201,file='uvw_bunseki_2.dat')
     do j=xk,NX
        do i=yk,NY
@@ -848,10 +850,10 @@ theta2=0d0
 		theta1(:)=theta1(:)+(y_k(i+1)-y_k(i))*(G_h2(190,:)-g_h2(i,:))
 		theta2(:)=theta2(:)+(y_k(i+1)-y_k(i))*(G_h2(190,:)-g_h2(i,:))*g_h2(i,:)
 	end do
-	theta1=theta1/g_h2(190,:)	 
-	theta2=theta2/(g_h2(190,:)**2d0)	
-	
-	
+	theta1=theta1/g_h2(190,:)
+	theta2=theta2/(g_h2(190,:)**2d0)
+
+
     open(100,file='REtau_Ut_tauw_Cf.csv')
     write(100,*)'!Retau,Ut,tw,Cf'
     do i=1,NX
@@ -945,7 +947,7 @@ theta2=0d0
        end do
     end do
 
-    
+
     LUcom(NN,2)=U(NN,NN)
     do i=fn,NN-1
        LUcom(i,1)=L(i+1,i)
@@ -1039,7 +1041,7 @@ theta2=0d0
             -dtanh(datanh(berl/alU-1d0)*(x(i)-x(1))/(x(bx2)-x(1))))
     end do
     Ux=-Ux
- 
+
     do i=1,NX/2
   	Ux(:,i,:)=0.5d0*UX(:,i,:)
     end do
@@ -1055,9 +1057,9 @@ theta2=0d0
     do i=NX-bx2,NX
        sigxy(:,i,:)=-als*c_inf*((x(i)-x(NX-bx2))/(x(NX)-x(NX-bx2)))**3d0*0.7d0
     end do
-    
+
 !!!y
-   ! 
+   !
     do i=1,NY
        Uy(i,:,:)=alU*c_inf*(dtanh(datanh(berl/alU-1d0)*(y(i)-y(Ny))/(y(Ny-by)-y(NY)))&
             -dtanh(datanh(berl/alU-1d0)*(y(i)-y(1))/(y(by)-y(1))))
@@ -1067,11 +1069,11 @@ theta2=0d0
        Uy(i,:,:)=0d0
     end do
     Uy=-Uy!*0.d0
-    
+
     do i=Ny-by,Ny
        sigxy(i,:,:)=sigxy(i,:,:)-als*c_inf*((y(i)-y(Ny-by))/(y(Ny)-y(Ny-by)))**3d0!*0.d0
     end do
-    
+
     open(10,file='tasikame1.csv')
     do i=1,NX
        write(10,*)dble(i)*dx,Ux(1,i,1),sigxy(1,i,1)
@@ -1086,7 +1088,7 @@ theta2=0d0
  !   Ux=0d0*Ux
 !Ux=Ux/3d0
   ! Uy=0d0*Uy
-  
+
   !sigxy=0d0*sigxy
 
  !sigxy=sigxy/3d0
@@ -1099,7 +1101,7 @@ end module sub_mod
 !!!===========================================================================
 program main
   !$use omp_lib
-  use sub_mod 
+  use sub_mod
  implicit none
   integer::i,j,k,t,n,Mmod2
   double precision,allocatable,dimension(:,:,:)::Q_1,Q1_1,Q2_1,Q01
@@ -1107,7 +1109,7 @@ program main
   double precision,allocatable,dimension(:,:,:)::Q_3,Q1_3,Q2_3,Q03
   double precision,allocatable,dimension(:,:,:)::Q_4,Q1_4,Q2_4,Q04
   double precision,allocatable,dimension(:,:,:)::Q_5,Q1_5,Q2_5,Q05
-  
+
   double precision,allocatable,dimension(:,:,:)::g_1,dxg_1,dyg_1,dzg_1
   double precision,allocatable,dimension(:,:,:)::g_2,dxg_2,dyg_2,dzg_2
   double precision,allocatable,dimension(:,:,:)::g_3,dxg_3,dyg_3,dzg_3
@@ -1129,7 +1131,7 @@ program main
   double precision,allocatable,dimension(:,:,:)::Fzp3,Fzm3,Fz3
   double precision,allocatable,dimension(:,:,:)::Fzp4,Fzm4,Fz4
   double precision,allocatable,dimension(:,:,:)::Fzp5,Fzm5,Fz5
-  
+
   double precision,allocatable,dimension(:,:)::LU_D_p_nx,LU_D_m_nx
   double precision,allocatable,dimension(:,:)::LU_D_p_ny,LU_D_m_ny
   double precision,allocatable,dimension(:,:):: LU_C_nx,LU_C_ny
@@ -1145,7 +1147,7 @@ program main
   double precision,allocatable,dimension(:,:,:)::iryu_x_3,iryu_y_3,iryu_z_3
   double precision,allocatable,dimension(:,:,:)::iryu_x_4,iryu_y_4,iryu_z_4
   double precision,allocatable,dimension(:,:,:)::iryu_x_5,iryu_y_5,iryu_z_5
-  
+
   double precision,allocatable,dimension(:,:,:) :: mu,mukq,mugRE,q_x,q_y,q_z
   double precision,allocatable,dimension(:,:,:) :: txx,txy,txz
   double precision,allocatable,dimension(:,:,:) :: tyy,tyz
@@ -1154,13 +1156,13 @@ program main
   double precision,allocatable,dimension(:,:,:) :: dytxy,dytyy,dytyz
   double precision,allocatable,dimension(:,:,:) :: dztxz,dztyz,dztzz
   double precision,allocatable,dimension(:,:,:) :: dxq_x,dyq_y,dzq_z
- 
+
   double precision,allocatable,dimension(:,:,:) ::dFx1,dFy1,dFz1
   double precision,allocatable,dimension(:,:,:) ::dFx2,dFy2,dFz2
   double precision,allocatable,dimension(:,:,:) ::dFx3,dFy3,dFz3
   double precision,allocatable,dimension(:,:,:) ::dFx4,dFy4,dFz4
   double precision,allocatable,dimension(:,:,:) ::dFx5,dFy5,dFz5
- 
+
   double precision,allocatable,dimension(:,:,:) ::sigxy
   double precision::time
   double precision::t1,t2
@@ -1172,15 +1174,15 @@ program main
   double precision,allocatable,dimension(:,:,:)::avg_u,avg_uzu,avg_u2
   double precision,allocatable,dimension(:,:)::rho_h,rho_h2,u_h,v_h,w_h,p_h,T_h,zenT
   double precision,allocatable,dimension(:,:)::D2_rho,D2_u,D2_v,D2_p,D2_T
-  
+
   double precision,allocatable,dimension(:,:,:)::Ux,Uy
   double precision,allocatable,dimension(:,:)::rmsg1,rmsg2,rmsg3,rmsg4,rmsg5,rmsg6
   double precision,allocatable,dimension(:,:)::g_h1,g_h2,g_h3,g_h4,g_h5,g_h6
   double precision,allocatable,dimension(:,:)::g_in,g_old
   double precision,allocatable,dimension(:,:)::Vin,avg_p
   integer::loopMK
-  
-  
+
+
   allocate(Q_1(NY,NX,NZ),Q1_1(NY,NX,NZ),Q2_1(NY,NX,NZ),Q01(NY,NX,NZ))
   allocate(Q_2(NY,NX,NZ),Q1_2(NY,NX,NZ),Q2_2(NY,NX,NZ),Q02(NY,NX,NZ))
   allocate(Q_3(NY,NX,NZ),Q1_3(NY,NX,NZ),Q2_3(NY,NX,NZ),Q03(NY,NX,NZ))
@@ -1322,7 +1324,7 @@ end do
      g_in(3,:)=D2_v(:,1)
      g_in(4,:)=D2_p(:,1)
      g_in(5,:)=D2_T(:,1)
-     
+
      !$omp parallel do
      do k=1,NZ
      	do j=1,NX
@@ -1339,14 +1341,14 @@ end do
      !$omp end parallel do
   call Q_g_in(Q_1,Q_2,Q_3,Q_4,Q_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
   c=dsqrt(T_k/(Ma**2))
-  
+
   Q01=Q_1*(sigxy)
   Q02=Q_2*(sigxy)
   Q03=Q_3*(sigxy)
   Q04=Q_4*(sigxy)
   Q05=Q_5*(sigxy)
   end if
-  
+
   if (data3dim==1)then
      open(101,file='data_rho3D1.txt',status='old')
      open(102,file='data_u3D1.txt',status='old')
@@ -1372,14 +1374,14 @@ end do
      g_in(3,:)=g_3(:,1,1)
      g_in(4,:)=g_5(:,1,1)
      g_in(5,:)=T_k(:,1,1)
-     
+
      close(101)
      close(102)
      close(103)
      close(104)
      close(105)
      close(106)
-         
+
           !$omp parallel do
      do k=1,NZ
      	do j=1,NX
@@ -1397,9 +1399,9 @@ end do
   call Q_g_in(Q_1,Q_2,Q_3,Q_4,Q_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
   c=dsqrt(T_k/(Ma**2))
   end if
-  
+
 write(*,*)'a'
-  
+
 !!!=============================================================
   do t=1,MMM
   do j=1,NX
@@ -1408,7 +1410,7 @@ write(*,*)'a'
 	end do
   end do
   time=dble(t)*dt
-  
+
 !!!===================================
 !!!TVD method
 !!!===================================
@@ -1424,7 +1426,7 @@ write(*,*)'a'
        Fx3(i,j,k)=Q_2(i,j,k)*g_3(i,j,k)
        Fx4(i,j,k)=Q_2(i,j,k)*g_4(i,j,k)
        Fx5(i,j,k)=(Q_5(i,j,k)+g_5(i,j,k))*g_2(i,j,k)
-       
+
        Fy1(i,j,k)=Q_3(i,j,k)
        Fy2(i,j,k)=Q_3(i,j,k)*g_2(i,j,k)
        Fy3(i,j,k)=Q_3(i,j,k)*g_3(i,j,k)+g_5(i,j,k)
@@ -1436,7 +1438,7 @@ write(*,*)'a'
        Fz3(i,j,k)=Q_4(i,j,k)*g_3(i,j,k)
        Fz4(i,j,k)=Q_4(i,j,k)*g_4(i,j,k)+g_5(i,j,k)
        Fz5(i,j,k)=(Q_5(i,j,k)+g_5(i,j,k))*g_4(i,j,k)
-       
+
        Fxp1(i,j,k)=(Fx1(i,j,k)+Q_1(i,j,k))*0.5d0
        Fxp2(i,j,k)=(Fx2(i,j,k)+Q_2(i,j,k))*0.5d0
        Fxp3(i,j,k)=(Fx3(i,j,k)+Q_3(i,j,k))*0.5d0
@@ -1449,7 +1451,7 @@ write(*,*)'a'
        Fxm4(i,j,k)=(Fx4(i,j,k)-Q_4(i,j,k))*0.5d0
        Fxm5(i,j,k)=(Fx5(i,j,k)-Q_5(i,j,k))*0.5d0
 
-         
+
        Fyp1(i,j,k)=(Fy1(i,j,k)+Q_1(i,j,k))*0.5d0
        Fyp2(i,j,k)=(Fy2(i,j,k)+Q_2(i,j,k))*0.5d0
        Fyp3(i,j,k)=(Fy3(i,j,k)+Q_3(i,j,k))*0.5d0
@@ -1461,8 +1463,8 @@ write(*,*)'a'
        Fym3(i,j,k)=(Fy3(i,j,k)-Q_3(i,j,k))*0.5d0
        Fym4(i,j,k)=(Fy4(i,j,k)-Q_4(i,j,k))*0.5d0
        Fym5(i,j,k)=(Fy5(i,j,k)-Q_5(i,j,k))*0.5d0
-       		
-!!!!z       
+
+!!!!z
        Fzp1(i,j,k)=(Fz1(i,j,k)+Q_1(i,j,k))*0.5d0
        Fzp2(i,j,k)=(Fz2(i,j,k)+Q_2(i,j,k))*0.5d0
        Fzp3(i,j,k)=(Fz3(i,j,k)+Q_3(i,j,k))*0.5d0
@@ -1508,7 +1510,7 @@ write(*,*)'a'
               dyg_4(:,i,k)=dy_k*CCS(1,NY,gdy,g_4(:,i,k),LU_C_ny)
               dyg_5(:,i,k)=dy_k*CCS(1,NY,gdy,g_5(:,i,k),LU_C_ny)
               q_y(:,i,k)=mukq(:,i,k)*dy_k*CCS(1,NY,gdy,T_k(:,i,k),LU_C_ny)
-     	      q_y(1,i,k)=0d0        
+     	      q_y(1,i,k)=0d0
 	end do
 
         do i=xk,NX
@@ -1542,7 +1544,7 @@ write(*,*)'a'
 	        txy(i,j,k)=(dyg_2(i,j,k)+dxg_3(i,j,k))*mugRE(i,j,k)
          	txz(i,j,k)=(dzg_2(i,j,k)+dxg_4(i,j,k))*mugRE(i,j,k)
     	    	tyz(i,j,k)=(dzg_3(i,j,k)+dyg_4(i,j,k))*mugRE(i,j,k)
-    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k) 
+    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
   		tyy(i,j,k)=tvd2*(2d0*dyg_3(i,j,k)-dxg_2(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
 		tzz(i,j,k)=tvd2*(2d0*dzg_4(i,j,k)-dyg_3(i,j,k)-dxg_2(i,j,k))*mugRe(i,j,k)
 			end do
@@ -1607,7 +1609,7 @@ write(*,*)'a'
     end do
     !$omp end parallel do
 	!$omp parallel do
-    do k=1,NZ 
+    do k=1,NZ
        do i=1,yk
           dxtxx(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txx(i,1:xk,k),LU_C_nxk(1:xk,1:3))
           dxtxy(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txy(i,1:xk,k),LU_C_nxk(1:xk,1:3))
@@ -1622,7 +1624,7 @@ write(*,*)'a'
           dxq_x(i,:,k)=dx_k*CCS(1,NX,gdx,q_x(i,:,k),LU_C_nx)
           dxQ5(i,:,k)=dx_k*CCS(1,NX,gdx,Q_5(i,:,k),LU_C_NX)
        end do
-    end do   
+    end do
     !$omp end parallel do
     !$omp parallel do
    do k=1,NZ
@@ -1667,13 +1669,13 @@ write(*,*)'a'
     dFx3(i,NX,k)=0d0
     dFx4(i,NX,k)=0d0
     dFx5(i,NX,k)=dFx5(i,NX,k)+dxq_x(i,NX,k)-g_3(i,NX,k)*dxtxy(i,NX,k)-g_4(i,NX,k)*dxtxz(i,NX,k)
- 
+
     dFx1(i,j,k)=dxg_1(i,j,k)*Ux(i,j,k)
     dFx2(i,j,k)=dFx2(i,j,k)+(dxg_1(i,j,k)*g_2(i,j,k)+dxg_2(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx3(i,j,k)=dFx3(i,j,k)+(dxg_1(i,j,k)*g_3(i,j,k)+dxg_3(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx4(i,j,k)=dFx4(i,j,k)+(dxg_1(i,j,k)*g_4(i,j,k)+dxg_4(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx5(i,j,k)=dFx5(i,j,k)+dxQ5(i,j,k)*Ux(i,j,k)
-    
+
     dFy2(i,j,k)=dytxy(i,j,k)
     dFy3(i,j,k)=dytyy(i,j,k)
     dFy4(i,j,k)=dytyz(i,j,k)
@@ -1684,14 +1686,14 @@ write(*,*)'a'
 	dFy2(NY,j,k)=0d0
 	dFy4(NY,j,k)=0d0
 	dFy5(NY,j,k)=dFy5(NY,j,k)+dyq_y(NY,j,k)-g_2(NY,j,k)*dytxy(NY,j,k)-g_4(NY,j,k)*dytyz(NY,j,k)
-   
+
     dFy1(i,j,k)=dyg_1(i,j,k)*Uy(i,j,k)
     dFy2(i,j,k)=dFy2(i,j,k)+(dyg_1(i,j,k)*g_2(i,j,k)+dyg_2(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy3(i,j,k)=dFy3(i,j,k)+(dyg_1(i,j,k)*g_3(i,j,k)+dyg_3(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy4(i,j,k)=dFy4(i,j,k)+(dyg_1(i,j,k)*g_4(i,j,k)+dyg_4(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy5(i,j,k)=dFy5(i,j,k)+(dyQ5(i,j,k))*Uy(i,j,k)
 
-    
+
     dFz1(i,j,k)=0d0
     dFz2(i,j,k)=dztxz(i,j,k)
     dFz3(i,j,k)=dztyz(i,j,k)
@@ -1706,7 +1708,7 @@ write(*,*)'a'
 !$omp end parallel do
     call NSCBC_xhoukou(g_1,g_2,g_3,g_4,g_5,dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,iryu_x_1,iryu_x_2,iryu_x_3,iryu_x_4,iryu_x_5,c)
     call NSCBC_yhoukou(g_1,g_2,g_3,g_4,g_5,dyg_1,dyg_2,dyg_3,dyg_4,dyg_5,iryu_y_1,iryu_y_2,iryu_y_3,iryu_y_4,iryu_y_5,c)
-    
+
 !!!TVD1---------------------------------------------------------------------------------------------------
     !Q1=Q-dt*(iryu_x+iryu_y+iryu_z-(dFx+dFy+dFz)-sigxy*Q+Q0)
 !$omp parallel do
@@ -1725,11 +1727,11 @@ write(*,*)'a'
 	  				-dFx5(i,j,k)-dFy5(i,j,k)-dFz5(i,j,k)-sigxy(i,j,k)*Q_5(i,j,k)+Q05(i,j,k))
 		end do
 	end do
-   end do  
+   end do
   !$omp end parallel do
-  
+
   call Q_g_in(Q1_1,Q1_2,Q1_3,Q1_4,Q1_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
-  
+
 	!$omp parallel do
     do k=1,NZ
     	do j=1,NX
@@ -1741,7 +1743,7 @@ write(*,*)'a'
        Fx3(i,j,k)=Q1_2(i,j,k)*g_3(i,j,k)
        Fx4(i,j,k)=Q1_2(i,j,k)*g_4(i,j,k)
        Fx5(i,j,k)=(Q1_5(i,j,k)+g_5(i,j,k))*g_2(i,j,k)
-       
+
        Fy1(i,j,k)=Q1_3(i,j,k)
        Fy2(i,j,k)=Q1_3(i,j,k)*g_2(i,j,k)
        Fy3(i,j,k)=Q1_3(i,j,k)*g_3(i,j,k)+g_5(i,j,k)
@@ -1753,7 +1755,7 @@ write(*,*)'a'
        Fz3(i,j,k)=g_3(i,j,k)*Q1_4(i,j,k)
        Fz4(i,j,k)=Q1_4(i,j,k)*g_4(i,j,k)+g_5(i,j,k)
        Fz5(i,j,k)=(Q1_5(i,j,k)+g_5(i,j,k))*g_4(i,j,k)
-       
+
        Fxp1(i,j,k)=(Fx1(i,j,k)+Q1_1(i,j,k))*0.5d0
        Fxp2(i,j,k)=(Fx2(i,j,k)+Q1_2(i,j,k))*0.5d0
        Fxp3(i,j,k)=(Fx3(i,j,k)+Q1_3(i,j,k))*0.5d0
@@ -1766,7 +1768,7 @@ write(*,*)'a'
        Fxm4(i,j,k)=(Fx4(i,j,k)-Q1_4(i,j,k))*0.5d0
        Fxm5(i,j,k)=(Fx5(i,j,k)-Q1_5(i,j,k))*0.5d0
 
-         
+
        Fyp1(i,j,k)=(Fy1(i,j,k)+Q1_1(i,j,k))*0.5d0
        Fyp2(i,j,k)=(Fy2(i,j,k)+Q1_2(i,j,k))*0.5d0
        Fyp3(i,j,k)=(Fy3(i,j,k)+Q1_3(i,j,k))*0.5d0
@@ -1778,8 +1780,8 @@ write(*,*)'a'
        Fym3(i,j,k)=(Fy3(i,j,k)-Q1_3(i,j,k))*0.5d0
        Fym4(i,j,k)=(Fy4(i,j,k)-Q1_4(i,j,k))*0.5d0
        Fym5(i,j,k)=(Fy5(i,j,k)-Q1_5(i,j,k))*0.5d0
-       		
-!!!!z       
+
+!!!!z
        Fzp1(i,j,k)=(Fz1(i,j,k)+Q1_1(i,j,k))*0.5d0
        Fzp2(i,j,k)=(Fz2(i,j,k)+Q1_2(i,j,k))*0.5d0
        Fzp3(i,j,k)=(Fz3(i,j,k)+Q1_3(i,j,k))*0.5d0
@@ -1825,7 +1827,7 @@ write(*,*)'a'
               dyg_3(:,i,k)=dy_k*CCS(1,NY,gdy,g_3(:,i,k),LU_C_ny)
               dyg_4(:,i,k)=dy_k*CCS(1,NY,gdy,g_4(:,i,k),LU_C_ny)
               dyg_5(:,i,k)=dy_k*CCS(1,NY,gdy,g_5(:,i,k),LU_C_ny)
-           	  q_y(:,i,k)=mukq(:,i,k)*dy_k*CCS(1,NY,gdy,T_k(:,i,k),LU_C_ny)	
+           	  q_y(:,i,k)=mukq(:,i,k)*dy_k*CCS(1,NY,gdy,T_k(:,i,k),LU_C_ny)
 		q_y(1,i,k)=0d0
         end do
         do i=xk,NX
@@ -1835,10 +1837,10 @@ write(*,*)'a'
               dyg_4(yk:NY,i,k)=dy_k(yk:NY)*CCS(yk,NY,gdy,g_4(yk:NY,i,k),LU_C_nyk(yk:NY,1:3))
               dyg_5(yk:NY,i,k)=dy_k(yk:NY)*CCS(yk,NY,gdy,g_5(yk:NY,i,k),LU_C_nyk(yk:NY,1:3))
               q_y(yk:NY,i,k)=mukq(yk:NY,i,k)*dy_k(yk:NY)*CCS(yk,NY,gdy,T_k(yk:NY,i,k),LU_C_nyk(yk:NY,1:3))
-		q_y(yk,i,k)=0d0    
+		q_y(yk,i,k)=0d0
     end do
      end do
-        
+
 	!$omp end parallel do
 	!$omp parallel do
 
@@ -1861,7 +1863,7 @@ write(*,*)'a'
 	        txy(i,j,k)=(dyg_2(i,j,k)+dxg_3(i,j,k))*mugRE(i,j,k)
          	txz(i,j,k)=(dzg_2(i,j,k)+dxg_4(i,j,k))*mugRE(i,j,k)
     	  	tyz(i,j,k)=(dzg_3(i,j,k)+dyg_4(i,j,k))*mugRE(i,j,k)
-    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k) 
+    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
   		tyy(i,j,k)=tvd2*(2d0*dyg_3(i,j,k)-dxg_2(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
 		tzz(i,j,k)=tvd2*(2d0*dzg_4(i,j,k)-dyg_3(i,j,k)-dxg_2(i,j,k))*mugRe(i,j,k)
 			end do
@@ -1928,7 +1930,7 @@ write(*,*)'a'
 	!$omp end parallel do
 	!$omp parallel do
 
-    do k=1,NZ 
+    do k=1,NZ
        do i=1,yk
           dxtxx(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txx(i,1:xk,k),LU_C_nxk(1:xk,1:3))
           dxtxy(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txy(i,1:xk,k),LU_C_nxk(1:xk,1:3))
@@ -1943,7 +1945,7 @@ write(*,*)'a'
           dxq_x(i,:,k)=dx_k*CCS(1,NX,gdx,q_x(i,:,k),LU_C_nx)
           dxQ5(i,:,k)=dx_k*CCS(1,NX,gdx,Q1_5(i,:,k),LU_C_NX)
        end do
-    end do   
+    end do
 
     !$omp end parallel do
     !$omp parallel do
@@ -1977,7 +1979,7 @@ write(*,*)'a'
 	!$omp end parallel do
 	!$omp parallel do
 
-   
+
     do k=1,NZ
     	do j=1,NX
     		do i=1,NY
@@ -1991,13 +1993,13 @@ write(*,*)'a'
     dFx3(i,NX,k)=0d0
     dFx4(i,NX,k)=0d0
     dFx5(i,NX,k)=dFx5(i,NX,k)+dxq_x(i,NX,k)-g_3(i,NX,k)*dxtxy(i,NX,k)-g_4(i,NX,k)*dxtxz(i,NX,k)
- 
+
     dFx1(i,j,k)=dxg_1(i,j,k)*Ux(i,j,k)
     dFx2(i,j,k)=dFx2(i,j,k)+(dxg_1(i,j,k)*g_2(i,j,k)+dxg_2(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx3(i,j,k)=dFx3(i,j,k)+(dxg_1(i,j,k)*g_3(i,j,k)+dxg_3(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx4(i,j,k)=dFx4(i,j,k)+(dxg_1(i,j,k)*g_4(i,j,k)+dxg_4(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx5(i,j,k)=dFx5(i,j,k)+dxQ5(i,j,k)*Ux(i,j,k)
-    
+
     dFy2(i,j,k)=dytxy(i,j,k)
     dFy3(i,j,k)=dytyy(i,j,k)
     dFy4(i,j,k)=dytyz(i,j,k)
@@ -2008,14 +2010,14 @@ write(*,*)'a'
 	dFy2(NY,j,k)=0d0
 	dFy4(NY,j,k)=0d0
 	dFy5(NY,j,k)=dFy5(NY,j,k)+dyq_y(NY,j,k)-g_2(NY,j,k)*dytxy(NY,j,k)-g_4(NY,j,k)*dytyz(NY,j,k)
-   
+
     dFy1(i,j,k)=dyg_1(i,j,k)*Uy(i,j,k)
     dFy2(i,j,k)=dFy2(i,j,k)+(dyg_1(i,j,k)*g_2(i,j,k)+dyg_2(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy3(i,j,k)=dFy3(i,j,k)+(dyg_1(i,j,k)*g_3(i,j,k)+dyg_3(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy4(i,j,k)=dFy4(i,j,k)+(dyg_1(i,j,k)*g_4(i,j,k)+dyg_4(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy5(i,j,k)=dFy5(i,j,k)+(dyQ5(i,j,k))*Uy(i,j,k)
 
-    
+
 	dFz1(i,j,k)=0d0
     dFz2(i,j,k)=dztxz(i,j,k)
     dFz3(i,j,k)=dztyz(i,j,k)
@@ -2030,9 +2032,9 @@ write(*,*)'a'
 !$omp end parallel do
     call NSCBC_xhoukou(g_1,g_2,g_3,g_4,g_5,dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,iryu_x_1,iryu_x_2,iryu_x_3,iryu_x_4,iryu_x_5,c)
     call NSCBC_yhoukou(g_1,g_2,g_3,g_4,g_5,dyg_1,dyg_2,dyg_3,dyg_4,dyg_5,iryu_y_1,iryu_y_2,iryu_y_3,iryu_y_4,iryu_y_5,c)
-  
+
 !    Q2=3d0/4d0*Q+0.25d0*(Q1-dt*(iryu_x+iryu_y+iryu_z-(dFx+dFy+dFz)-Q1*sigxy+Q0))
-  
+
  !$omp parallel do
   do k=1,NZ
   	do j=1,NX
@@ -2049,12 +2051,12 @@ write(*,*)'a'
 	  				-dFx5(i,j,k)-dFy5(i,j,k)-dFz5(i,j,k)-sigxy(i,j,k)*Q1_5(i,j,k)+Q05(i,j,k))
 		end do
 	end do
-   end do  
-  !$omp end parallel do 
+   end do
+  !$omp end parallel do
 
 
   call Q_g_in(Q2_1,Q2_2,Q2_3,Q2_4,Q2_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
-  
+
 	!$omp parallel do
     do k=1,NZ
     	do j=1,NX
@@ -2066,7 +2068,7 @@ write(*,*)'a'
        Fx3(i,j,k)=Q2_2(i,j,k)*g_3(i,j,k)
        Fx4(i,j,k)=Q2_2(i,j,k)*g_4(i,j,k)
        Fx5(i,j,k)=(Q2_5(i,j,k)+g_5(i,j,k))*g_2(i,j,k)
-       
+
        Fy1(i,j,k)=Q2_3(i,j,k)
        Fy2(i,j,k)=Q2_3(i,j,k)*g_2(i,j,k)
        Fy3(i,j,k)=Q2_3(i,j,k)*g_3(i,j,k)+g_5(i,j,k)
@@ -2078,7 +2080,7 @@ write(*,*)'a'
        Fz3(i,j,k)=g_3(i,j,k)*Q2_4(i,j,k)
        Fz4(i,j,k)=Q2_4(i,j,k)*g_4(i,j,k)+g_5(i,j,k)
        Fz5(i,j,k)=(Q2_5(i,j,k)+g_5(i,j,k))*g_4(i,j,k)
-       
+
        Fxp1(i,j,k)=(Fx1(i,j,k)+Q2_1(i,j,k))*0.5d0
        Fxp2(i,j,k)=(Fx2(i,j,k)+Q2_2(i,j,k))*0.5d0
        Fxp3(i,j,k)=(Fx3(i,j,k)+Q2_3(i,j,k))*0.5d0
@@ -2091,7 +2093,7 @@ write(*,*)'a'
        Fxm4(i,j,k)=(Fx4(i,j,k)-Q2_4(i,j,k))*0.5d0
        Fxm5(i,j,k)=(Fx5(i,j,k)-Q2_5(i,j,k))*0.5d0
 
-         
+
        Fyp1(i,j,k)=(Fy1(i,j,k)+Q2_1(i,j,k))*0.5d0
        Fyp2(i,j,k)=(Fy2(i,j,k)+Q2_2(i,j,k))*0.5d0
        Fyp3(i,j,k)=(Fy3(i,j,k)+Q2_3(i,j,k))*0.5d0
@@ -2103,8 +2105,8 @@ write(*,*)'a'
        Fym3(i,j,k)=(Fy3(i,j,k)-Q2_3(i,j,k))*0.5d0
        Fym4(i,j,k)=(Fy4(i,j,k)-Q2_4(i,j,k))*0.5d0
        Fym5(i,j,k)=(Fy5(i,j,k)-Q2_5(i,j,k))*0.5d0
-       		
-!!!!z       
+
+!!!!z
        Fzp1(i,j,k)=(Fz1(i,j,k)+Q2_1(i,j,k))*0.5d0
        Fzp2(i,j,k)=(Fz2(i,j,k)+Q2_2(i,j,k))*0.5d0
        Fzp3(i,j,k)=(Fz3(i,j,k)+Q2_3(i,j,k))*0.5d0
@@ -2165,7 +2167,7 @@ write(*,*)'a'
      q_y(yk,i,k)=0d0
         end do
      end do
-        
+
 	!$omp end parallel do
 	!$omp parallel do
 
@@ -2188,7 +2190,7 @@ write(*,*)'a'
 	        txy(i,j,k)=(dyg_2(i,j,k)+dxg_3(i,j,k))*mugRE(i,j,k)
          	txz(i,j,k)=(dzg_2(i,j,k)+dxg_4(i,j,k))*mugRE(i,j,k)
     	 	tyz(i,j,k)=(dzg_3(i,j,k)+dyg_4(i,j,k))*mugRE(i,j,k)
-    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k) 
+    		txx(i,j,k)=tvd2*(2d0*dxg_2(i,j,k)-dyg_3(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
   		  	tyy(i,j,k)=tvd2*(2d0*dyg_3(i,j,k)-dxg_2(i,j,k)-dzg_4(i,j,k))*mugRE(i,j,k)
 		    tzz(i,j,k)=tvd2*(2d0*dzg_4(i,j,k)-dyg_3(i,j,k)-dxg_2(i,j,k))*mugRe(i,j,k)
 			end do
@@ -2255,7 +2257,7 @@ write(*,*)'a'
     end do
     !$omp end parallel do
     !$omp parallel do
-    do k=1,NZ 
+    do k=1,NZ
        do i=1,yk
           dxtxx(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txx(i,1:xk,k),LU_C_nxk(1:xk,1:3))
           dxtxy(i,1:xk,k)=dx_k(1:xk)*CCS(1,xk,gdx,txy(i,1:xk,k),LU_C_nxk(1:xk,1:3))
@@ -2270,7 +2272,7 @@ write(*,*)'a'
           dxq_x(i,:,k)=dx_k*CCS(1,NX,gdx,q_x(i,:,k),LU_C_nx)
           dxQ5(i,:,k)=dx_k*CCS(1,NX,gdx,Q2_5(i,:,k),LU_C_NX)
        end do
-    end do   
+    end do
 
     !$omp end parallel do
     !$omp parallel do
@@ -2316,13 +2318,13 @@ write(*,*)'a'
     dFx3(i,NX,k)=0d0
     dFx4(i,NX,k)=0d0
     dFx5(i,NX,k)=dFx5(i,NX,k)+dxq_x(i,NX,k)-g_3(i,NX,k)*dxtxy(i,NX,k)-g_4(i,NX,k)*dxtxz(i,NX,k)
- 
+
     dFx1(i,j,k)=dxg_1(i,j,k)*Ux(i,j,k)
     dFx2(i,j,k)=dFx2(i,j,k)+(dxg_1(i,j,k)*g_2(i,j,k)+dxg_2(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx3(i,j,k)=dFx3(i,j,k)+(dxg_1(i,j,k)*g_3(i,j,k)+dxg_3(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx4(i,j,k)=dFx4(i,j,k)+(dxg_1(i,j,k)*g_4(i,j,k)+dxg_4(i,j,k)*g_1(i,j,k))*Ux(i,j,k)
     dFx5(i,j,k)=dFx5(i,j,k)+dxQ5(i,j,k)*Ux(i,j,k)
-    
+
     dFy2(i,j,k)=dytxy(i,j,k)
     dFy3(i,j,k)=dytyy(i,j,k)
     dFy4(i,j,k)=dytyz(i,j,k)
@@ -2333,14 +2335,14 @@ write(*,*)'a'
 	dFy2(NY,j,k)=0d0
 	dFy4(NY,j,k)=0d0
 	dFy5(NY,j,k)=dFy5(NY,j,k)+dyq_y(NY,j,k)-g_2(NY,j,k)*dytxy(NY,j,k)-g_4(NY,j,k)*dytyz(NY,j,k)
-   
+
     dFy1(i,j,k)=dyg_1(i,j,k)*Uy(i,j,k)
     dFy2(i,j,k)=dFy2(i,j,k)+(dyg_1(i,j,k)*g_2(i,j,k)+dyg_2(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy3(i,j,k)=dFy3(i,j,k)+(dyg_1(i,j,k)*g_3(i,j,k)+dyg_3(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy4(i,j,k)=dFy4(i,j,k)+(dyg_1(i,j,k)*g_4(i,j,k)+dyg_4(i,j,k)*g_1(i,j,k))*Uy(i,j,k)
     dFy5(i,j,k)=dFy5(i,j,k)+(dyQ5(i,j,k))*Uy(i,j,k)
 
-    
+
 	dFz1(i,j,k)=0d0
     dFz2(i,j,k)=dztxz(i,j,k)
     dFz3(i,j,k)=dztyz(i,j,k)
@@ -2355,7 +2357,7 @@ write(*,*)'a'
 !$omp end parallel do
     call NSCBC_xhoukou(g_1,g_2,g_3,g_4,g_5,dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,iryu_x_1,iryu_x_2,iryu_x_3,iryu_x_4,iryu_x_5,c)
     call NSCBC_yhoukou(g_1,g_2,g_3,g_4,g_5,dyg_1,dyg_2,dyg_3,dyg_4,dyg_5,iryu_y_1,iryu_y_2,iryu_y_3,iryu_y_4,iryu_y_5,c)
-  
+
   !!   Q=tvd1*Q+tvd2*(Q2-dt*(iryu_x+iryu_y+iryu_z-(dFx+dFy+dFz)-sigxy*Q2+Q0))
 !$omp parallel do
   do k=1,NZ
@@ -2373,11 +2375,11 @@ write(*,*)'a'
 	  				-dFx5(i,j,k)-dFy5(i,j,k)-dFz5(i,j,k)-sigxy(i,j,k)*Q2_5(i,j,k)+Q05(i,j,k))
 		end do
 	end do
-   end do  
+   end do
   !$omp end parallel do
-  
+
    call Q_g_in(Q_1,Q_2,Q_3,Q_4,Q_5,g_1,g_2,g_3,g_4,g_5,T_k,mu,mugRE,mukq,t,y_k,g_in,vin)
- 
+
 
 !!!===========================================================
      write(*,*)t
@@ -2447,17 +2449,17 @@ if(t>MM)Mmod2=Mmod1
         end do
      end do
     !$omp end parallel do
- 
+
      call  result_2(t,T_k,g_old,g_1,g_2,g_3,g_4,g_5,&
      			dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,&
      			dyg_1,dyg_2,dyg_3,dyg_4,dyg_5,&
      			dzg_1,dzg_2,dzg_3,dzg_4,dzg_5,LU_C_nx,LU_C_ny,LU_C_nxk,LU_C_nyk,x_k,dx_k,y_k,dy_k,avg_p)
- 
+
   end if
   if(t==MM) call result_bunseki(G_H1,G_H2,G_H3,G_H4,G_H5,G_h6,LU_C_ny,LU_C_nyk,x_k,y_k,dy_k,rmsg1,rmsg2,rmsg3,rmsg4,rmsg5,rmsg6)
        if(t>=MM)then
         call result_rms(g_1,g_2,g_3,g_4,g_5,T_k,t,g_h1,g_h2,g_h3,g_h4,g_h5,g_h6,x_k,y_k,rmsg1,rmsg2,rmsg3,rmsg4,rmsg5,rmsg6)
-  
+
      end if
      if(t==MMM)then
          do k=1,Nz
@@ -2506,7 +2508,7 @@ if(t>MM)Mmod2=Mmod1
               q_y(yk:NY,i,k)=mukq(yk:NY,i,k)*dy_k(yk:NY)*CCS(yk,NY,gdy,T_k(yk:NY,i,k),LU_C_nyk(yk:NY,1:3))
         end do
      end do
-        
+
   	!$omp end parallel do
 	!$omp parallel do
    do i=1,NX
@@ -2520,9 +2522,9 @@ if(t>MM)Mmod2=Mmod1
         end do
      end do
     !$omp end parallel do
-    	
-    	
-    	
+
+
+
   	 call result_bunseki(G_H1,G_H2,G_H3,G_H4,G_H5,G_h6,LU_C_ny,LU_C_nyk,x_k,y_k,dy_k,rmsg1,rmsg2,rmsg3,rmsg4,rmsg5,rmsg6)
      call result_2(t,T_k,g_old,g_1,g_2,g_3,g_4,g_5,&
      			dxg_1,dxg_2,dxg_3,dxg_4,dxg_5,&
