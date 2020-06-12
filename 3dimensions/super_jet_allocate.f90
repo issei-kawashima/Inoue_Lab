@@ -11,6 +11,7 @@
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 !2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
 !しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
+!2020.06.12　書き換え完了。M=2200でNanになった計算条件で再計算。M=2200で同じようにNaNになれば書き換え後の品質確保
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -60,8 +61,7 @@ module threedim
 contains
   !初期条件G(rho,u,p)を用いてQ行列の設定
   subroutine Q_matrix(G,Q)
-    double precision,dimension(:,:,:,:) :: Q,G
-    ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q,G
+    double precision,allocatable,dimension(:,:,:,:) :: Q,G
       Q(0,:,:,:) = G(0,:,:,:)
       Q(1,:,:,:) = G(0,:,:,:) * G(1,:,:,:)
       Q(2,:,:,:) = G(0,:,:,:) * G(2,:,:,:)
@@ -71,8 +71,9 @@ contains
   endsubroutine Q_matrix
   !求めQを用いてF行列の設定
   subroutine F_matrix(Q,Fpx,Fmx,Fpy,Fmy,Fpz,Fmz)
-    double precision,dimension(:,:,:,:) :: Q,Fx,Fpx,Fmx,Fy,Fpy,Fmy,Fz,Fpz,Fmz
-    ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q,Fx,Fpx,Fmx,Fy,Fpy,Fmy,Fz,Fpz,Fmz
+    double precision,allocatable,dimension(:,:,:,:) :: Q,Fpx,Fmx,Fpy,Fmy,Fpz,Fmz
+    double precision,allocatable,dimension(:,:,:,:)::Fx,Fy,Fz
+    allocate(Fx(0:4,0:Nx,0:Ny,0:Nz-1),Fy(0:4,0:Nx,0:Ny,0:Nz-1),Fz(0:4,0:Nx,0:Ny,0:Nz-1))
     Fx=0.d0
     Fy=0.d0
     Fz=0.d0
@@ -117,13 +118,14 @@ contains
         !Lax-Friedrichの流速分割を用いる
             Fpz(:,:,:,:) = (Fz(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
             Fmz(:,:,:,:) = (Fz(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
+          deallocate(Fx,Fy,Fz)
       endsubroutine F_matrix
 !du/dx,dT.dxを求めるためにまずはuとTの設定。一行目は他と係数を合わせ易くするために0だが含めている
 !UVWT,myuの計算はrho,u,pをそのまま代入しても良いがその場合は求めたtQから毎回rho_u_pのsubroutineを
 !呼び出して計算しなければいけないので今回はQから直接計算できるようにプログラムを組んだ
     subroutine variable_setting(UVWT,Q,myu)
-      double precision,dimension(:,:,:,:) :: UVWT,Q
-      double precision,dimension(:,:,:) :: myu
+      double precision,allocatable,dimension(:,:,:,:) :: UVWT,Q
+      double precision,allocatable,dimension(:,:,:) :: myu
       ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: UVWT,Q
       ! double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: myu
         UVWT(0,:,:,:) = 0.d0
@@ -141,10 +143,9 @@ contains
     subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
       !粘性項の設定(x方向)
       !基礎式右辺をV行列として設定
-      double precision,dimension(:,:,:,:) :: Vx,Vy,Vz,dUVWTx,dUVWTy,dUVWTz,UVWT
-      double precision,dimension(:,:,:) :: myu
-      ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vx,Vy,Vz,dUVWTx,dUVWTy,dUVWTz,UVWT
-      ! double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: myu
+      double precision,allocatable,dimension(:,:,:,:) :: Vx,Vy,Vz
+      double precision,allocatable,dimension(:,:,:,:) :: dUVWTx,dUVWTy,dUVWTz,UVWT
+      double precision,allocatable,dimension(:,:,:) :: myu
         Vx(0,:,:,:) = 0.d0
         Vx(1,:,:,:) = (2.d0*myu(:,:,:)/(3.d0*Re)) * (2.d0 * dUVWTx(1,:,:,:) - dUVWTy(2,:,:,:)-dUVWTz(3,:,:,:))
         Vx(2,:,:,:) = (myu(:,:,:) / Re) * (dUVWTx(2,:,:,:) + dUVWTy(1,:,:,:))
@@ -172,8 +173,7 @@ contains
     !求めたQnから時間毎のrho,u,v,w,pを求めるサブルーチン
     !ある指定した時間の時の計算結果のみを取り出せばグラフが作成できるので毎回は使用しない
     subroutine rho_u_p(G,Qn)
-      double precision,dimension(:,:,:,:) :: Qn,G
-      ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Qn,G
+      double precision,allocatable,dimension(:,:,:,:) :: Qn,G
         G=0.d0
         G(0,:,:,:) = Qn(0,:,:,:)
         G(1,:,:,:) = Qn(1,:,:,:) / Qn(0,:,:,:)
@@ -363,15 +363,19 @@ contains
   !x方向
     subroutine dif_x(sigma,dx,Fx,dFzeta,LU,dzeta_inx)
       integer i
-      double precision,dimension(:,:,:,:) :: Fx
-      ! double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Fx
-      double  precision,dimension(0:4,2:Nx-2,0:Ny,0:Nz-1) :: D2,D4,D6,D8
+      double precision,allocatable,dimension(:,:,:,:) :: Fx,dzeta_inx,dFzeta
+      double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
+      double precision,allocatable,dimension(:,:,:,:):: x,y,RHS_x
       double precision dx,sigma,dxinv
       double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
       &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
       double precision,allocatable,dimension(:,:) :: LU
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: x,y,RHS_x
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta_inx,dFzeta
+
+      allocate(D2(0:4,2:Nx-2,0:Ny,0:Nz-1),D4(0:4,2:Nx-2,0:Ny,0:Nz-1),&
+      D6(0:4,2:Nx-2,0:Ny,0:Nz-1),D8(0:4,2:Nx-2,0:Ny,0:Nz-1))
+      allocate(x(0:4,0:Nx,0:Ny,0:Nz-1),y(0:4,0:Nx,0:Ny,0:Nz-1),&
+      RHS_x(0:4,0:Nx,0:Ny,0:Nz-1))
+
       D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_x=0.d0;y=0.d0;x=0.d0
       !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
       dxinv = 1.d0/dx
@@ -410,19 +414,23 @@ contains
               x(:,i,:,:) = (y(:,i,:,:) - LU(1,i)*x(:,i+1,:,:)) / LU(0,i)
             enddo
           call combine(dzeta_inx,x,dFzeta)
+          deallocate(D2,D4,D6,D8,x,y,RHS_x)
       end subroutine dif_x
    !DCS右辺の計算(RHS)サブルーチン
    !y方向
      subroutine dif_y(sigma,dy,Fy,dFzeta,LU,dzeta_iny)
        integer i
-       double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: RHS_y,Fy
-       double  precision,dimension(0:4,0:Nx,2:Ny-2,0:Nz-1) :: D2,D4,D6,D8
+       double precision,allocatable,dimension(:,:,:,:):: Fy,dzeta_iny,dFzeta
+       double precision,allocatable,dimension(:,:,:,:):: x,y,RHS_y
+       double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
        double precision dy,sigma,dyinv
        double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
        &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
        double precision,allocatable,dimension(:,:) :: LU
-       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: x,y
-       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta_iny,dFzeta
+       allocate(x(0:4,0:Nx,0:Ny,0:Nz-1),y(0:4,0:Nx,0:Ny,0:Nz-1),&
+       RHS_y(0:4,0:Nx,0:Ny,0:Nz-1))
+       allocate(D2(0:4,0:Nx,2:Ny-2,0:Nz-1),D4(0:4,0:Nx,2:Ny-2,0:Nz-1),&
+       D6(0:4,0:Nx,2:Ny-2,0:Nz-1),D8(0:4,0:Nx,2:Ny-2,0:Nz-1))
        D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_y=0.d0;y=0.d0;x=0.d0
        dyinv = 1.d0 / dy
        !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
@@ -461,17 +469,23 @@ contains
           x(:,:,i,:) = (y(:,:,i,:) - LU(1,i)*x(:,:,i+1,:)) / LU(0,i)
         enddo
         call combine(dzeta_iny,x,dFzeta)!y方向の格子伸長を適用　微分変換をしている
+        deallocate(D2,D4,D6,D8,x,y,RHS_y)
        end subroutine dif_y
 
        subroutine dif_z(sigma,dz,Fz,x,LU)
          integer i,j,r,k,im1,im2,ip1,ip2
-         double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: RHS_z,Fz
-         double  precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: D2,D4,D6,D8
+         double precision,allocatable,dimension(:,:,:,:):: Fz,x
+         double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
+         double precision,allocatable,dimension(:,:,:,:):: y,RHS_z
+         double precision,allocatable,dimension(:,:) :: LU
          double precision dz,sigma,dzinv,Lsum
          double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
          &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
-         double precision,allocatable,dimension(:,:) :: LU
-         double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: x,y
+
+         allocate(D2(0:4,0:Nx,0:Ny,0:Nz-1),D4(0:4,0:Nx,0:Ny,0:Nz-1),&
+         D6(0:4,0:Nx,0:Ny,0:Nz-1),D8(0:4,0:Nx,0:Ny,0:Nz-1))
+         allocate(y(0:4,0:Nx,0:Ny,0:Nz-1),RHS_z(0:4,0:Nx,0:Ny,0:Nz-1))
+
          D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0;Lsum=0.d0
          dzinv = 1.d0 / dz
            !5次精度DCSの右辺設定
@@ -514,6 +528,7 @@ contains
               do i = Nz-3, 0, -1!後退するので-1ずつ進む
                 x(:,:,:,i) = (y(:,:,:,i) - LU(1,i)*x(:,:,:,i+1)-LU(-2,i)*x(:,:,:,Nz-1)) / LU(0,i)
               enddo
+          deallocate(D2,D4,D6,D8,y,RHS_z)
        endsubroutine dif_z
     !境界条件をNSCBCで設定
     !L,d行列を設定することでdfx(0:2,0)とdFx(0:2,Nx)の値を定める
@@ -524,10 +539,13 @@ contains
     !まずはx方向用のNSCBC　subrouitineを作成
     !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
     subroutine NSCBC_x_0(G,dGx,dFx)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGx,dFx
-      double precision,dimension(1:5,0:Ny,0:Nz-1) :: L,d
-      double precision,dimension(0:Ny,0:Nz-1) :: c_NS,Ma_NS
-      ! double precision pNx_infty
+      double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
+      double precision,allocatable,dimension(:,:,:):: L,d
+      double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
+      ! double precision p0x_infty
+      allocate(L(1:5,0:Ny,0:Nz-1),d(1:5,0:Ny,0:Nz-1))
+      allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
+
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:) = sqrt(gamma * G(4,0,:,:) / G(0,0,:,:))
@@ -564,12 +582,16 @@ contains
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,0,0,:) = dFx(:,0,0,:) / 3.d0
     dFx(:,0,Ny,:) = dFx(:,0,Ny,:) / 3.d0
+    deallocate(L,d,c_NS,Ma_NS)
   endsubroutine NSCBC_x_0
+
     subroutine NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGx,dFx
-      double precision,dimension(1:5,0:Ny,0:Nz-1) :: L,d
-      double precision,dimension(0:Ny,0:Nz-1) :: c_NS,Ma_NS
+      double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
+      double precision,allocatable,dimension(:,:,:):: L,d
+      double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
       double precision pNx_infty
+      allocate(L(1:5,0:Ny,0:Nz-1),d(1:5,0:Ny,0:Nz-1))
+      allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:) = sqrt(gamma * G(4,Nx,:,:) / G(0,Nx,:,:))
@@ -602,13 +624,18 @@ contains
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,Nx,0,:) = dFx(:,Nx,0,:) / 3.d0
     dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) / 3.d0
+    deallocate(L,d,c_NS,Ma_NS)
   endsubroutine NSCBC_x_Nx
     !次にy方向のNSCBC　sunrouineを作成
     subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,dGy,dFy
-      double precision,dimension(1:5,0:Nx,0:Nz-1,0:1) :: L,d
-      double precision,dimension(0:Nx,0:Nz-1,0:1) :: c_NS,Ma_NS
+      double precision,allocatable,dimension(:,:,:,:):: G,dGy,dFy
+      double precision,allocatable,dimension(:,:,:,:):: L,d
+      double precision,allocatable,dimension(:,:,:):: c_NS,Ma_NS
       double precision pNy_infty,p0y_infty
+
+      allocate(L(1:5,0:Nx,0:Nz-1,0:1),d(1:5,0:Nx,0:Nz-1,0:1))
+      allocate(c_NS(0:Nx,0:Nz-1,0:1),Ma_NS(0:Nx,0:Nz-1,0:1))
+
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:,0) = sqrt(gamma * G(4,:,0,:) / G(0,:,0,:))
@@ -661,19 +688,20 @@ contains
       dFy(:,0,Ny,:) = dFy(:,0,Ny,:) / 3.d0
       dFy(:,Nx,0,:) = dFy(:,Nx,0,:) / 3.d0
       dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) / 3.d0
+      deallocate(L,d,c_NS,Ma_NS)
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann_Nx(Q)
       integer i
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
+      double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
     endsubroutine Neumann_Nx
 
     !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
     subroutine Q_boundary(Q)
       integer i
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
+      double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,0,:,:) = Q(:,1,:,:)
         Q(:,:,0,:) = Q(:,:,1,:)
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
@@ -681,8 +709,8 @@ contains
     endsubroutine Q_boundary
 
     subroutine inflow(Q,in_G)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Q
-      double precision,dimension(0:3,0:Ny,0:Nz-1) :: in_G
+      double precision,allocatable,dimension(:,:,:,:):: Q
+      double precision,allocatable,dimension(:,:,:):: in_G
       !Z方向 k=8~10の部分にのみ矩型Jetを流入させる
      Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
      Q(1,0,:,:) = in_G(0,:,:)*in_G(1,:,:)!rho*u
@@ -698,7 +726,7 @@ contains
       !             +Q(0,0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
     endsubroutine inflow
     subroutine outflow(UVWT,dUVWTx,Vx,dVx,dUVWTy,Vy,dVy)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vx,Vy,dUVWTx,dUVWTy,UVWT,dVx,dVy
+      double precision,allocatable,dimension(:,:,:,:):: Vx,Vy,dUVWTx,dUVWTy,UVWT,dVx,dVy
       !無反射流出条件の時の条件を設定するsubroutine
       !境界のdVx,dVyに条件を設定するのでdVの計算ができた後に境界値のみ上書きをする
       !τ11=Vx(1),τ12=Vx(2),τ13=Vx(3)
@@ -732,8 +760,8 @@ contains
     subroutine buffer_x(c_infty,Ux,sigma_x,zeta_fx)
       integer i
       double precision c_infty,Xmax,Xmin,x1
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Ux,sigma_x
-      double precision,dimension(0:Nx) :: zeta_fx
+      double precision,allocatable,dimension(:,:,:,:):: Ux,sigma_x
+      double precision,allocatable,dimension(:):: zeta_fx
       double precision,parameter ::alpha_u=1.5d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
       Xmax = Lx;Xmin = 0.d0
       do i = 0,Nx
@@ -761,8 +789,8 @@ contains
     subroutine buffer_y(c_infty,Uy,sigma_y,zeta_fy)
       integer i
       double precision Ymax,Ymin,c_infty,y1
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Uy,sigma_y
-      double precision,dimension(0:Ny) :: zeta_fy
+      double precision,allocatable,dimension(:,:,:,:):: Uy,sigma_y
+      double precision,allocatable,dimension(:):: zeta_fy
       double precision,parameter ::alpha_u=1.15d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
       Ymax = Ly;Ymin = -Ly
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
@@ -782,9 +810,11 @@ contains
     !ζ,dζ/dxの定義subroutine
     subroutine lattice_x(dx,zeta_fx,dzeta_inx)
       integer i
-      double precision,dimension(0:Nx) :: zeta_fx
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta,dzeta_inx
+      double precision,allocatable,dimension(:):: zeta_fx
+      double precision,allocatable,dimension(:,:,:,:):: dzeta
+      double precision,allocatable,dimension(:,:,:,:):: dzeta_inx
       double precision dx,x,width,a1,a2,b1
+      allocate(dzeta(0:4,0:Nx,0:Ny,0:Nz-1))
       dzeta=0.d0;width=10.8d0;a1=1d0/14d0;a2=7.d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=x<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
@@ -797,13 +827,16 @@ contains
         (-dtanh(a2*(x - width)) + dtanh(a2*(x + width))))
       enddo
       dzeta_inx = 1.d0/dzeta
+      deallocate(dzeta)
     endsubroutine lattice_x
     !ζ,dζ/dyの定義subroutine
     subroutine lattice_y(dy,zeta_fy,dzeta_iny)
       integer i
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta,dzeta_iny
-      double precision,dimension(0:Ny) :: zeta_fy
+      double precision,allocatable,dimension(:):: zeta_fy
+      double precision,allocatable,dimension(:,:,:,:):: dzeta
+      double precision,allocatable,dimension(:,:,:,:):: dzeta_iny
       double precision dy,y,width,a1,a2,b1
+      allocate(dzeta(0:4,0:Nx,0:Ny,0:Nz-1))
       dzeta=0.d0;width=3.d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=y<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
@@ -816,10 +849,11 @@ contains
         (-dtanh(a2*(y - width)) + dtanh(a2*(y + width))))
       enddo
       dzeta_iny = 1.d0/dzeta
+      deallocate(dzeta)
     endsubroutine lattice_y
     !作成したdx/dζをdF/dyなどに掛けて微分変換を行うsubroutine
     subroutine combine(dzeta_in,dF,dFzeta)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta_in,dFzeta,dF
+      double precision,allocatable,dimension(:,:,:,:):: dzeta_in,dFzeta,dF
       dFzeta = dF * dzeta_in
     endsubroutine combine
 end module threedim
@@ -834,12 +868,12 @@ end module threedim
       !となるように設定した。すなわちdGは密度、速度、圧力のそれぞれの微分項を含む行列となる
       !x方向
       !Runge-Kutta法のためQ1,Q2用の値を設定
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG
+      double precision,allocatable,dimension(:,:,:,:) :: G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG
       !y方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Fpy,Fmy,yp,ym
+      double precision,allocatable,dimension(:,:,:,:) :: Fpy,Fmy,yp,ym
       !z方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Fpz,Fmz,zp,zm
-      double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: myu
+      double precision,allocatable,dimension(:,:,:,:) :: Fpz,Fmz,zp,zm
+      double precision,allocatable,dimension(:,:,:) :: myu
       !A,L,U,x,y,bはF+とF-用に分けるため別々で定義
       !x方向
       double precision,allocatable,dimension(:,:) :: LUmx,LUpx
@@ -848,38 +882,73 @@ end module threedim
       !z方向
       double precision,allocatable,dimension(:,:) :: LUmz,LUpz
       !粘性項の計算に使う行列(x方向)
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vx,dVx,UVWT,dUVWTx
+      double precision,allocatable,dimension(:,:,:,:) :: Vx,dVx,UVWT,dUVWTx
       double precision,allocatable,dimension(:,:) :: LUccsx
       !y方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vy,dVy,dUVWTy
+      double precision,allocatable,dimension(:,:,:,:) :: Vy,dVy,dUVWTy
       double precision,allocatable,dimension(:,:) :: LUccsy
       !z方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Vz,dVz,dUVWTz
+      double precision,allocatable,dimension(:,:,:,:) :: Vz,dVz,dUVWTz
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
-      double precision,dimension(0:3,0:Ny,0:Nz-1) :: in_G
+      double precision,allocatable,dimension(:,:,:) :: in_G
       !x方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGx,dFx
+      double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,x,pNx_infty
       !y方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dGy,dFy
+      double precision,allocatable,dimension(:,:,:,:) :: dGy,dFy
       double precision dy,y,p0y_infty,pNy_infty
       !z方向
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dFz,dGz
+      double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
       integer i,j,k,M,ii,jj,kk
       double precision t0,t1,theta
       double precision c_infty
-      double precision,dimension(0:Ny) :: ur,Tu
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Ux,sigma_x,Uy,sigma_y,dQx,dQy
-      double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta_iny,dzeta_inx
-      double precision,dimension(0:Nx) :: zeta_fx
-      double precision,dimension(0:Ny) :: zeta_fy
-      double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
-      double precision,dimension(0:Nx,0:Ny,1) :: z_check
+      double precision,allocatable,dimension(:) :: ur,Tu
+      double precision,allocatable,dimension(:,:,:,:) :: Ux,sigma_x,Uy,sigma_y,dQx,dQy
+      double precision,allocatable,dimension(:,:,:,:) :: dzeta_iny,dzeta_inx
+      double precision,allocatable,dimension(:) :: zeta_fx
+      double precision,allocatable,dimension(:) :: zeta_fy
+      double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
       call cpu_time(t0)
 
+      allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
+      ,Q1(0:4,0:Nx,0:Ny,0:Nz-1),Q2(0:4,0:Nx,0:Ny,0:Nz-1),Qn(0:4,0:Nx,0:Ny,0:Nz-1)&
+      ,Fpx(0:4,0:Nx,0:Ny,0:Nz-1),Fmx(0:4,0:Nx,0:Ny,0:Nz-1),xp(0:4,0:Nx,0:Ny,0:Nz-1)&
+      ,xm(0:4,0:Nx,0:Ny,0:Nz-1),oldG(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(Fpy(0:4,0:Nx,0:Ny,0:Nz-1),Fmy(0:4,0:Nx,0:Ny,0:Nz-1),&
+      yp(0:4,0:Nx,0:Ny,0:Nz-1),ym(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(Fpz(0:4,0:Nx,0:Ny,0:Nz-1),Fmz(0:4,0:Nx,0:Ny,0:Nz-1),&
+      zp(0:4,0:Nx,0:Ny,0:Nz-1),zm(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(myu(0:Nx,0:Ny,0:Nz-1))
+      allocate(Vx(0:4,0:Nx,0:Ny,0:Nz-1),dVx(0:4,0:Nx,0:Ny,0:Nz-1),&
+      UVWT(0:4,0:Nx,0:Ny,0:Nz-1),dUVWTx(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(Vy(0:4,0:Nx,0:Ny,0:Nz-1),dVy(0:4,0:Nx,0:Ny,0:Nz-1)&
+      ,dUVWTy(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(Vz(0:4,0:Nx,0:Ny,0:Nz-1),dVz(0:4,0:Nx,0:Ny,0:Nz-1),&
+      dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(in_G(0:3,0:Ny,0:Nz-1))
+      allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
+      allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
+      allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
+      allocate(Ux(0:4,0:Nx,0:Ny,0:Nz-1),sigma_x(0:4,0:Nx,0:Ny,0:Nz-1),&
+      Uy(0:4,0:Nx,0:Ny,0:Nz-1),sigma_y(0:4,0:Nx,0:Ny,0:Nz-1),&
+      dQx(0:4,0:Nx,0:Ny,0:Nz-1),dQy(0:4,0:Nx,0:Ny,0:Nz-1))
+
+      allocate(dzeta_iny(0:4,0:Nx,0:Ny,0:Nz-1),dzeta_inx(0:4,0:Nx,0:Ny,0:Nz-1))
+      allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
+      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1))
+
+      allocate(zeta_fx(0:Nx),zeta_fy(0:Ny))
+      allocate(ur(0:Ny),Tu(0:Ny))
       !x_axis
       allocate(LUmx(-1:1,0:Nx),LUpx(-1:1,0:Nx))
       allocate(LUccsx(-1:1,0:Nx))
@@ -946,7 +1015,7 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_super_3/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_super_allocate/parameter000000_"//trim(z_name)//".txt")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -957,7 +1026,7 @@ end module threedim
               enddo
               close(10)
            enddo
-!      open(20,file = "result_super_3/1pressure.d")
+!      open(20,file = "result_super_allocate/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1010,7 +1079,6 @@ end module threedim
         !z_axis
         call dif_z(psigma,dz,Fpz,zp,LUpz)
         call dif_z(msigma,dz,Fmz,zm,LUmz)
-
         !NSCBCの境界条件を適用させるためにQ1を求める前にdFを定義してその両端に境界条件を
         !適用しなければならない
                 dFx = xm + xp
@@ -1221,7 +1289,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_super_3/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_super_allocate/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1268,7 +1336,7 @@ end module threedim
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_super_3/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_super_allocate/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1301,4 +1369,11 @@ end module threedim
 !      write(20,'(2A1,1f24.16,1A1,1f24.16)') "#","x",zeta_fx(Nx/2),"y",zeta_fy(Ny/2),"z",dz*dble(Nz/2)
 !      write(20,'(3A15)')"#","M","Local Pressure"
 !      close(20)
+      deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
+      deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
+      deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
+      deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
+      deallocate(in_G,dGx,dFx,dGy,dFy,dGz,dFz)
+      deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
+      deallocate(omega_1,omega_2,omega_3,dp)
     end program main
