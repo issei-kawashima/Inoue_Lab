@@ -11,7 +11,9 @@
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 !2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
 !しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
-!2020.06.12　書き換え完了。M=2200でNanになった計算条件で再計算。M=2200で同じようにNaNになれば書き換え後の品質確保
+!2020.06.12　書き換え完了。M=2200でNanになったので品質確保
+!Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
+!2020.06.13 Pr=1の理由を探す事に。とりあえず森山が現実的という0.71に変更
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -21,11 +23,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -46,7 +48,7 @@ module threedim
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   !亜音速流入のためRe数は小さめに
-  double precision,parameter :: Pr = 1.0d0
+  double precision,parameter :: Pr = 0.71d0
   double precision,parameter :: Ma = 2.4d0
   !Ma数も同様に小さめに
   double precision,parameter :: Temp = 1.d0
@@ -126,8 +128,6 @@ contains
     subroutine variable_setting(UVWT,Q,myu)
       double precision,allocatable,dimension(:,:,:,:) :: UVWT,Q
       double precision,allocatable,dimension(:,:,:) :: myu
-      ! double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: UVWT,Q
-      ! double precision,dimension(0:Nx,0:Ny,0:Nz-1) :: myu
         UVWT(0,:,:,:) = 0.d0
         UVWT(1,:,:,:) = Q(1,:,:,:) / Q(0,:,:,:)!u
         UVWT(2,:,:,:) = Q(2,:,:,:) / Q(0,:,:,:)!v
