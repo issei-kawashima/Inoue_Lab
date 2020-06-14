@@ -18,6 +18,7 @@
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
 !2020.06.14 上記の計算高速化の変更が正しく行えたかの検証をしていないので、Nx=180,Ny=100の従来の計算条件で再計算。
 !もしM=2200でNanになれば問題はなさそう。(現状では自宅desk topでは実行できない=>これはsuper_jet_allocate.f90でも同様の問題あり)
+!dif_zが間違えていた。修正した。
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -26,11 +27,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -492,15 +493,15 @@ contains
          D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0;Lsum=0.d0
          dzinv = 1.d0 / dz
           !5次精度DCSの右辺設定
-          RHS_z(:,:,:,0) = ra*(-Fz(:,:,:,Nz-1)+Fz(:,:,:,1)) * (0.5d0*dzinv)+&
-                          rb*(-Fz(:,:,:,Nz-2)+Fz(:,:,:,2)) * (0.25d0*dzinv)*&
-                          sigma*(da*(Fz(:,:,:,Nz-1)+Fz(:,:,:,1)-2.d0*Fz(:,:,:,0))*dzinv+&
-                          db*(Fz(:,:,:,Nz-2)+Fz(:,:,:,2)- 2.d0* Fz(:,:,:,0)) * (0.25d0*dzinv))
+          RHS_z(:,:,:,0) = ra*dzinv*((-Fz(:,:,:,Nz-1)+Fz(:,:,:,1))*0.5d0)+&
+                          rb*dzinv*((-Fz(:,:,:,Nz-2)+Fz(:,:,:,2))*0.25d0)+&
+                          sigma*dzinv*(da*(Fz(:,:,:,Nz-1)+Fz(:,:,:,1)-2.d0*Fz(:,:,:,0))+&
+                          db*((Fz(:,:,:,Nz-2)+Fz(:,:,:,2)-2.d0*Fz(:,:,:,0))*0.25d0))
 
-          RHS_z(:,:,:,1) = ra*(-Fz(:,:,:,0)+Fz(:,:,:,2)) * (0.5d0*dzinv)+&
-                          rb*(-Fz(:,:,:,Nz-1)+Fz(:,:,:,3)) * (0.25d0*dzinv)*&
-                          sigma*(da*(Fz(:,:,:,0)+Fz(:,:,:,2)-2.d0*Fz(:,:,:,1))*dzinv+&
-                          db*(Fz(:,:,:,Nz-1)+Fz(:,:,:,3)- 2.d0* Fz(:,:,:,1)) * (0.25d0*dzinv))
+          RHS_z(:,:,:,1) = ra*dzinv*((-Fz(:,:,:,0)+Fz(:,:,:,2))*0.5d0)+&
+                          rb*dzinv*((-Fz(:,:,:,Nz-1)+Fz(:,:,:,3))*0.25d0)+&
+                          sigma*dzinv*(da*(Fz(:,:,:,0)+Fz(:,:,:,2)-2.d0*Fz(:,:,:,1))+&
+                          db*((Fz(:,:,:,Nz-1)+Fz(:,:,:,3)-2.d0*Fz(:,:,:,1))*0.25d0))
            do i = 2,Nz-3
              D2(:,:,:,i) = (-Fz(:,:,:,i-1)+Fz(:,:,:,i+1)) * (0.5d0*dzinv)
              D4(:,:,:,i) = (-Fz(:,:,:,i-2)+Fz(:,:,:,i+2)) * (0.25d0*dzinv)
@@ -510,15 +511,15 @@ contains
            RHS_z(:,:,:,i)=ra*D2(:,:,:,i)+rb*D4(:,:,:,i)+sigma*(da*D6(:,:,:,i)+db*D8(:,:,:,i))
            enddo
 
-           RHS_z(:,:,:,Nz-2) = ra*(-Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1)) * (0.5d0*dzinv)+&
-                           rb*(-Fz(:,:,:,Nz-4)+Fz(:,:,:,0)) * (0.25d0*dzinv)*&
-                           sigma*(da*(Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1)-2.d0*Fz(:,:,:,Nz-2))*dzinv+&
-                           db*(Fz(:,:,:,Nz-4)+Fz(:,:,:,0)- 2.d0* Fz(:,:,:,Nz-2)) * (0.25d0*dzinv))
+           RHS_z(:,:,:,Nz-2) =  ra*dzinv*((-Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1))*0.5d0)+&
+                           rb*dzinv*((-Fz(:,:,:,Nz-4)+Fz(:,:,:,0))*0.25d0)+&
+                           sigma*dzinv*(da*(Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1)-2.d0*Fz(:,:,:,Nz-2))+&
+                           db*((Fz(:,:,:,Nz-4)+Fz(:,:,:,0)-2.d0*Fz(:,:,:,Nz-2))*0.25d0))
 
-           RHS_z(:,:,:,Nz-1) = ra*(-Fz(:,:,:,Nz-2)+Fz(:,:,:,0)) * (0.5d0*dzinv)+&
-                           rb*(-Fz(:,:,:,Nz-3)+Fz(:,:,:,1)) * (0.25d0*dzinv)*&
-                           sigma*(da*(Fz(:,:,:,Nz-2)+Fz(:,:,:,0)-2.d0*Fz(:,:,:,Nz-1))*dzinv+&
-                           db*(Fz(:,:,:,Nz-3)+Fz(:,:,:,1)- 2.d0* Fz(:,:,:,Nz-1)) * (0.25d0*dzinv))
+           RHS_z(:,:,:,Nz-1) =  ra*dzinv*((-Fz(:,:,:,Nz-2)+Fz(:,:,:,0))*0.5d0)+&
+                           rb*dzinv*((-Fz(:,:,:,Nz-3)+Fz(:,:,:,1))*0.25d0)+&
+                           sigma*dzinv*(da*(Fz(:,:,:,Nz-2)+Fz(:,:,:,0)-2.d0*Fz(:,:,:,Nz-1))+&
+                           db*((Fz(:,:,:,Nz-3)+Fz(:,:,:,1)-2.d0*Fz(:,:,:,Nz-1))*0.25d0))
            !前進代入法、後退代入法の計算サブルーチン(x方向)
               !前進代入
               y(:,:,:,0) = RHS_z(:,:,:,0)!例外の境界値
@@ -920,7 +921,7 @@ end module threedim
       double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
       integer i,j,k,M,ii,jj,kk
-      double precision theta!,t0,t1,
+      double precision theta!,t0,t1
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
       double precision,allocatable,dimension(:,:,:,:) :: Ux,sigma_x,Uy,sigma_y,dQx,dQy
