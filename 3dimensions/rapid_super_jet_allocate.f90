@@ -11,13 +11,13 @@
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 !2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
 !しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
-!2020.06.12　書き換え完了。M=2200でNanになったので品質確保
 !Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
 !2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 !計算高速化のために以下のことをした。
 !1.dif_zのsubrouineをmodを使用しない形に変更。2. M=の出力をif文とmodを使用しないで行うように変更
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
-
+!2020.06.14 上記の計算高速化の変更が正しく行えたかの検証をしていないので、Nx=180,Ny=100の従来の計算条件で再計算。
+!もしM=2200でNanになれば問題はなさそう。(現状では自宅desk topでは実行できない=>これはsuper_jet_allocate.f90でも同様の問題あり)
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -26,11 +26,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 360
-  integer,parameter :: Ny = 200
+  integer,parameter :: Nx = 180
+  integer,parameter :: Ny = 100
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう

@@ -9,6 +9,8 @@
 !計算時間短縮のために、NSCBCのx=Nxの部分は計算しなくて済むようにNSCBC_xのsubroutineを_0と_Nxに分割した。
 !Pr=0.71>Pr=1へ変更。Ma数を0.5から2.4に変更(超音速化)。2次元では計算できなかった条件。
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
+!2020.06.14 静的配列が2Gbを超えても実行できると言われているLinuxのM64で実際に-mcmodel=mediumオプションをつけたら
+!Nx=360,Ny=200,Nz=20で計算できるかどうか試してみる
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -18,11 +20,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
