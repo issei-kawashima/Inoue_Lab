@@ -14,6 +14,7 @@
 !2020.06.12　書き換え完了。M=2200でNanになったので品質確保
 !Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
 !2020.06.13 Pr=1の理由を探す事に。とりあえず森山が現実的という0.71に変更
+!2020.06.14 rapid_super_jet_allocateのように時間計測とM=の出力のif,mod文を削除して計算高速化を目指す
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -902,7 +903,7 @@ end module threedim
       double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
       integer i,j,k,M,ii,jj,kk
-      double precision t0,t1,theta
+      double precision theta!,t0,t1
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
       double precision,allocatable,dimension(:,:,:,:) :: Ux,sigma_x,Uy,sigma_y,dQx,dQy
@@ -912,7 +913,7 @@ end module threedim
       double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
-      call cpu_time(t0)
+      ! call cpu_time(t0)
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
       ,Q1(0:4,0:Nx,0:Ny,0:Nz-1),Q2(0:4,0:Nx,0:Ny,0:Nz-1),Qn(0:4,0:Nx,0:Ny,0:Nz-1)&
@@ -1348,9 +1349,9 @@ end module threedim
                       close(10)
                     enddo
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M
-                    call cpu_time(t1)
-                    write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-                    &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
+                    ! call cpu_time(t1)
+                    ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
+                    ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
                     stop "rho becomes NAN"
                   endif
                 enddo
@@ -1359,13 +1360,11 @@ end module threedim
 !              Q = Q1!オイラー法の時間の更新
         !RK法の時間の更新
               Q = Qn
-        if(mod(M,1) == 0) then
-          write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
-        endif
+        write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo
-      call cpu_time(t1)
-      write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-      &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
+      ! call cpu_time(t1)
+      ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
+      ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
 !      write(20,'(2A1,1f24.16,1A1,1f24.16)') "#","x",zeta_fx(Nx/2),"y",zeta_fy(Ny/2),"z",dz*dble(Nz/2)
 !      write(20,'(3A15)')"#","M","Local Pressure"
 !      close(20)
