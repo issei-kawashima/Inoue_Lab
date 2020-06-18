@@ -737,7 +737,7 @@ contains
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:,:):: in_G
       !Z方向 k=8~10の部分にのみ矩型Jetを流入させる
-     Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
+     ! Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
      Q(1,0,:,:) = in_G(0,:,:)*in_G(1,:,:)!rho*u
      Q(2,0,:,:) = in_G(0,:,:)*in_G(2,:,:)!rho*v
      Q(3,0,:,:) = in_G(0,:,:)*in_G(3,:,:)!rho*w
