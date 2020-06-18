@@ -49,7 +49,7 @@ module threedim
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
-  double precision,parameter :: Ly = Cy+Wry!y方向の長さを定義 計算領域がy軸対称なのでWyも片方だけ
+  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
   double precision,parameter :: Lz = 1.d0
 
   double precision,parameter :: psigma = -0.25d0
@@ -674,10 +674,10 @@ contains
       L(3,:,:,0) = G(2,:,0,:) * dGy(1,:,0,:)
       L(4,:,:,0) = G(2,:,0,:) * dGy(3,:,0,:)
       L(5,:,:,0) = NS_sigma * c_NS(:,:,0) * (1.d0 - (Ma_NS(:,:,0) ** 2.d0))*(G(4,:,0,:) - &
-      &p0y_infty) / (2.d0*Ly)
+      &p0y_infty)/Ly
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
       L(1,:,:,1) = NS_sigma * c_NS(:,:,1) * (1.d0 - (Ma_NS(:,:,1) ** 2.d0))*(G(4,:,Ny,:) - &
-    &  pNy_infty) / (2.d0*Ly)
+    &  pNy_infty)/Ly
       L(2,:,:,1) = G(2,:,Ny,:) * ((c_NS(:,:,1) ** 2.d0)*dGy(0,:,Ny,:) - dGy(4,:,Ny,:))
       L(3,:,:,1) = G(2,:,Ny,:) * dGy(1,:,Ny,:)
       L(4,:,:,1) = G(2,:,Ny,:) * dGy(3,:,Ny,:)
@@ -817,7 +817,7 @@ contains
       double precision,allocatable,dimension(:,:,:,:):: Uy,sigma_y
       double precision,allocatable,dimension(:):: zeta_fy
       double precision,parameter ::alpha_u=1.15d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
-      Ymax = Ly;Ymin = -Ly
+      Ymax = (Ly/2.d0);Ymin = -(Ly/2d0)
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
       do i = 0,Ny
         y1 = zeta_fy(i)
@@ -860,14 +860,15 @@ contains
       double precision,allocatable,dimension(:):: zeta_fy
       double precision,allocatable,dimension(:,:,:,:):: dzeta
       double precision,allocatable,dimension(:,:,:,:):: dzeta_iny
-      double precision dy,y,width,a1,a2,b1
+      double precision dy,y,width,a1,a2,b1,Ymin
       allocate(dzeta(0:4,0:Nx,0:Ny,0:Nz-1))
       dzeta=0.d0;width=3.d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=y<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
+      Ymin = -(Ly/2.d0)
       do i= 0,Ny
-        y = -Ly + dy*dble(i)
+        y = Ymin + dy*dble(i)
         zeta_fy(i) = b1 * ((1.7d0*y) - a1 * &
         (-dlog(dcosh(a2*(y - width))) + dlog(dcosh(a2*(y + width)))))
         dzeta(:,:,i,:) = b1 * (1.7d0 - (a1*a2) * &
@@ -984,7 +985,7 @@ end module threedim
       allocate(LUmz(-2:2,0:Nz-1),LUpz(-2:2,0:Nz-1))
       allocate(LUccsz(-2:2,0:Nz-1))
       dx = Lx /dble(Nx)
-      dy = 2.d0*Ly /dble(Ny)
+      dy = Ly /dble(Ny)
       dz = Lz / dble(Nz)
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0

@@ -30,8 +30,9 @@ module supersonic
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 180
   integer,parameter :: Ny = 100
-  double precision,parameter :: dt = 5.d-3
-  integer,parameter :: output_count = int(0.5d0/dt)!出力ファイルを0.5sec間隔で出力するように設定
+  integer,parameter :: NUx = 90
+  double precision,parameter :: dt = 2.d-3
+  integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを0.5sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
   double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
   double precision,parameter :: Cy = 8.d0*b !y軸の幅の設定
@@ -41,7 +42,7 @@ module supersonic
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
-  double precision,parameter :: Ly = Cy+Wry!y方向の長さを定義 計算領域がy軸対称なのでWyも片方だけ
+  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
 
   double precision,parameter :: psigma = -0.25d0
   double precision,parameter :: msigma = 0.25d0
@@ -92,11 +93,11 @@ contains
       Fy=0.d0
           Fy(0,:,:) = Q(2,:,:)
           Fy(1,:,:) = Q(1,:,:)*Q(2,:,:)/Q(0,:,:)
-          Fy(2,:,:) = 1.d0/(2.d0*Q(0,:,:))*((3.d0 - gamma)*(Q(2,:,:)**2.d0) + &
+          Fy(2,:,:) = (0.5d0/Q(0,:,:))*((3.d0 - gamma)*(Q(2,:,:)**2.d0) + &
           &(1.d0 - gamma)*(Q(1,:,:)**2.d0))+(gamma - 1.d0)*Q(3,:,:)
           Fy(3,:,:) = gamma * Q(2,:,:) * Q(3,:,:) / Q(0,:,:) &
-                    &- (gamma - 1.d0) * (Q(2,:,:)**3.d0 + Q(2,:,:)*(Q(1,:,:)**2.d0))&
-                     &/ (2.d0 * (Q(0,:,:)**2.d0))
+                    &-(gamma - 1.d0)*0.5d0*(Q(2,:,:)**3.d0 + Q(2,:,:)*(Q(1,:,:)**2.d0))&
+                     &/(Q(0,:,:)**2.d0)
       !求めたFを特製速度の正負によって分割する
       !Lax-Friedrichの流速分割を用いる
           Fpy(:,:,:) = (Fy(:,:,:) + zeta * Q(:,:,:)) * 0.5d0
@@ -150,8 +151,8 @@ contains
         cG(0,:,:) = Qn(0,:,:)
         cG(1,:,:) = Qn(1,:,:) / Qn(0,:,:)
         cG(2,:,:) = Qn(2,:,:) / Qn(0,:,:)
-        cG(3,:,:) = (gamma - 1.d0) * (Qn(3,:,:) - (Qn(1,:,:) ** 2.d0 + &
-        &Qn(2,:,:) ** 2.d0) / (2.d0 * Qn(0,:,:)))
+        cG(3,:,:) = (gamma - 1.d0) * (Qn(3,:,:)-(Qn(1,:,:) ** 2.d0 + &
+        &Qn(2,:,:) ** 2.d0)*0.5d0/Qn(0,:,:))
     endsubroutine rho_u_p
 
     !DCS用の行列Aの設定(左辺の設定)
@@ -247,7 +248,7 @@ contains
       integer i
       double  precision,dimension(0:3,0:Nx,0:Ny) :: RHS_x,Fx
       double  precision,dimension(0:3,2:Nx-2,0:Ny) :: D2,D4,D6,D8
-      double precision dx,sigma
+      double precision dx,sigma,dxinv
       double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
       &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
       double precision,allocatable,dimension(:,:) :: LU
@@ -255,24 +256,26 @@ contains
       double precision,dimension(0:3,0:Nx,0:Ny) :: dzeta_inx,dFzeta
       D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_x=0.d0;y=0.d0;x=0.d0
       !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
+      dxinv = 1.d0/dx
         !片側DCSの右辺設定
         RHS_x(:,0,:)=((-17.d0/6.d0)*Fx(:,0,:)+(1.5d0)*Fx(:,1,:)+(1.5d0)&
-                      *Fx(:,2,:)-Fx(:,3,:)/6.d0)/dx
+                      *Fx(:,2,:)-Fx(:,3,:)/6.d0)*dxinv
         RHS_x(:,Nx,:)=((1.d0/6.d0)*Fx(:,Nx-3,:)-(1.5d0)* Fx(:,Nx-2,:)-&
-                      (1.5d0)*Fx(:,Nx-1,:)+(17.d0/6.d0)*Fx(:,Nx,:))/dx
+                      (1.5d0)*Fx(:,Nx-1,:)+(17.d0/6.d0)*Fx(:,Nx,:))*dxinv
         !3次精度DCSの右辺設定
-        RHS_x(:,1,:)=((1.5d0)*(-Fx(:,0,:)+Fx(:,2,:))/(2.d0*dx))+sigma*&
-                      ((Fx(:,0,:)-2.d0*Fx(:,1,:)+Fx(:,2,:))/(2.d0*dx))
-        RHS_x(:,Nx-1,:)=((1.5d0)*(-Fx(:,Nx-2,:)+Fx(:,Nx,:))/(2.d0*dx))+&
-                      sigma*((Fx(:,Nx-2,:)-2.d0*Fx(:,Nx-1,:)+Fx(:,Nx,:))/(2.d0*dx))
+        RHS_x(:,1,:)=((1.5d0)*(-Fx(:,0,:)+Fx(:,2,:))*0.5d0*dxinv)+sigma*&
+                      ((Fx(:,0,:)-2.d0*Fx(:,1,:)+Fx(:,2,:))*(0.5d0*dxinv))
+        RHS_x(:,Nx-1,:)=((1.5d0)*(-Fx(:,Nx-2,:)+Fx(:,Nx,:))*(0.5d0*dxinv))+&
+                      sigma*((Fx(:,Nx-2,:)-2.d0*Fx(:,Nx-1,:)+Fx(:,Nx,:))*(0.5d0*dxinv))
+
          !5次精度DCSの右辺設定
        do i = 2,Nx-2
-         D2(:,i,:) = (-Fx(:,i-1,:)+Fx(:,i+1,:)) / (2.d0*dx)
-         D4(:,i,:) = (-Fx(:,i-2,:)+Fx(:,i+2,:)) / (4.d0*dx)
+         D2(:,i,:) = (-Fx(:,i-1,:)+Fx(:,i+1,:)) * (0.5d0*dxinv)
+         D4(:,i,:) = (-Fx(:,i-2,:)+Fx(:,i+2,:)) * (0.25d0*dxinv)
          !D6(:,i,:) = (-Fx(:,i-3,:)+Fx(:,i+3,:)) / (6.d0*dx)
          !7次精度DCS用のため不要
-         D6(:,i,:) = (Fx(:,i-1,:)+Fx(:,i+1,:)- 2.d0* Fx(:,i,:)) / dx
-         D8(:,i,:) = (Fx(:,i-2,:)+Fx(:,i+2,:)- 2.d0* Fx(:,i,:)) / (4.d0*dx)
+         D6(:,i,:) = (Fx(:,i-1,:)+Fx(:,i+1,:)- 2.d0* Fx(:,i,:)) * dxinv
+         D8(:,i,:) = (Fx(:,i-2,:)+Fx(:,i+2,:)- 2.d0* Fx(:,i,:)) * (0.25d0*dxinv)
          ! D12(:,i,:) = (Fx(:,i-3,:)+Fx(:,i+3,:)- 2.d0* Fx(:,i,:)) / (9.d0*dx)
          !7次精度DCS用のため不要
          RHS_x(:,i,:)=ra*D2(:,i,:)+rb*D4(:,i,:)+sigma*(da*D6(:,i,:)+db*D8(:,i,:))
@@ -297,32 +300,33 @@ contains
        integer i
        double  precision,dimension(0:3,0:Nx,0:Ny) :: RHS_y,Fy
        double  precision,dimension(0:3,0:Nx,2:Ny-2) :: D2,D4,D6,D8
-       double precision dy,sigma
+       double precision dy,sigma,dyinv
        double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
        &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
        double precision,allocatable,dimension(:,:) :: LU
        double precision,dimension(0:3,0:Nx,0:Ny) :: x,y
        double precision,dimension(0:3,0:Nx,0:Ny) :: dzeta_iny,dFzeta
        D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_y=0.d0;y=0.d0;x=0.d0
+       dyinv = 1.d0 / dy
        !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
          !片側DCSの右辺設定
          RHS_y(:,:,0) = ((-17.d0/6.d0)*Fy(:,:,0)+(1.5d0)*Fy(:,:,1)+&
-         (1.5d0)*Fy(:,:,2)-Fy(:,:,3)/6.d0)/dy
+         (1.5d0)*Fy(:,:,2)-Fy(:,:,3)/6.d0)*dyinv
          RHS_y(:,:,Ny)=((1.d0/6.d0)*Fy(:,:,Ny-3)-(1.5d0)&
-         &*Fy(:,:,Ny-2)-(1.5d0)*Fy(:,:,Ny-1)+(17.d0/6.d0)*Fy(:,:,Ny))/dy
+         &*Fy(:,:,Ny-2)-(1.5d0)*Fy(:,:,Ny-1)+(17.d0/6.d0)*Fy(:,:,Ny))*dyinv
          !3次精度DCSの右辺設定
          RHS_y(:,:,1)=((1.5d0)*(-Fy(:,:,0)+Fy(:,:,2))/(2.d0*dy))+sigma*&
-         ((Fy(:,:,0)-2.d0*Fy(:,:,1)+Fy(:,:,2))/(2.d0*dy))
-         RHS_y(:,:,Ny-1)=((1.5d0)*(-Fy(:,:,Ny-2)+Fy(:,:,Ny))/&
-         &(2.d0*dy))+sigma*((Fy(:,:,Ny-2)-2.d0*Fy(:,:,Ny-1)+Fy(:,:,Ny))/(2.d0*dy))
+         ((Fy(:,:,0)-2.d0*Fy(:,:,1)+Fy(:,:,2))*(0.5d0*dyinv))
+         RHS_y(:,:,Ny-1)=((1.5d0)*(-Fy(:,:,Ny-2)+Fy(:,:,Ny))*(0.5d0*dyinv))&
+         +sigma*((Fy(:,:,Ny-2)-2.d0*Fy(:,:,Ny-1)+Fy(:,:,Ny))*(0.5d0*dyinv))
           !5次精度DCSの右辺設定
       do i = 2,Ny-2
-        D2(:,:,i) = (-Fy(:,:,i-1)+Fy(:,:,i+1)) / (2.d0*dy)
-        D4(:,:,i) = (-Fy(:,:,i-2)+Fy(:,:,i+2)) / (4.d0*dy)
+        D2(:,:,i) = (-Fy(:,:,i-1)+Fy(:,:,i+1)) * (0.5d0*dyinv)
+        D4(:,:,i) = (-Fy(:,:,i-2)+Fy(:,:,i+2))* (0.25d0*dyinv)
         !D6(:,:,i) = (-Fy(:,:,i-3)+Fy(:,:,i+3)) / (6.d0*dy)
         !7次精度DCS用のため不要
-        D6(:,:,i) = (Fy(:,:,i-1)+Fy(:,:,i+1)- 2.d0* Fy(:,:,i)) / dy
-        D8(:,:,i) = (Fy(:,:,i-2)+Fy(:,:,i+2)- 2.d0* Fy(:,:,i)) / (4.d0*dy)
+        D6(:,:,i) = (Fy(:,:,i-1)+Fy(:,:,i+1)- 2.d0* Fy(:,:,i)) * dyinv
+        D8(:,:,i) = (Fy(:,:,i-2)+Fy(:,:,i+2)- 2.d0* Fy(:,:,i)) * (0.25d0*dyinv)
         ! D12(:,:,i) = (Fy(:,:,i-3)+Fy(:,:,i+3)- 2.d0* Fy(:,:,i)) / (9.d0*dy)
         !7次精度DCS用のため不要
         RHS_y(:,:,i)=ra*D2(:,:,i)+rb*D4(:,:,i)+sigma*(da*D6(:,:,i)+db*D8(:,:,i))
@@ -367,10 +371,10 @@ contains
       L(3,:,0) = G(2,:,0) * dGy(1,:,0)
       L(4,:,0) = 0.d0 !!今回は2次元なのでz方向成分は0
       L(5,:,0) = NS_sigma * c_NS(:,0) * (1.d0 - (Ma_NS(:,0) ** 2.d0))*(G(3,:,0) - &
-      &p0y_infty) / (2.d0*Ly)
+      &p0y_infty)/Ly
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
       L(1,:,1) = NS_sigma * c_NS(:,1) * (1.d0 - (Ma_NS(:,1) ** 2.d0))*(G(3,:,Ny) - &
-    &  pNy_infty) / (2.d0*Ly)
+    &  pNy_infty)/Ly
       L(2,:,1) = G(2,:,Ny) * ((c_NS(:,1) ** 2.d0)*dGy(0,:,Ny) - dGy(3,:,Ny))
       L(3,:,1) = G(2,:,Ny) * dGy(1,:,Ny)
       L(4,:,1) = 0.d0 !!今回は2次元なのでz方向成分は0
@@ -397,11 +401,14 @@ contains
       dFy(2,:,Ny) = (G(2,:,Ny)*d(1,:,1)) + (G(0,:,Ny)*d(4,:,1))
       dFy(3,:,Ny) =(5.d-1)*((G(1,:,Ny)**2.d0)+(G(2,:,Ny)**2.d0))*d(1,:,1)+&
       d(2,:,1)/(gamma-1.d0)+(G(0,:,Ny)*G(1,:,Ny)*d(3,:,1))+(G(0,:,Ny)*G(2,:,Ny)*d(4,:,1))
+!==============================================================================
+!NSCBC_xを使わないので、dFの値は半分にする必要がない
       !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため半分ずつ加える)
 !                    dFy(:,0,0) = dFy(:,0,0) * 0.5d0
 !                    dFy(:,0,Ny) = dFy(:,0,Ny) * 0.5d0
 !                    dFy(:,Nx,0) = dFy(:,Nx,0) * 0.5d0
 !                    dFy(:,Nx,Ny) = dFy(:,Nx,Ny) * 0.5d0
+!==============================================================================
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
@@ -417,7 +424,7 @@ contains
       Q(1,0,:) = in_G(0,:)*in_G(1,:)!rho*u
       Q(2,0,:) = in_G(0,:)*in_G(2,:)!rho*v
       Q(3,0,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                  +in_G(0,:)*(in_G(1,:)**2.d0 + in_G(2,:)**2.d0)/2.d0!Et
+                  +in_G(0,:)*(in_G(1,:)**2.d0 + in_G(2,:)**2.d0)*0.5d0!Et
     endsubroutine inflow
     subroutine outflow(UVT,dUVTy,Vy,dVy)
       double precision,dimension(0:3,0:Nx,0:Ny) :: Vy,dUVTy,UVT,dVy
@@ -462,7 +469,7 @@ contains
 !        sigma_x(:,i,:) = alpha_sigma*c_infty*((x1-(Xmax-Wrx))/Wrx)**3.d0
 !      endif
 !    enddo
-     Ux(:,0:90,:) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
+     Ux(:,0:NUx,:) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
       !open(100,file="ux-check.csv")
       !do i=0,Nx
       !write(100,*) zeta_fx(i),",",Ux(0,i,0)
@@ -477,7 +484,7 @@ contains
       double precision,dimension(0:3,0:Nx,0:Ny) :: Uy,sigma_y
       double precision,dimension(0:Ny) :: zeta_fy
       double  precision,parameter ::alpha_u=1.15d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
-      Ymax = Ly;Ymin = -Ly
+      Ymax = Ly/2.d0;Ymin = -Ly/2.d0
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
       do i = 0,Ny
         y1 = zeta_fy(i)
@@ -516,13 +523,14 @@ contains
       integer i
       double precision,dimension(0:3,0:Nx,0:Ny) :: dzeta,dzeta_iny
       double precision,dimension(0:Ny) :: zeta_fy
-      double precision dy,y,width,a1,a2
+      double precision dy,y,width,a1,a2,Ymin
       dzeta=0.d0;width=3.d0;a1=1d0/14d0;a2=7d0
       !widthは格子間隔を細かくする範囲。この式では-width<=y<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
+      Ymin = -(Ly/2.d0)
       do i= 0,Ny
-        y = -Ly + dy*dble(i)
+        y = Ymin + dy*dble(i)
         zeta_fy(i) = (1.d0/1.4d0) * ((1.7d0*y) - a1 * &
         (-dlog(dcosh(a2*(y - width))) + dlog(dcosh(a2*(y + width)))))
         dzeta(:,:,i) = (1.d0/1.4d0) * (1.7d0 - (a1*a2) * &
@@ -570,7 +578,7 @@ end module supersonic
       double precision,dimension(0:3,0:Nx,0:Ny) :: dGy,dFy
       double precision dy,y,p0y_infty,pNy_infty
       integer i,j,M,Mmax
-      double precision t0,t1,theta
+      double precision theta!,t0,t1
       double precision c_infty
       double precision,dimension(0:Ny) :: ur,Tu
       double precision,dimension(0:3,0:Nx,0:Ny) :: Ux,sigma_x,Uy,sigma_y,dQx,dQy
@@ -579,7 +587,7 @@ end module supersonic
       double precision,dimension(0:Ny) :: zeta_fy
       double precision,dimension(0:Nx,0:Ny) :: omega_z,dp!渦度と圧力変動差を入れる配列
       !計算にかかる時間をCPU時間で計測する
-      call cpu_time(t0)
+      ! call cpu_time(t0)
 
       !x_axis
       allocate(LUmx(-1:1,0:Nx),LUpx(-1:1,0:Nx))
@@ -588,7 +596,7 @@ end module supersonic
       allocate(LUmy(-1:1,0:Ny),LUpy(-1:1,0:Ny))
       allocate(LUccsy(-1:1,0:Ny))
       dx = Lx /dble(Nx)
-      dy = 2.d0*Ly /dble(Ny)
+      dy = Ly /dble(Ny)
       Mmax = t_end / dt
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Q0=0.d0
@@ -657,8 +665,8 @@ end module supersonic
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      open(20,file = "result_super/1pressure.txt")
-      write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
+      ! open(20,file = "result_super/1pressure.txt")
+      ! write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
       p0y_infty = G(3,0,0)
@@ -684,20 +692,20 @@ end module supersonic
             !移流方程式の導出
             !3次精度Runge-Kutta法での導出！
 !=====================================================================================
-!今回は撹乱入れない
+!今回は撹乱入れない>入れます(6/18)
 !=====================================================================================
 !        !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-!        theta = 2.d0*pi*dble(M)*dt
-!        in_G(2,:)=0.d0
-!        do i = 0,Ny
-!          if(zeta_fy(i) < -b) then
-!            in_G(2,i) = 0.d0
-!          elseif((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-!            in_G(2,i) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-!          elseif(zeta_fy(i) >= b) then
-!            in_G(2,i) = 0.d0
-!          endif
-!        enddo
+       theta = 2.d0*pi*dble(M)*dt
+       in_G(2,:)=0.d0
+       do i = 0,Ny
+         if(zeta_fy(i) < -b) then
+           in_G(2,i) = 0.d0
+         elseif((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+           in_G(2,i) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+         elseif(zeta_fy(i) >= b) then
+           in_G(2,i) = 0.d0
+         endif
+       enddo
         !Q1
         !F行列のdfx/dxの計算
         !x_axis
@@ -832,9 +840,9 @@ end module supersonic
         call inflow(Qn,in_G)
         call Neumann(Qn)
         call rho_u_p(G,Qn)
-        if (mod(M,p_output) == 0) then
-          write(20,'(1I7,",",1f24.16)') M,G(3,162,Ny/2)
-        endif
+        ! if (mod(M,p_output) == 0) then
+        !   write(20,'(1I7,",",1f24.16)') M,G(3,162,Ny/2)
+        ! endif
           if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
           !if(mod(M,561) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
             !渦度用のdGの計算
@@ -865,23 +873,23 @@ end module supersonic
             do i = 0,Nx
               if(isnan(Qn(0,i,j))) then
                 write(*,*) "x=",i,"y=",j,"M=",M
-                call cpu_time(t1)
-                write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-                &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
+                ! call cpu_time(t1)
+                ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
+                ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
                 stop "rho becomes NAN"
               endif
             enddo
           enddo
           !RK法の時間の更新
               Q(:,:,:) = Qn(:,:,:)
-        if(mod(M,1) == 0) then
+        !if(mod(M,10) == 0) then
           write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
-        endif
+        !endif
       enddo
-      call cpu_time(t1)
-      write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-      &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
-      write(20,'(2A1,1f24.16,1A1,1f24.16)') "#","x",zeta_fx(Nx/2),"y",zeta_fy(Ny/2)
-      write(20,'(3A15)')"#","M","Local Pressure"
-      close(20)
+      ! call cpu_time(t1)
+      ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
+      ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
+      ! write(20,'(2A1,1f24.16,1A1,1f24.16)') "#","x",zeta_fx(Nx/2),"y",zeta_fy(Ny/2)
+      ! write(20,'(3A15)')"#","M","Local Pressure"
+      ! close(20)
     end program main
