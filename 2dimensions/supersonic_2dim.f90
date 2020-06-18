@@ -20,8 +20,9 @@
 !2020.06.04 計算結果出力形式を.dから.txtへ変更した
 !2020.06.18 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 !Nx=180,Ny=100,dt=2.d-3,Ma=2.4,Pr=0.71で計算をしてみる。M=2181でNaNになれば3次元と同じ結果となる。
+!M=1482でNaN。同じ結果にはならなかった。
 !こちらではNSCBC_Xは適用していない。それはinflowのsubroutineでrhoまでを上書きしていること&流出条件はNeumannにしているため,
-!NSCBCの結果をx方向では必要としていないからである。これは3次元計算でも陸地は同じで、あちらではNSCBC_x_0を計算していたが、ただの無駄だった。
+!NSCBCの結果をx方向では必要としていないからである。これは3次元計算でも理屈は同じで、あちらではNSCBC_x_0を計算していたが、ただの無駄だった。
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -355,6 +356,64 @@ contains
     !境界条件を設定している
     !そしてそのままQ1,Q2,Qnを求める
     !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
+    subroutine NSCBC_x(G,dGx,dFx,pNx_infty)
+      double precision,dimension(0:3,0:Nx,0:Ny) :: G,dGx,dFx
+      double precision,dimension(1:5,0:Ny,0:1) :: L,d
+      double precision,dimension(0:Ny,0:1) :: c_NS,Ma_NS
+      double precision pNx_infty
+      L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
+      !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
+      c_NS(:,0) = sqrt(gamma * G(3,0,:) / G(0,0,:))
+      c_NS(:,1) = sqrt(gamma * G(3,Nx,:) / G(0,Nx,:))
+      !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
+      Ma_NS(:,0) = G(1,0,:) / c_NS(:,0)!uを使う
+      Ma_NS(:,1) = G(1,Nx,:) / c_NS(:,1)
+      !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
+      L(1,:,0)=(G(1,0,:)-c_NS(:,0))*(-G(0,0,:)*c_NS(:,0)*dGx(1,0,:)+dGx(3,0,:))
+      !      L(2,:,0)=G(1,0,:)*((c_NS(:,0)**2.d0)*dGx(0,0,:)-dGx(3,0,:))
+      !      L(3,:,0)=0.d0!L3=u*dv/dxで流入速度
+      L(3,:,0)=0.d0
+      L(4,:,0)=0.d0 !!今回は2次元なのでz方向成分は0
+      L(5,:,0)=L(1,:,0) !-2.d0*c_NS(:,0)*du/dtが本来はあるが
+      !流入速度uを時間変動させないので今回はdu/dt=0となるため省略
+      !      L(5,:,0)=msigma*c_NS(:,0)*(1.d0-(Ma_NS(:,0)**2.d0))*(G(3,0,:)-p0x_infty)/Lx
+      L(2,:,0)=(5.d-1)*(gamma-1.d0)*(L(5,:,0)+L(1,:,0))!+G(0,0,:)*c_NS(:,0)**2.d0/T*dT/dtが本来はあるが
+      !境界温度Tを時間変動させないので今回はdT/dt=0となるため省略
+      !x方向左側つまりi=Nxの点において無反射流入条件でL行列を設定する
+      L(1,:,1)=NS_sigma*c_NS(:,1)*(1.d0-(Ma_NS(:,1)**2.d0))*(G(3,Nx,:)-&
+      &pNx_infty)/Lx
+      L(2,:,1)=G(1,Nx,:)*((c_NS(:,1)**2.d0)*dGx(0,Nx,:)-dGx(3,Nx,:))
+      L(3,:,1)=G(1,Nx,:)*dGx(2,Nx,:)
+      L(4,:,1)=0.d0!!今回は2次元なのでz方向成分は0
+      L(5,:,1)=(G(1,Nx,:)+c_NS(:,1))*(G(0,Nx,:)*c_NS(:,1)*dGx(1,Nx,:)+dGx(3,Nx,:))
+      !設定したL行列からd1~5をi=0,Nxの両点においてそれぞれ設定する
+        d(1,:,:) = (1.d0 / (c_NS(:,:) **2.d0)) * ((L(1,:,:)+L(5,:,:))*0.5d0 + L(2,:,:))
+        d(2,:,:) = (L(1,:,:)+L(5,:,:))*0.5d0
+        !d3のみrhoを含むので個別で設定しなければいけない
+        d(3,:,0) = 0.5d0/(G(0,0,:) * c_NS(:,0)) * (-L(1,:,0) + L(5,:,0))
+        d(3,:,1) = 0.5d0/(G(0,Nx,:) * c_NS(:,1)) * (-L(1,:,1) + L(5,:,1))
+        d(4,:,:) = L(3,:,:)
+        d(5,:,:) = L(4,:,:)
+      !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
+      !i=0の時の差し替えdFx
+      dFx(0,0,:) = d(1,:,0)
+      dFx(1,0,:) = G(1,0,:)*d(1,:,0)+G(0,0,:)*d(3,:,0)
+      dFx(2,0,:) = G(2,0,:)*d(1,:,0)+G(0,0,:)*d(4,:,0)
+      dFx(3,0,:) =(5.d-1)*((G(1,0,:)**2.d0)+(G(2,0,:)**2.d0))*d(1,:,0)+d(2,:,0)/(gamma-1.d0)&
+              &  + (G(0,0,:)*G(1,0,:)*d(3,:,0)) + (G(0,0,:)*G(2,0,:)*d(4,:,0))
+
+      !i=Nxの時の差し替えF
+      dFx(0,Nx,:) = d(1,:,1)
+      dFx(1,Nx,:) = (G(1,Nx,:)*d(1,:,1)) + (G(0,Nx,:)*d(3,:,1))
+      dFx(2,Nx,:) = (G(2,Nx,:)*d(1,:,1)) + (G(0,Nx,:)*d(4,:,1))
+      dFx(3,Nx,:) =(5.d-1)*((G(1,Nx,:)**2.d0)+(G(2,Nx,:)**2.d0))*d(1,:,1)+d(2,:,1)/(gamma-1.d0)&
+              &  + (G(0,Nx,:)*G(1,Nx,:)*d(3,:,1)) + (G(0,Nx,:)*G(2,Nx,:)*d(4,:,1))
+      !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため半分ずつ加える)
+                  dFx(:,0,0) = dFx(:,0,0) * 0.5d0
+                  dFx(:,0,Ny) = dFx(:,0,Ny) * 0.5d0
+                  dFx(:,Nx,0) = dFx(:,Nx,0) * 0.5d0
+                  dFx(:,Nx,Ny) = dFx(:,Nx,Ny) * 0.5d0
+    endsubroutine NSCBC_x
     !次にy方向のNSCBC　sunrouineを作成
     subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
       double precision,dimension(0:3,0:Nx,0:Ny) :: G,dGy,dFy
@@ -407,10 +466,10 @@ contains
 !==============================================================================
 !NSCBC_xを使わないので、dFの値は半分にする必要がない
       !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため半分ずつ加える)
-!                    dFy(:,0,0) = dFy(:,0,0) * 0.5d0
-!                    dFy(:,0,Ny) = dFy(:,0,Ny) * 0.5d0
-!                    dFy(:,Nx,0) = dFy(:,Nx,0) * 0.5d0
-!                    dFy(:,Nx,Ny) = dFy(:,Nx,Ny) * 0.5d0
+                   ! dFy(:,0,0) = dFy(:,0,0) * 0.5d0
+                   ! dFy(:,0,Ny) = dFy(:,0,Ny) * 0.5d0
+                   ! dFy(:,Nx,0) = dFy(:,Nx,0) * 0.5d0
+                   ! dFy(:,Nx,Ny) = dFy(:,Nx,Ny) * 0.5d0
 !==============================================================================
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
@@ -580,7 +639,7 @@ end module supersonic
       !y方向
       double precision,dimension(0:3,0:Nx,0:Ny) :: dGy,dFy
       double precision dy,y,p0y_infty,pNy_infty
-      integer i,j,M,Mmax
+      integer i,j,ii,jj,M,Mmax
       double precision theta!,t0,t1
       double precision c_infty
       double precision,dimension(0:Ny) :: ur,Tu
@@ -738,6 +797,7 @@ end module supersonic
         call Vy_matrix(Vy,myu,UVT,dUVTx,dUVTy)
         call dif_y(ccs_sigma,dy,Vy,dVy,LUccsy,dzeta_iny)
         !NSCBCの計算開始
+        !x方向のNSCBCの計算
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
@@ -853,7 +913,6 @@ end module supersonic
             call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
             call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
             omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
-            call rho_u_p(oldG,Q)
             dp(:,:) = (G(3,:,:) - oldG(3,:,:))/dt
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
@@ -867,14 +926,27 @@ end module supersonic
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
             enddo
-            write(10,'(2A1,1I7)') "#","M",M
-            write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
             close(10)
           endif
         !計算が破綻している場合に計算を終了させるプログラム
           do j = 0,Ny
             do i = 0,Nx
               if(isnan(Qn(0,i,j))) then
+                oldG=0;dGx=0.d0;dGy=0.d0
+                call rho_u_p(oldG,Q)
+                call dif_x(ccs_sigma,dx,oldG,dGx,LUccsx,dzeta_inx)
+                call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
+                omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
+                write(filename, '(i6.6)') M-1
+                open(10, file = "result_super/parameter"//trim(filename)//".txt")
+                do ii = 0,Ny
+                  do jj = 0,Nx
+                    write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)')&
+                     zeta_fx(jj),zeta_fy(ii),oldG(0,jj,ii),omega_z(jj,ii),G(1,jj,ii)
+                  enddo
+                  write(10,*)
+                  !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
+                enddo
                 write(*,*) "x=",i,"y=",j,"M=",M
                 ! call cpu_time(t1)
                 ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
