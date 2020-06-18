@@ -12,7 +12,7 @@
 !でも渡辺さん・姫野さんはMa=1.4で実験と計算を行なっているのでMa=1.4で進むことにした。
 !2019.12.20 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した。
 !2020.06.04 計算結果出力形式を.dから.txtへ変更した
-
+!2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -41,7 +41,7 @@ module supersonic
   double precision,parameter :: NS_sigma = 0.25d0
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
-  double precision,parameter :: Pr = 1.d0
+  double precision,parameter :: Pr = 0.71d0
   double precision,parameter :: Ma = 1.4d0
   !Ma数を1.5~5にして超音速にする
   double precision,parameter :: Temp = 1.d0

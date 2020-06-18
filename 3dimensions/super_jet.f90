@@ -46,7 +46,7 @@ module threedim
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   !亜音速流入のためRe数は小さめに
-  double precision,parameter :: Pr = 1.0d0
+  double precision,parameter :: Pr = 0.71d0
   double precision,parameter :: Ma = 2.4d0
   !Ma数も同様に小さめに
   double precision,parameter :: Temp = 1.d0

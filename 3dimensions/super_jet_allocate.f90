@@ -15,7 +15,7 @@
 !Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
 !2020.06.13 Pr=1の理由を探す事に。とりあえず森山が現実的という0.71に変更
 !2020.06.14 rapid_super_jet_allocateのように時間計測とM=の出力のif,mod文を削除して計算高速化を目指す
-
+!Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -28,7 +28,7 @@ module threedim
   integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう

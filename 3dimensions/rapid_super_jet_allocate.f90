@@ -18,7 +18,13 @@
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
 !2020.06.14 上記の計算高速化の変更が正しく行えたかの検証をしていないので、Nx=180,Ny=100の従来の計算条件で再計算。
 !もしM=2200でNanになれば問題はなさそう。(現状では自宅desk topでは実行できない=>これはsuper_jet_allocate.f90でも同様の問題あり)
-!dif_zが間違えていた。修正した。
+!dif_zが間違えていた。修正した。Nx=180,Ny=100の従来の計算条件で再々計算
+!2020.06.15 格子数を変更する際にはNUxも変更しなくてはいけない。逆に言うとそれ以外は変更しなくて構わない
+!Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
+!2020.06.17 rapidがM=2181でNanになってしまう(2200でならない)のはPr数を1>0.71へ変更したから？
+!研究室PCで検証してみる
+!2020.06.17 正解！！ rapidの変更の仕方に問題はなかった。
+
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
@@ -31,7 +37,7 @@ module threedim
   integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 180!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90
+  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -797,11 +803,11 @@ contains
       enddo
        !dx不要かも？
      Ux(:,0:NUx,:,:) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
-!      open(100,file="ux-check.csv")
-!      do i=0,Nx
-!      write(100,*) zeta_fx(i),",",Ux(0,i,0,0)
-!      enddo
-!      close(100)
+     ! open(100,file="ux-check.csv")
+     ! do i=0,Nx
+     ! write(100,*) zeta_fx(i),",",Ux(0,i,0,0)
+     ! enddo
+     ! close(100)
       !格子伸長が入っているためほぼ計算領域の真ん中になる値を調べて代入した
     endsubroutine buffer_x
     !y方向
