@@ -48,7 +48,7 @@ module supersonic
   double precision,parameter :: NS_sigma = 0.25d0
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
-  double precision,parameter :: Pr = 1.d0
+  double precision,parameter :: Pr = 0.71d0
   double precision,parameter :: Ma = 2.4d0
   !Ma数を1.5~5にして超音速にする
   double precision,parameter :: Temp = 1.d0
