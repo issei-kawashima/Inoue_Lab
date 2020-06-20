@@ -12,6 +12,10 @@
 !2020.06.14 静的配列が2Gbを超えても実行できると言われているLinuxのM64で実際に-mcmodel=mediumオプションをつけたら
 !Nx=360,Ny=200,Nz=20で計算できるかどうか試してみる
 !2020.06.14 rapid_super_jet_allocateのように時間計測とM=の出力のif,mod文を削除して計算高速化を目指す
+!2020.06.20 inflowのsubroutineでQ(0)もdirichlet条件で上書きしているので、NSCBCはn_0もn_Nxも不要なことが判明
+! NSCBC_x_0の全ての使用廃止と、dFy,dFzの1/3の角処理も廃止。
+! しかし、流入条件で、全てのz面で流入させる条件を廃止すれば、NSCBC_x_0は部分的に必要になる
+! Lyの定義を変更し、割り算の最小化とわかりやすさの向上をした
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -37,7 +41,7 @@ module threedim
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
-  double precision,parameter :: Ly = Cy+Wry!y方向の長さを定義 計算領域がy軸対称なのでWyも片方だけ
+  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
   double precision,parameter :: Lz = 1.d0
 
   double precision,parameter :: psigma = -0.25d0
@@ -615,10 +619,10 @@ contains
       L(3,:,:,0) = G(2,:,0,:) * dGy(1,:,0,:)
       L(4,:,:,0) = G(2,:,0,:) * dGy(3,:,0,:)
       L(5,:,:,0) = NS_sigma * c_NS(:,:,0) * (1.d0 - (Ma_NS(:,:,0) ** 2.d0))*(G(4,:,0,:) - &
-      &p0y_infty) / (2.d0*Ly)
+      &p0y_infty)/Ly
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
       L(1,:,:,1) = NS_sigma * c_NS(:,:,1) * (1.d0 - (Ma_NS(:,:,1) ** 2.d0))*(G(4,:,Ny,:) - &
-    &  pNy_infty) / (2.d0*Ly)
+    &  pNy_infty)/Ly
       L(2,:,:,1) = G(2,:,Ny,:) * ((c_NS(:,:,1) ** 2.d0)*dGy(0,:,Ny,:) - dGy(4,:,Ny,:))
       L(3,:,:,1) = G(2,:,Ny,:) * dGy(1,:,Ny,:)
       L(4,:,:,1) = G(2,:,Ny,:) * dGy(3,:,Ny,:)
@@ -650,10 +654,10 @@ contains
                   d(2,:,:,1)/(gamma-1.d0)+(G(0,:,Ny,:)*G(1,:,Ny,:)*d(3,:,:,1))+&
       (G(0,:,Ny,:)*G(2,:,Ny,:)*d(4,:,:,1))+(G(0,:,Ny,:)*G(3,:,Ny,:)*d(5,:,:,1))
       !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
-      dFy(:,0,0,:) = dFy(:,0,0,:) / 3.d0
-      dFy(:,0,Ny,:) = dFy(:,0,Ny,:) / 3.d0
-      dFy(:,Nx,0,:) = dFy(:,Nx,0,:) / 3.d0
-      dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) / 3.d0
+      ! dFy(:,0,0,:) = dFy(:,0,0,:) / 3.d0
+      ! dFy(:,0,Ny,:) = dFy(:,0,Ny,:) / 3.d0
+      ! dFy(:,Nx,0,:) = dFy(:,Nx,0,:) / 3.d0
+      ! dFy(:,Nx,Ny,:) = dFy(:,Nx,Ny,:) / 3.d0
     endsubroutine NSCBC_y
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
@@ -757,7 +761,7 @@ contains
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: Uy,sigma_y
       double precision,dimension(0:Ny) :: zeta_fy
       double precision,parameter ::alpha_u=1.15d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
-      Ymax = Ly;Ymin = -Ly
+      Ymax = (Ly/2.d0);Ymin = -(Ly/2d0)
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
       do i = 0,Ny
         y1 = zeta_fy(i)
@@ -796,13 +800,14 @@ contains
       integer i
       double precision,dimension(0:4,0:Nx,0:Ny,0:Nz-1) :: dzeta,dzeta_iny
       double precision,dimension(0:Ny) :: zeta_fy
-      double precision dy,y,width,a1,a2,b1
+      double precision dy,y,width,a1,a2,b1,Ymin
       dzeta=0.d0;width=3.d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=y<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
+      Ymin = -(Ly/2.d0)
       do i= 0,Ny
-        y = -Ly + dy*dble(i)
+        y = Ymin + dy*dble(i)
         zeta_fy(i) = b1 * ((1.7d0*y) - a1 * &
         (-dlog(dcosh(a2*(y - width))) + dlog(dcosh(a2*(y + width)))))
         dzeta(:,:,i,:) = b1 * (1.7d0 - (a1*a2) * &
@@ -883,7 +888,7 @@ end module threedim
       allocate(LUmz(-2:2,0:Nz-1),LUpz(-2:2,0:Nz-1))
       allocate(LUccsz(-2:2,0:Nz-1))
       dx = Lx /dble(Nx)
-      dy = 2.d0*Ly /dble(Ny)
+      dy = Ly /dble(Ny)
       dz = Lz / dble(Nz)
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
@@ -1011,10 +1016,10 @@ end module threedim
                 dFz = zm + zp
         !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
         !main program内で1/3にする
-                dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
-                dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
-                dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
-                dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
+                ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+                ! dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+                ! dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+                ! dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q,myu)
@@ -1034,8 +1039,8 @@ end module threedim
         call dif_z(ccs_sigma,dz,Vz,dVz,LUccsz)
         !NSCBCの計算開始
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1083,10 +1088,10 @@ end module threedim
               dFz = zm + zp
       !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
       !main program内で1/3にする
-              dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
-              dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
-              dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
-              dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
+              ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+              ! dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+              ! dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+              ! dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q1,myu)
@@ -1107,8 +1112,8 @@ end module threedim
         !NSCBCの計算開始
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1149,10 +1154,10 @@ end module threedim
               dFz = zm + zp
       !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
       !main program内で1/3にする
-              dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
-              dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
-              dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
-              dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
+              ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
+              ! dFz(:,0,Ny,:)  = dFz(:,0,Ny,:) / 3.d0
+              ! dFz(:,Nx,0,:)  = dFz(:,Nx,0,:) / 3.d0
+              ! dFz(:,Nx,Ny,:) = dFz(:,Nx,Ny,:)/ 3.d0
         !粘性項V行列のdv/dxの計算
         !まずはdu/dx,dT/dxの導出とμの設定
         call variable_setting(UVWT,Q2,myu)
@@ -1173,8 +1178,8 @@ end module threedim
         !NSCBCの計算開始
         call rho_u_p(G,Q2)
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
