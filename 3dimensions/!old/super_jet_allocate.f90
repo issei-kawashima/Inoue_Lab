@@ -694,14 +694,12 @@ contains
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann_Nx(Q)
-      integer i
       double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
     endsubroutine Neumann_Nx
 
     !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
     subroutine Q_boundary(Q)
-      integer i
       double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,0,:,:) = Q(:,1,:,:)
         Q(:,:,0,:) = Q(:,:,1,:)

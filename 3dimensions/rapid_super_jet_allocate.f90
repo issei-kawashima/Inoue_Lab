@@ -487,7 +487,7 @@ contains
        end subroutine dif_y
 
        subroutine dif_z(sigma,dz,Fz,x,LU)
-         integer i,j,r,k,im1,im2,ip1,ip2
+         integer i,j,r,k
          double precision,allocatable,dimension(:,:,:,:):: Fz,x
          double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
          double precision,allocatable,dimension(:,:,:,:):: y,RHS_z
@@ -722,14 +722,12 @@ contains
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann_Nx(Q)
-      integer i
       double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
     endsubroutine Neumann_Nx
 
     !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
     subroutine Q_boundary(Q)
-      integer i
       double precision,allocatable,dimension(:,:,:,:):: Q
         Q(:,0,:,:) = Q(:,1,:,:)
         Q(:,:,0,:) = Q(:,:,1,:)
@@ -924,10 +922,10 @@ end module threedim
       double precision,allocatable,dimension(:,:,:) :: in_G
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
-      double precision  dx,x,pNx_infty
+      double precision  dx,pNx_infty
       !y方向
       double precision,allocatable,dimension(:,:,:,:) :: dGy,dFy
-      double precision dy,y,p0y_infty,pNy_infty
+      double precision dy,p0y_infty,pNy_infty
       !z方向
       double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
@@ -1050,7 +1048,7 @@ end module threedim
               do i = 0,Ny
                 do j = 0,Nx
                   write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  f24.16)') zeta_fx(j),zeta_fy(i),z,G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt
+                  &f24.16)') zeta_fx(j),zeta_fy(i),z,G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt
                 enddo
                 write(10,*)
               enddo
@@ -1089,13 +1087,13 @@ end module threedim
             !3次精度Runge-Kutta法での導出！
       !========================================================================
        !  !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-       ! theta = 2.d0*pi*dble(M)*dt
-       ! !計算高速化
-       ! do i = 0,Ny
-       !   if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-       !     in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-       !   endif
-       ! enddo
+       theta = 2.d0*pi*dble(M)*dt
+       !計算高速化
+       do i = 0,Ny
+         if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+           in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+         endif
+       enddo
        !========================================================================
         !Q1
         !F行列のdfx/dxの計算
@@ -1328,7 +1326,7 @@ end module threedim
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                 f24.16)') zeta_fx(jj),zeta_fy(ii),z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
+                 &f24.16)') zeta_fx(jj),zeta_fy(ii),z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -1373,7 +1371,7 @@ end module threedim
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                          f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
+                          &f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
