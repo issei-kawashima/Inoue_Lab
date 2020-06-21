@@ -33,6 +33,8 @@
 !またそれにより、subroutine combineもx,yで変更する必要があったので分割した
 !bufferを変更したので、Q1,Q2,Qnの計算を自動で{(:,:,:,:)という形式}行えなくなったのでDoループを記入
 !NSCBCの流出条件を適用する際のdVの置換もx,yで異なり、今はNSCBC_x_Nxを適用していないので、分割後y方向のみ適用
+!variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
+!使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -147,6 +149,7 @@ contains
     subroutine variable_setting(UVWT,Q,myu)
       double precision,allocatable,dimension(:,:,:,:) :: UVWT,Q
       double precision,allocatable,dimension(:,:,:) :: myu
+        UVWT(0,:,:,:) = 0.d0
         UVWT(1,:,:,:) = Q(1,:,:,:) / Q(0,:,:,:)!u
         UVWT(2,:,:,:) = Q(2,:,:,:) / Q(0,:,:,:)!v
         UVWT(3,:,:,:) = Q(3,:,:,:) / Q(0,:,:,:)!w
@@ -399,10 +402,10 @@ contains
       !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
       dxinv = 1.d0/dx
         !片側DCSの右辺設定
-        RHS_x(:,0,:,:)=((-17.d0/6.d0)*Fx(:,0,:,:)+(1.5d0)*Fx(:,1,:,:)+(1.5d0)&
-                      *Fx(:,2,:,:)-Fx(:,3,:,:)/6.d0)*dxinv
-        RHS_x(:,Nx,:,:)=((1.d0/6.d0)*Fx(:,Nx-3,:,:)-(1.5d0)* Fx(:,Nx-2,:,:)-&
-                      (1.5d0)*Fx(:,Nx-1,:,:)+(17.d0/6.d0)*Fx(:,Nx,:,:))*dxinv
+        RHS_x(:,0,:,:)=((-17.d0/6.d0)*Fx(:,0,:,:)+1.5d0*(Fx(:,1,:,:)+&
+                        Fx(:,2,:,:))-Fx(:,3,:,:)/6.d0)*dxinv
+        RHS_x(:,Nx,:,:)=((1.d0/6.d0)*Fx(:,Nx-3,:,:)-1.5d0*(Fx(:,Nx-2,:,:)+&
+                        Fx(:,Nx-1,:,:))+(17.d0/6.d0)*Fx(:,Nx,:,:))*dxinv
         !3次精度DCSの右辺設定
         RHS_x(:,1,:,:)=((1.5d0)*(-Fx(:,0,:,:)+Fx(:,2,:,:))*0.5d0*dxinv)+sigma*&
                       ((Fx(:,0,:,:)-2.d0*Fx(:,1,:,:)+Fx(:,2,:,:))*(0.5d0*dxinv))
@@ -977,13 +980,13 @@ end module threedim
 
       allocate(myu(0:Nx,0:Ny,0:Nz-1))
       allocate(Vx(0:4,0:Nx,0:Ny,0:Nz-1),dVx(0:4,0:Nx,0:Ny,0:Nz-1),&
-      UVWT(1:4,0:Nx,0:Ny,0:Nz-1),dUVWTx(1:4,0:Nx,0:Ny,0:Nz-1))
+      UVWT(0:4,0:Nx,0:Ny,0:Nz-1),dUVWTx(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(Vy(0:4,0:Nx,0:Ny,0:Nz-1),dVy(0:4,0:Nx,0:Ny,0:Nz-1)&
-      ,dUVWTy(1:4,0:Nx,0:Ny,0:Nz-1))
+      ,dUVWTy(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(Vz(0:4,0:Nx,0:Ny,0:Nz-1),dVz(0:4,0:Nx,0:Ny,0:Nz-1),&
-      dUVWTz(1:4,0:Nx,0:Ny,0:Nz-1))
+      dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(in_G(0:3,0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
