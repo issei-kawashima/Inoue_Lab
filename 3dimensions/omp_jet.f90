@@ -35,7 +35,7 @@
 !NSCBCの流出条件を適用する際のdVの置換もx,yで異なり、今はNSCBC_x_Nxを適用していないので、分割後y方向のみ適用
 !variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
 !使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
-!2020.06.24 2次元での計算結果と同じになるかどうかを確かめてみる。
+!2020.06.24 並列化を実装開始
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -45,11 +45,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
+  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -86,12 +86,14 @@ contains
   !初期条件G(rho,u,p)を用いてQ行列の設定
   subroutine Q_matrix(G,Q)
     double precision,allocatable,dimension(:,:,:,:) :: Q,G
+    !$omp parallel do num_threads(5)
       Q(0,:,:,:) = G(0,:,:,:)
       Q(1,:,:,:) = G(0,:,:,:) * G(1,:,:,:)
       Q(2,:,:,:) = G(0,:,:,:) * G(2,:,:,:)
       Q(3,:,:,:) = G(0,:,:,:) * G(3,:,:,:)
       Q(4,:,:,:) = G(4,:,:,:) / (gamma -1.d0) + G(0,:,:,:) * (G(1,:,:,:)**2.d0+&
                   G(2,:,:,:)**2.d0 +G(3,:,:,:)**2.d0) * 0.5d0
+    !$omp end parallel do
   endsubroutine Q_matrix
   !求めQを用いてF行列の設定
   subroutine F_matrix(Q,Fpx,Fmx,Fpy,Fmy,Fpz,Fmz)
@@ -101,6 +103,7 @@ contains
     Fx=0.d0
     Fy=0.d0
     Fz=0.d0
+    !$omp parallel do num_threads(5)
     !F行列の設定(x方向)
       Fx(0,:,:,:) = Q(1,:,:,:)
       Fx(1,:,:,:) = 1.d0/(2.d0*Q(0,:,:,:))*((3.d0-gamma)*(Q(1,:,:,:)**2.d0)+&
@@ -110,39 +113,43 @@ contains
       Fx(4,:,:,:) = gamma * Q(1,:,:,:) * Q(4,:,:,:) / Q(0,:,:,:) &
                  &+ (1.d0- gamma)*Q(1,:,:,:)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0&
                  +Q(3,:,:,:)**2.d0)/(2.d0 * (Q(0,:,:,:)**2.d0))
+   !$omp end parallel do
+
+   !$omp parallel do num_threads(5)
+    !F行列の設定(y方向)
+      Fy(0,:,:,:) = Q(2,:,:,:)
+      Fy(1,:,:,:) = Q(2,:,:,:)*Q(1,:,:,:)/Q(0,:,:,:)
+      Fy(2,:,:,:) = 1.d0/(2.d0*Q(0,:,:,:))*((3.d0 - gamma)*(Q(2,:,:,:)**2.d0) + &
+                    &(1.d0 - gamma)*(Q(1,:,:,:)**2.d0+Q(3,:,:,:)**2.d0))+(gamma - 1.d0)*Q(4,:,:,:)
+      Fy(3,:,:,:) = Q(2,:,:,:)*Q(3,:,:,:)/Q(0,:,:,:)
+      Fy(4,:,:,:) = gamma * Q(2,:,:,:) * Q(4,:,:,:) / Q(0,:,:,:) &
+                &+ (1.d0- gamma)*Q(2,:,:,:)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0&
+                +Q(3,:,:,:)**2.d0)/(2.d0 * (Q(0,:,:,:)**2.d0))
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
+      !F行列の設定(z方向)
+      Fz(0,:,:,:) = Q(3,:,:,:)
+      Fz(1,:,:,:) = Q(3,:,:,:)*Q(1,:,:,:)/Q(0,:,:,:)
+      Fz(2,:,:,:) = Q(3,:,:,:)*Q(2,:,:,:)/Q(0,:,:,:)
+      Fz(3,:,:,:) = 1.d0/(2.d0*Q(0,:,:,:))*((3.d0 - gamma)*(Q(3,:,:,:)**2.d0) + &
+      &(1.d0 - gamma)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0))+(gamma - 1.d0)*Q(4,:,:,:)
+      Fz(4,:,:,:) = gamma * Q(3,:,:,:) * Q(4,:,:,:) / Q(0,:,:,:) &
+                &+ (1.d0- gamma)*Q(3,:,:,:)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0&
+                +Q(3,:,:,:)**2.d0)/(2.d0 * (Q(0,:,:,:)**2.d0))
+    !$omp end parallel do
+
     !求めたFを特製速度の正負によって分割する
     !Lax-Friedrichの流速分割を用いる
+    !$omp parallel do num_threads(5)
         Fpx(:,:,:,:) = (Fx(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
         Fmx(:,:,:,:) = (Fx(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
-
-    !F行列の設定(y方向)
-          Fy(0,:,:,:) = Q(2,:,:,:)
-          Fy(1,:,:,:) = Q(2,:,:,:)*Q(1,:,:,:)/Q(0,:,:,:)
-          Fy(2,:,:,:) = 1.d0/(2.d0*Q(0,:,:,:))*((3.d0 - gamma)*(Q(2,:,:,:)**2.d0) + &
-                        &(1.d0 - gamma)*(Q(1,:,:,:)**2.d0+Q(3,:,:,:)**2.d0))+(gamma - 1.d0)*Q(4,:,:,:)
-          Fy(3,:,:,:) = Q(2,:,:,:)*Q(3,:,:,:)/Q(0,:,:,:)
-          Fy(4,:,:,:) = gamma * Q(2,:,:,:) * Q(4,:,:,:) / Q(0,:,:,:) &
-                    &+ (1.d0- gamma)*Q(2,:,:,:)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0&
-                    +Q(3,:,:,:)**2.d0)/(2.d0 * (Q(0,:,:,:)**2.d0))
-      !求めたFを特製速度の正負によって分割する
-      !Lax-Friedrichの流速分割を用いる
-          Fpy(:,:,:,:) = (Fy(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
-          Fmy(:,:,:,:) = (Fy(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
-
-      !F行列の設定(z方向)
-            Fz(0,:,:,:) = Q(3,:,:,:)
-            Fz(1,:,:,:) = Q(3,:,:,:)*Q(1,:,:,:)/Q(0,:,:,:)
-            Fz(2,:,:,:) = Q(3,:,:,:)*Q(2,:,:,:)/Q(0,:,:,:)
-            Fz(3,:,:,:) = 1.d0/(2.d0*Q(0,:,:,:))*((3.d0 - gamma)*(Q(3,:,:,:)**2.d0) + &
-            &(1.d0 - gamma)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0))+(gamma - 1.d0)*Q(4,:,:,:)
-            Fz(4,:,:,:) = gamma * Q(3,:,:,:) * Q(4,:,:,:) / Q(0,:,:,:) &
-                      &+ (1.d0- gamma)*Q(3,:,:,:)*(Q(1,:,:,:)**2.d0+Q(2,:,:,:)**2.d0&
-                      +Q(3,:,:,:)**2.d0)/(2.d0 * (Q(0,:,:,:)**2.d0))
-        !求めたFを特製速度の正負によって分割する
-        !Lax-Friedrichの流速分割を用いる
-            Fpz(:,:,:,:) = (Fz(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
-            Fmz(:,:,:,:) = (Fz(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
-          deallocate(Fx,Fy,Fz)
+        Fpy(:,:,:,:) = (Fy(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
+        Fmy(:,:,:,:) = (Fy(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
+        Fpz(:,:,:,:) = (Fz(:,:,:,:) + zeta * Q(:,:,:,:)) * 0.5d0
+        Fmz(:,:,:,:) = (Fz(:,:,:,:) - zeta * Q(:,:,:,:)) * 0.5d0
+    !$omp end parallel do
+        deallocate(Fx,Fy,Fz)
       endsubroutine F_matrix
 !du/dx,dT.dxを求めるためにまずはuとTの設定。
 !UVWT,myuの計算はrho,u,pをそのまま代入しても良いがその場合は求めたtQから毎回rho_u_pのsubroutineを
@@ -150,6 +157,7 @@ contains
     subroutine variable_setting(UVWT,Q,myu)
       double precision,allocatable,dimension(:,:,:,:) :: UVWT,Q
       double precision,allocatable,dimension(:,:,:) :: myu
+      !$omp parallel do num_threads(5)
         UVWT(0,:,:,:) = 0.d0
         UVWT(1,:,:,:) = Q(1,:,:,:) / Q(0,:,:,:)!u
         UVWT(2,:,:,:) = Q(2,:,:,:) / Q(0,:,:,:)!v
@@ -160,6 +168,7 @@ contains
 !V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
 !UVWTからTの値を代入することで計算を簡略化している
         myu(:,:,:) = (UVWT(4,:,:,:) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,:,:,:) + Sc)
+      !$omp end parallel do
     end subroutine variable_setting
 
     subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
@@ -168,6 +177,7 @@ contains
       double precision,allocatable,dimension(:,:,:,:) :: Vx,Vy,Vz
       double precision,allocatable,dimension(:,:,:,:) :: dUVWTx,dUVWTy,dUVWTz,UVWT
       double precision,allocatable,dimension(:,:,:) :: myu
+      !$omp parallel do num_threads(5)
         Vx(0,:,:,:) = 0.d0
         Vx(1,:,:,:) = (2.d0*myu(:,:,:)/(3.d0*Re)) * (2.d0 * dUVWTx(1,:,:,:) - dUVWTy(2,:,:,:)-dUVWTz(3,:,:,:))
         Vx(2,:,:,:) = (myu(:,:,:) / Re) * (dUVWTx(2,:,:,:) + dUVWTy(1,:,:,:))
@@ -175,7 +185,10 @@ contains
         Vx(4,:,:,:) =Vx(1,:,:,:)*UVWT(1,:,:,:) + Vx(2,:,:,:)* UVWT(2,:,:,:)+ &
                       Vx(3,:,:,:)*UVWT(3,:,:,:)+((myu(:,:,:) * dUVWTx(4,:,:,:))&
                       / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+      !$omp end parallel do
+
       !粘性項の設定(y方向)
+      !$omp parallel do num_threads(5)
         Vy(0,:,:,:) = 0.d0
         Vy(1,:,:,:) = (myu(:,:,:) / Re) * (dUVWTx(2,:,:,:) + dUVWTy(1,:,:,:))
         Vy(2,:,:,:) = (2.d0*myu(:,:,:)/(3.d0*Re))*(-dUVWTx(1,:,:,:) + 2.d0*dUVWTy(2,:,:,:)-dUVWTz(3,:,:,:))
@@ -183,7 +196,10 @@ contains
         Vy(4,:,:,:) = Vy(1,:,:,:)*UVWT(1,:,:,:) + Vy(2,:,:,:)* UVWT(2,:,:,:)+ &
                       Vy(3,:,:,:)*UVWT(3,:,:,:)+((myu(:,:,:) * dUVWTy(4,:,:,:))&
                       / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+      !$omp end parallel do
+
       !粘性項の設定(z方向)
+      !$omp parallel do num_threads(5)
         Vz(0,:,:,:) = 0.d0
         Vz(1,:,:,:) = (myu(:,:,:) / Re) * (dUVWTx(3,:,:,:) + dUVWTz(1,:,:,:))
         Vz(2,:,:,:) = (myu(:,:,:) / Re) * (dUVWTy(3,:,:,:) + dUVWTz(2,:,:,:))
@@ -191,18 +207,21 @@ contains
         Vz(4,:,:,:) = Vz(1,:,:,:)*UVWT(1,:,:,:) + Vz(2,:,:,:)* UVWT(2,:,:,:)+ &
                       Vz(3,:,:,:)*UVWT(3,:,:,:)+((myu(:,:,:) * dUVWTz(4,:,:,:))&
                       / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+      !$omp end parallel do
     endsubroutine V_matrix
     !求めたQnから時間毎のrho,u,v,w,pを求めるサブルーチン
     !ある指定した時間の時の計算結果のみを取り出せばグラフが作成できるので毎回は使用しない
     subroutine rho_u_p(G,Qn)
       double precision,allocatable,dimension(:,:,:,:) :: Qn,G
         G=0.d0
+      !$omp parallel do num_threads(5)
         G(0,:,:,:) = Qn(0,:,:,:)
         G(1,:,:,:) = Qn(1,:,:,:) / Qn(0,:,:,:)
         G(2,:,:,:) = Qn(2,:,:,:) / Qn(0,:,:,:)
         G(3,:,:,:) = Qn(3,:,:,:) / Qn(0,:,:,:)
         G(4,:,:,:) = (gamma-1.d0)*(Qn(4,:,:,:)-(Qn(1,:,:,:)**2.d0+&
                       Qn(2,:,:,:)**2.d0+Qn(3,:,:,:)**2.d0)/(2.d0*Qn(0,:,:,:)))!p
+      !$omp end parallel do
     endsubroutine rho_u_p
     !DCS用の行列Aの設定(左辺の設定)
     !５次精度DCSと6次精度CCSの両方に対応
@@ -226,12 +245,16 @@ contains
       A(1,0) = alpha3 * (1.d0 - Dalpha * sigma)
       A(1,1) = 1.d0
       A(1,2) = alpha3 * (1.d0 + Dalpha * sigma)
+
       !2からN-2行目まで
+      !$omp parallel do num_threads(5)
       do i = 2,N-2
         A(i,i-1) = (1.d0 - Dalpha * sigma) * alpha5
         A(i,i) = 1.d0
         A(i,i+1) = (1.d0 + Dalpha * sigma) * alpha5
       enddo
+      !$omp end parallel do
+
       !N-1行目 3次精度DCS
       A(N-1,N-2) = alpha3 * (1.d0 - Dalpha * sigma)
       A(N-1,N-1) = 1.d0
@@ -241,11 +264,15 @@ contains
       A(N,N) = 1.d0
     !LU分解
       !まずL,Uの初期値を設定
+      !$omp parallel do num_threads(5)
       do i = 0,N
         U(0,i) = A(0,i)
         L(i,0) = A(i,0) / U(0,0)
         L(i,i) = 1.d0
       enddo
+      !$omp end parallel do
+
+      !========並列化不可能======================================================
       !Uは行ごとに、Lは列ごとに求めていく。
       !ただしUの２行目、 Lの２列目、Uの3行目、Lの３列目といった順番
       do i = 1,N !初期条件の結果を利用してUのi列、Lのi行の順に求めていく
@@ -271,6 +298,7 @@ contains
           L(j,i) = (A(j,i) - Lsum) / U(i,i)
         enddo
       enddo
+      !========並列化不可能=======================================================
 !LU行列の圧縮　L,U行列の対角成分のみをLU行列に保存する
 !LU(-1,i)にL行列の対角成分L(i,i-1)を保存
 !L(i,i)=1.d0は全身代入では使用しないので圧縮した行列には含めない
@@ -280,14 +308,19 @@ contains
       LU(-1,0) = 0.d0
       LU(0,N) = U(N,N)
       LU(1,N) = 0.d0
+      !$omp parallel do num_threads(5)
       do i = 1,N
         LU(-1,i) = L(i,i-1)
       enddo
+      !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       do j = 0,1
         do i = 0,N-1
           LU(j,i) = U(i,i+j)
         enddo
       enddo
+      !$omp end parallel do
       deallocate(A,L,U)
     endsubroutine LU_DecompoNonP
 
@@ -309,23 +342,31 @@ contains
       A(0,0) = 1.d0
       A(0,1) = alpha5*(1.d0+sigma*Dalpha)
       A(0,N-1) = alpha5*(1.d0-sigma*Dalpha)
+
+      !$omp parallel do num_threads(5)
       !1からN-2行目まで
       do i = 1,N-2
         A(i,i-1) = (1.d0 - Dalpha * sigma) * alpha5
         A(i,i) = 1.d0
         A(i,i+1) = (1.d0 + Dalpha * sigma) * alpha5
       enddo
+      !$omp end parallel do
+
       !N行目
       A(N-1,0) = alpha5 * (1.d0 + Dalpha * sigma)
       A(N-1,N-2) = alpha5*(1.d0-sigma*Dalpha)
       A(N-1,N-1) = 1.d0
     !LU分解
       !まずL,Uの初期値を設定
+      !$omp parallel do num_threads(5)
       do i = 0,N-1
         U(0,i) = A(0,i)
         L(i,0) = A(i,0) / U(0,0)
         L(i,i) = 1.d0
       enddo
+      !$omp end parallel do
+
+      !========並列化不可能=======================================================
       !Uは行ごとに、Lは列ごとに求めていく。
       !ただしUの２行目、 Lの２列目、Uの3行目、Lの３列目といった順番
       do i = 1,N-1 !初期条件の結果を利用してUのi列、Lのi行の順に求めていく
@@ -351,6 +392,7 @@ contains
           L(j,i) = (A(j,i) - Lsum) / U(i,i)
         enddo
       enddo
+      !========並列化不可能=======================================================
 !===============================================
 !LU圧縮は周期なので-(2:2,0:N-1)の幅でLUをとればできる
 !===============================================
@@ -366,18 +408,27 @@ contains
       !LU(-2),LU(2)は対角成分と被りがあるのでその部分は圧縮行列には入れずに0とする
       LU(1,N-1) = 0.d0
       LU(2,N-2:N-1) = 0.d0
+
+      !$omp parallel do num_threads(5)
       do i= 0,N-3
         LU(-2,i) = U(i,N-1)
         LU(2,i)  = L(N-1,i)
       enddo
+      !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       do i = 1,N-1
         LU(-1,i) = L(i,i-1)
       enddo
+      !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       do j = 0,1
         do i = 0,N-2
           LU(j,i) = U(i,i+j)
         enddo
       enddo
+      !$omp end parallel do
       deallocate(A,L,U)
     endsubroutine LU_DecompoPiriodic
 
@@ -403,16 +454,23 @@ contains
       !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
       dxinv = 1.d0/dx
         !片側DCSの右辺設定
+      !$omp parallel do num_threads(5)
         RHS_x(:,0,:,:)=((-17.d0/6.d0)*Fx(:,0,:,:)+1.5d0*(Fx(:,1,:,:)+&
                         Fx(:,2,:,:))-Fx(:,3,:,:)/6.d0)*dxinv
         RHS_x(:,Nx,:,:)=((1.d0/6.d0)*Fx(:,Nx-3,:,:)-1.5d0*(Fx(:,Nx-2,:,:)+&
                         Fx(:,Nx-1,:,:))+(17.d0/6.d0)*Fx(:,Nx,:,:))*dxinv
+      !$omp end parallel do
+
         !3次精度DCSの右辺設定
+      !$omp parallel do num_threads(5)
         RHS_x(:,1,:,:)=((1.5d0)*(-Fx(:,0,:,:)+Fx(:,2,:,:))*0.5d0*dxinv)+sigma*&
                       ((Fx(:,0,:,:)-2.d0*Fx(:,1,:,:)+Fx(:,2,:,:))*(0.5d0*dxinv))
         RHS_x(:,Nx-1,:,:)=((1.5d0)*(-Fx(:,Nx-2,:,:)+Fx(:,Nx,:,:))*(0.5d0*dxinv))+&
                       sigma*((Fx(:,Nx-2,:,:)-2.d0*Fx(:,Nx-1,:,:)+Fx(:,Nx,:,:))*(0.5d0*dxinv))
+      !$omp end parallel do
+
          !5次精度DCSの右辺設定
+      !$omp parallel do num_threads(5)
        do i = 2,Nx-2
          D2(:,i,:,:) = (-Fx(:,i-1,:,:)+Fx(:,i+1,:,:)) * (0.5d0*dxinv)
          D4(:,i,:,:) = (-Fx(:,i-2,:,:)+Fx(:,i+2,:,:)) * (0.25d0*dxinv)
@@ -424,6 +482,9 @@ contains
          !7次精度DCS用のため不要
          RHS_x(:,i,:,:)=ra*D2(:,i,:,:)+rb*D4(:,i,:,:)+sigma*(da*D6(:,i,:,:)+db*D8(:,i,:,:))
        enddo
+     !$omp end parallel do
+
+     !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
      !前進代入法、後退代入法の計算サブルーチン(x方向)
             !前進代入
             y(:,0,:,:) = RHS_x(:,0,:,:)!例外の境界値
@@ -436,6 +497,8 @@ contains
             do i = Nx-1, 0, -1!後退するので-1ずつ進む
               x(:,i,:,:) = (y(:,i,:,:) - LU(1,i)*x(:,i+1,:,:)) / LU(0,i)
             enddo
+     !============並列化不可能＝＝＝＝＝=＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝==＝＝＝=======
+
           call combine_x(dzeta_inx,x,dFzeta)
           deallocate(D2,D4,D6,D8,x,y,RHS_x)
       end subroutine dif_x
@@ -459,6 +522,7 @@ contains
        dyinv = 1.d0 / dy
        !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
          !片側DCSの右辺設定
+       !$omp parallel do num_threads(5)
          RHS_y(:,:,0,:) = ((-17.d0/6.d0)*Fy(:,:,0,:)+(1.5d0)*Fy(:,:,1,:)+&
          (1.5d0)*Fy(:,:,2,:)-Fy(:,:,3,:)/6.d0)*dyinv
          RHS_y(:,:,Ny,:)=((1.d0/6.d0)*Fy(:,:,Ny-3,:)-(1.5d0)&
@@ -469,6 +533,9 @@ contains
          RHS_y(:,:,Ny-1,:)=((1.5d0)*(-Fy(:,:,Ny-2,:)+Fy(:,:,Ny,:))*(0.5d0*dyinv))&
             +sigma*((Fy(:,:,Ny-2,:)-2.d0*Fy(:,:,Ny-1,:)+Fy(:,:,Ny,:))*(0.5d0*dyinv))
           !5次精度DCSの右辺設定
+        !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       do i = 2,Ny-2
         D2(:,:,i,:) = (-Fy(:,:,i-1,:)+Fy(:,:,i+1,:)) * (0.5d0*dyinv)
         D4(:,:,i,:) = (-Fy(:,:,i-2,:)+Fy(:,:,i+2,:)) * (0.25d0*dyinv)
@@ -480,6 +547,9 @@ contains
         !7次精度DCS用のため不要
         RHS_y(:,:,i,:)=ra*D2(:,:,i,:)+rb*D4(:,:,i,:)+sigma*(da*D6(:,:,i,:)+db*D8(:,:,i,:))
       enddo
+    !$omp end parallel do
+
+      !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
       !前進代入法、後退代入法の計算サブルーチン(y方向)
         !前進代入
         y(:,:,0,:) = RHS_y(:,:,0,:)
@@ -492,6 +562,8 @@ contains
         do i = Ny-1, 0, -1!後退するので-1ずつ進む
           x(:,:,i,:) = (y(:,:,i,:) - LU(1,i)*x(:,:,i+1,:)) / LU(0,i)
         enddo
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
+
         call combine_y(dzeta_iny,x,dFzeta)!y方向の格子伸長を適用　微分変換をしている
         deallocate(D2,D4,D6,D8,x,y,RHS_y)
        end subroutine dif_y
@@ -512,6 +584,8 @@ contains
 
          D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0;Lsum=0.d0
          dzinv = 1.d0 / dz
+
+         !$omp parallel do num_threads(5)
           !5次精度DCSの右辺設定
           RHS_z(:,:,:,0) = ra*dzinv*((-Fz(:,:,:,Nz-1)+Fz(:,:,:,1))*0.5d0)+&
                           rb*dzinv*((-Fz(:,:,:,Nz-2)+Fz(:,:,:,2))*0.25d0)+&
@@ -522,6 +596,9 @@ contains
                           rb*dzinv*((-Fz(:,:,:,Nz-1)+Fz(:,:,:,3))*0.25d0)+&
                           sigma*dzinv*(da*(Fz(:,:,:,0)+Fz(:,:,:,2)-2.d0*Fz(:,:,:,1))+&
                           db*((Fz(:,:,:,Nz-1)+Fz(:,:,:,3)-2.d0*Fz(:,:,:,1))*0.25d0))
+          !$omp end parallel do
+
+          !$omp parallel do num_threads(5)
            do i = 2,Nz-3
              D2(:,:,:,i) = (-Fz(:,:,:,i-1)+Fz(:,:,:,i+1)) * (0.5d0*dzinv)
              D4(:,:,:,i) = (-Fz(:,:,:,i-2)+Fz(:,:,:,i+2)) * (0.25d0*dzinv)
@@ -530,7 +607,9 @@ contains
              D8(:,:,:,i) = (Fz(:,:,:,i-2)+Fz(:,:,:,i+2)- 2.d0* Fz(:,:,:,i)) * (0.25d0*dzinv)
            RHS_z(:,:,:,i)=ra*D2(:,:,:,i)+rb*D4(:,:,:,i)+sigma*(da*D6(:,:,:,i)+db*D8(:,:,:,i))
            enddo
+         !$omp end parallel do
 
+         !$omp parallel do num_threads(5)
            RHS_z(:,:,:,Nz-2) =  ra*dzinv*((-Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1))*0.5d0)+&
                            rb*dzinv*((-Fz(:,:,:,Nz-4)+Fz(:,:,:,0))*0.25d0)+&
                            sigma*dzinv*(da*(Fz(:,:,:,Nz-3)+Fz(:,:,:,Nz-1)-2.d0*Fz(:,:,:,Nz-2))+&
@@ -540,6 +619,9 @@ contains
                            rb*dzinv*((-Fz(:,:,:,Nz-3)+Fz(:,:,:,1))*0.25d0)+&
                            sigma*dzinv*(da*(Fz(:,:,:,Nz-2)+Fz(:,:,:,0)-2.d0*Fz(:,:,:,Nz-1))+&
                            db*((Fz(:,:,:,Nz-3)+Fz(:,:,:,1)-2.d0*Fz(:,:,:,Nz-1))*0.25d0))
+         !$omp end parallel do
+
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
            !前進代入法、後退代入法の計算サブルーチン(x方向)
               !前進代入
               y(:,:,:,0) = RHS_z(:,:,:,0)!例外の境界値
@@ -567,6 +649,8 @@ contains
               do i = Nz-3, 0, -1!後退するので-1ずつ進む
                 x(:,:,:,i) = (y(:,:,:,i) - LU(1,i)*x(:,:,:,i+1)-LU(-2,i)*x(:,:,:,Nz-1)) / LU(0,i)
               enddo
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
+
           deallocate(D2,D4,D6,D8,y,RHS_z)
        endsubroutine dif_z
     !境界条件をNSCBCで設定
@@ -586,10 +670,15 @@ contains
       allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
 
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
+
+    !$omp parallel do num_threads(5)
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:) = sqrt(gamma * G(4,0,:,:) / G(0,0,:,:))
       !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
       Ma_NS(:,:) = G(1,0,:,:) / c_NS(:,:)!uを使う
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
       L(1,:,:)=(G(1,0,:,:)-c_NS(:,:))*(-G(0,0,:,:)*c_NS(:,:)*dGx(1,0,:,:)+dGx(4,0,:,:))
 !      L(2,:,:)=G(1,0,:,:)*((c_NS(:,:)**2.d0)*dGx(0,0,:,:)-dGx(3,0,:,:))
@@ -600,6 +689,9 @@ contains
       !流入速度uを時間変動させないので今回はdu/dt=0となるため省略
 !      L(5,:,:)=msigma*c_NS(:,:)*(1.d0-(Ma_NS(:,:)**2.d0))*(G(3,0,:,:)-p0x_infty)/Lx
       L(2,:,:)=(0.5d0)*(gamma-1.d0)*(L(5,:,:)+L(1,:,:))!+G(0,0,:,:)*c_NS(:,:)**2.d0/T*dT/dtが本来はあるが
+    !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       !境界温度Tを時間変動させないので今回はdT/dt=0となるため省略
       !設定したL行列からd1~5をi=0,Nxの両点においてそれぞれ設定する
         d(1,:,:) = (1.d0 / (c_NS(:,:) **2.d0)) * ((L(1,:,:)+L(5,:,:))*0.5d0 + L(2,:,:))
@@ -608,6 +700,9 @@ contains
         d(3,:,:) = 0.5d0/(G(0,0,:,:) * c_NS(:,:)) * (-L(1,:,:) + L(5,:,:))
         d(4,:,:) = L(3,:,:)
         d(5,:,:) = L(4,:,:)
+      !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
       !i=0の時の差し替えdFx
       dFx(0,0,:,:) = d(1,:,:)
@@ -618,9 +713,14 @@ contains
                     (G(3,0,:,:)**2.d0))*d(1,:,:)+d(2,:,:)/(gamma-1.d0)+&
       (G(0,0,:,:)*G(1,0,:,:)*d(3,:,:)) + (G(0,0,:,:)*G(2,0,:,:)*d(4,:,:))+&
                     (G(0,0,:,:)*G(3,0,:,:)*d(5,:,:))
+    !$omp end parallel do
+
+  !$omp parallel do num_threads(5)
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,0,0,:) = dFx(:,0,0,:) / 3.d0
     dFx(:,0,Ny,:) = dFx(:,0,Ny,:) / 3.d0
+  !$omp end parallel do
+
     deallocate(L,d,c_NS,Ma_NS)
   endsubroutine NSCBC_x_0
 
@@ -632,10 +732,15 @@ contains
       allocate(L(1:5,0:Ny,0:Nz-1),d(1:5,0:Ny,0:Nz-1))
       allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
+
+    !$omp parallel do num_threads(5)
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:) = sqrt(gamma * G(4,Nx,:,:) / G(0,Nx,:,:))
       !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
       Ma_NS(:,:) = G(1,Nx,:,:) / c_NS(:,:)
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
       L(1,:,:)=NS_sigma*c_NS(:,:)*(1.d0-(Ma_NS(:,:)**2.d0))*(G(4,Nx,:,:)-&
       &pNx_infty)/Lx
@@ -643,6 +748,9 @@ contains
       L(3,:,:)=G(1,Nx,:,:)*dGx(2,Nx,:,:)
       L(4,:,:)=G(1,Nx,:,:)*dGx(3,Nx,:,:)
       L(5,:,:)=(G(1,Nx,:,:)+c_NS(:,:))*(G(0,Nx,:,:)*c_NS(:,:)*dGx(1,Nx,:,:)+dGx(4,Nx,:,:))
+    !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       !設定したL行列からd1~5をi=0,Nxの両点においてそれぞれ設定する
         d(1,:,:) = (1.d0 / (c_NS(:,:) **2.d0)) * ((L(1,:,:)+L(5,:,:))*0.5d0 + L(2,:,:))
         d(2,:,:) = (L(1,:,:)+L(5,:,:))*0.5d0
@@ -650,6 +758,9 @@ contains
         d(3,:,:) = 0.5d0/(G(0,Nx,:,:) * c_NS(:,:)) * (-L(1,:,:) + L(5,:,:))
         d(4,:,:) = L(3,:,:)
         d(5,:,:) = L(4,:,:)
+      !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
       !i=Nxの時の差し替えF
       dFx(0,Nx,:,:) = d(1,:,:)
@@ -660,9 +771,13 @@ contains
                     (G(3,Nx,:,:)**2.d0))*d(1,:,:)+d(2,:,:)/(gamma-1.d0)+ &
       (G(0,Nx,:,:)*G(1,Nx,:,:)*d(3,:,:))+(G(0,Nx,:,:)*G(2,Nx,:,:)*d(4,:,:))+&
                     (G(0,Nx,:,:)*G(3,Nx,:,:)*d(5,:,:))
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
     !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
     dFx(:,Nx,0,:) = dFx(:,Nx,0,:) / 3.d0
     dFx(:,Nx,Ny,:) = dFx(:,Nx,Ny,:) / 3.d0
+  !$omp end parallel do
     deallocate(L,d,c_NS,Ma_NS)
   endsubroutine NSCBC_x_Nx
     !次にy方向のNSCBC　sunrouineを作成
@@ -676,19 +791,26 @@ contains
       allocate(c_NS(0:Nx,0:Nz-1,0:1),Ma_NS(0:Nx,0:Nz-1,0:1))
 
       L=0.d0;d=0.d0;c_NS=0.d0;Ma_NS=0.d0
+    !$omp parallel do num_threads(5)
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
       c_NS(:,:,0) = sqrt(gamma * G(4,:,0,:) / G(0,:,0,:))
       c_NS(:,:,1) = sqrt(gamma * G(4,:,Ny,:) / G(0,:,Ny,:))
       !マッハ数Maはi=0,Nxで使うので別々に定義する
       Ma_NS(:,:,0) = G(2,:,0,:) / c_NS(:,:,0)!vを使う
       Ma_NS(:,:,1) = G(2,:,Ny,:) / c_NS(:,:,1)
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !y方向右側つまりi=0の点において無反射流出条件でL行列を設定する
       L(1,:,:,0) = (G(2,:,0,:) - c_NS(:,:,0)) * (-G(0,:,0,:)*c_NS(:,:,0)*dGy(2,:,0,:)+dGy(4,:,0,:))
       L(2,:,:,0) = G(2,:,0,:) * ((c_NS(:,:,0) ** 2.d0)*dGy(0,:,0,:) - dGy(4,:,0,:))
       L(3,:,:,0) = G(2,:,0,:) * dGy(1,:,0,:)
       L(4,:,:,0) = G(2,:,0,:) * dGy(3,:,0,:)
       L(5,:,:,0) = NS_sigma * c_NS(:,:,0) * (1.d0 - (Ma_NS(:,:,0) ** 2.d0))*(G(4,:,0,:) - &
-      &p0y_infty)/Ly
+                    &p0y_infty)/Ly
+    !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
       L(1,:,:,1) = NS_sigma * c_NS(:,:,1) * (1.d0 - (Ma_NS(:,:,1) ** 2.d0))*(G(4,:,Ny,:) - &
     &  pNy_infty)/Ly
@@ -696,6 +818,9 @@ contains
       L(3,:,:,1) = G(2,:,Ny,:) * dGy(1,:,Ny,:)
       L(4,:,:,1) = G(2,:,Ny,:) * dGy(3,:,Ny,:)
       L(5,:,:,1) = (G(2,:,Ny,:) + c_NS(:,:,1)) * (G(0,:,Ny,:)*c_NS(:,:,1)*dGy(2,:,Ny,:) + dGy(4,:,Ny,:))
+    !$omp end parallel do
+
+      !$omp parallel do num_threads(5)
       !設定したL行列からd1~5をi=0,Nyの両点においてそれぞれ設定する
         d(1,:,:,:) = (1.d0 / (c_NS(:,:,:) **2.d0)) * ((L(1,:,:,:)+L(5,:,:,:))*0.5d0 + L(2,:,:,:))
         d(2,:,:,:) = (0.5d0) * (L(1,:,:,:)+L(5,:,:,:))
@@ -705,6 +830,9 @@ contains
         d(4,:,:,1) = 0.5d0/(G(0,:,Ny,:) * c_NS(:,:,1)) * (-L(1,:,:,1) + L(5,:,:,1))
         d(5,:,:,:) = L(4,:,:,:)
       !設定したdからNySCBCで置き換える境界地点のdFyを定義する
+      !$omp end parallel do
+
+    !$omp parallel do num_threads(5)
       !i=0の時の差し替えdFy
       dFy(0,:,0,:) = d(1,:,:,0)
       dFy(1,:,0,:) = G(1,:,0,:)*d(1,:,:,0)+G(0,:,0,:)*d(3,:,:,0)
@@ -713,7 +841,9 @@ contains
       dFy(4,:,0,:) =(0.5d0)*((G(1,:,0,:)**2.d0)+(G(2,:,0,:)**2.d0)+(G(3,:,0,:)**2.d0))*d(1,:,:,0)+&
                     d(2,:,:,0)/(gamma-1.d0)+(G(0,:,0,:)*G(1,:,0,:)*d(3,:,:,0))+&
           (G(0,:,0,:)*G(2,:,0,:)*d(4,:,:,0))+(G(0,:,0,:)*G(3,:,0,:)*d(5,:,:,0))
+    !$omp end parallel do
 
+    !$omp parallel do num_threads(5)
       !i=Nyの時の差し替えdFy
       dFy(0,:,Ny,:) = d(1,:,:,1)
       dFy(1,:,Ny,:) = (G(1,:,Ny,:)*d(1,:,:,1)) + (G(0,:,Ny,:)*d(3,:,:,1))
@@ -722,6 +852,8 @@ contains
       dFy(4,:,Ny,:) =(0.5d0)*((G(1,:,Ny,:)**2.d0)+(G(2,:,Ny,:)**2.d0)+(G(3,:,Ny,:)**2.d0))*d(1,:,:,1)+&
                   d(2,:,:,1)/(gamma-1.d0)+(G(0,:,Ny,:)*G(1,:,Ny,:)*d(3,:,:,1))+&
       (G(0,:,Ny,:)*G(2,:,Ny,:)*d(4,:,:,1))+(G(0,:,Ny,:)*G(3,:,Ny,:)*d(5,:,:,1))
+    !$omp end parallel do
+
       !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/3ずつ加える)
       ! dFy(:,0,0,:) = dFy(:,0,0,:) / 3.d0
       ! dFy(:,0,Ny,:) = dFy(:,0,Ny,:) / 3.d0
@@ -733,34 +865,40 @@ contains
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann_Nx(Q)
       double precision,allocatable,dimension(:,:,:,:):: Q
+      !$omp parallel do num_threads(5)
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
+      !$omp end parallel do
     endsubroutine Neumann_Nx
 
     !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
     subroutine Q_boundary(Q)
       double precision,allocatable,dimension(:,:,:,:):: Q
+      !$omp parallel do num_threads(5)
         Q(:,0,:,:) = Q(:,1,:,:)
         Q(:,:,0,:) = Q(:,:,1,:)
         Q(:,Nx,:,:) = Q(:,Nx-1,:,:)
         Q(:,:,Ny,:) = Q(:,:,Ny-1,:)
+      !$omp end parallel do
     endsubroutine Q_boundary
 
     subroutine inflow(Q,in_G)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:,:):: in_G
+      !$omp parallel do num_threads(5)
       !Z方向 k=8~10の部分にのみ矩型Jetを流入させる
-     Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
-     Q(1,0,:,:) = in_G(0,:,:)*in_G(1,:,:)!rho*u
-     Q(2,0,:,:) = in_G(0,:,:)*in_G(2,:,:)!rho*v
-     Q(3,0,:,:) = in_G(0,:,:)*in_G(3,:,:)!rho*w
-     Q(4,0,:,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                 +in_G(0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
+       Q(0,0,:,:) = in_G(0,:,:)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
+       Q(1,0,:,:) = in_G(0,:,:)*in_G(1,:,:)!rho*u
+       Q(2,0,:,:) = in_G(0,:,:)*in_G(2,:,:)!rho*v
+       Q(3,0,:,:) = in_G(0,:,:)*in_G(3,:,:)!rho*w
+       Q(4,0,:,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
+                   +in_G(0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
     !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
       ! Q(1,0,:,:) = Q(0,0,:,:)*in_G(1,:,:)!rho*u
       ! Q(2,0,:,:) = Q(0,0,:,:)*in_G(2,:,:)!rho*v
       ! Q(3,0,:,:) = Q(0,0,:,:)*in_G(3,:,:)!rho*w
       ! Q(4,0,:,:) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
       !             +Q(0,0,:,:)*(in_G(1,:,:)**2.d0+in_G(2,:,:)**2.d0+in_G(3,:,:)**2.d0)*0.5d0!Et
+      !$omp end parallel do
     endsubroutine inflow
     !NSCBC_x_Nxが不要ならoutflowも不要なので、outflowをxとyに分割する
     !矩型Jetなどを流入させるようになったら、部分的に必要なので、修正して適用する
@@ -771,30 +909,34 @@ contains
       !τ11=Vx(1),τ12=Vx(2),τ13=Vx(3)
       !τ21=Vy(1),τ22=Vy(2),τ23=Vy(3)
       !dτ12/dx,dτ13/dx,dτ21/dy,dτ23/dy,dq/dx,dq/dyの全てが0(境界のみ)
-      !x方向右側の条件設定
-      dVx(2,Nx,:,:) = 0.d0!dτ12/dx
-      dVx(3,Nx,:,:) = 0.d0!dτ13/dx
-      dVx(4,Nx,:,:) = dVx(1,Nx,:,:)*UVWT(1,Nx,:,:)+dUVWTx(1,Nx,:,:)*Vx(1,Nx,:,:)&
-                    +dUVWTx(2,Nx,:,:)*Vx(2,Nx,:,:)+dUVWTx(3,Nx,:,:)*Vx(3,Nx,:,:)
-      !dτ11/dx*u+τ11*du/dx+dτ12/dx(=0)*v+τ12*dv/dx+dτ13/dx(=0)*w+τ13*dw/dx+dq/dx(=0)
-      !=dτ11/dx*u+τ11*du/dx+τ12*dv/dx+τ13*dw/dx
+      !$omp parallel do num_threads(5)
+        !x方向右側の条件設定
+        dVx(2,Nx,:,:) = 0.d0!dτ12/dx
+        dVx(3,Nx,:,:) = 0.d0!dτ13/dx
+        dVx(4,Nx,:,:) = dVx(1,Nx,:,:)*UVWT(1,Nx,:,:)+dUVWTx(1,Nx,:,:)*Vx(1,Nx,:,:)&
+                      +dUVWTx(2,Nx,:,:)*Vx(2,Nx,:,:)+dUVWTx(3,Nx,:,:)*Vx(3,Nx,:,:)
+        !dτ11/dx*u+τ11*du/dx+dτ12/dx(=0)*v+τ12*dv/dx+dτ13/dx(=0)*w+τ13*dw/dx+dq/dx(=0)
+        !=dτ11/dx*u+τ11*du/dx+τ12*dv/dx+τ13*dw/dx
+      !$omp end parallel do
     endsubroutine outflow_x
     subroutine outflow_y(UVWT,dUVWTy,Vy,dVy)
       double precision,allocatable,dimension(:,:,:,:):: Vy,dUVWTy,UVWT,dVy
       !無反射流出条件の時の条件を設定するsubroutine
-      !y方向左側の条件設定
-      dVy(1,:,0,:) = 0.d0!dτ21/dy
-      dVy(3,:,0,:) = 0.d0!dτ23/dy
-      dVy(4,:,0,:) = dVy(2,:,0,:)*UVWT(2,:,0,:)+dUVWTy(1,:,0,:)*Vy(1,:,0,:)&
-                    +dUVWTy(2,:,0,:)*Vy(2,:,0,:)+dUVWTy(3,:,0,:)*Vy(3,:,0,:)
-      !dτ21/dy(=0)*u+τ21*du/dy+dτ22/dy*v+τ22*dv/dy+dτ23/dy(=0)*w+τ23*dw/dy+dq/dy(=0)
-      !τ21*du/dy+dτ22/dy*v+τ22*dv/dy+τ23*dw/dy
-      !y方向右側の条件設定
-      dVy(1,:,Ny,:) = 0.d0
-      dVy(3,:,Ny,:) = 0.d0
-      dVy(4,:,Ny,:) = dVy(2,:,Ny,:)*UVWT(2,:,Ny,:)+dUVWTy(1,:,Ny,:)*Vy(1,:,Ny,:)&
-                    +dUVWTy(2,:,Ny,:)*Vy(2,:,Ny,:)+dUVWTy(3,:,Ny,:)*Vy(3,:,Ny,:)
-      !dq/dy
+      !$omp parallel do num_threads(5)
+        !y方向左側の条件設定
+        dVy(1,:,0,:) = 0.d0!dτ21/dy
+        dVy(3,:,0,:) = 0.d0!dτ23/dy
+        dVy(4,:,0,:) = dVy(2,:,0,:)*UVWT(2,:,0,:)+dUVWTy(1,:,0,:)*Vy(1,:,0,:)&
+                      +dUVWTy(2,:,0,:)*Vy(2,:,0,:)+dUVWTy(3,:,0,:)*Vy(3,:,0,:)
+        !dτ21/dy(=0)*u+τ21*du/dy+dτ22/dy*v+τ22*dv/dy+dτ23/dy(=0)*w+τ23*dw/dy+dq/dy(=0)
+        !τ21*du/dy+dτ22/dy*v+τ22*dv/dy+τ23*dw/dy
+        !y方向右側の条件設定
+        dVy(1,:,Ny,:) = 0.d0
+        dVy(3,:,Ny,:) = 0.d0
+        dVy(4,:,Ny,:) = dVy(2,:,Ny,:)*UVWT(2,:,Ny,:)+dUVWTy(1,:,Ny,:)*Vy(1,:,Ny,:)&
+                      +dUVWTy(2,:,Ny,:)*Vy(2,:,Ny,:)+dUVWTy(3,:,Ny,:)*Vy(3,:,Ny,:)
+                      !dq/dy
+      !$omp end parallel do
     endsubroutine outflow_y
     !buffer領域の設定subroutine
     !x方向
@@ -807,18 +949,20 @@ contains
       double precision,allocatable,dimension(:):: zeta_fx
       double precision,parameter ::alpha_u=1.5d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
       Xmax = Lx;Xmin = 0.d0
-      do i = 0,Nx
-        x1 = zeta_fx(i)
-        !Uxは本来0:Nxの一次の配列で十分だが座標変換の際に他の配列と計算する際に配列が揃っていないと:で省略して計算できないので
-        !無駄に同じ値を入れて4次の配列にしている
-        Ux(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(x1-Xmax)/(-Wrx))&
-        -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(x1-Xmin)/Wlx))
-        if(x1<(Xmax-Wrx)) then
-          sigma_x(i) = 0.d0!流出部にのみBufferをつけるのでx左側もσは0となる
-        else
-          sigma_x(i) = alpha_sigma*c_infty*((x1-(Xmax-Wrx))/Wrx)**3.d0
-        endif
-      enddo
+      !$omp parallel do num_threads(5)
+        do i = 0,Nx
+          x1 = zeta_fx(i)
+          !Uxは本来0:Nxの一次の配列で十分だが座標変換の際に他の配列と計算する際に配列が揃っていないと:で省略して計算できないので
+          !無駄に同じ値を入れて4次の配列にしている
+          Ux(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(x1-Xmax)/(-Wrx))&
+          -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(x1-Xmin)/Wlx))
+          if(x1<(Xmax-Wrx)) then
+            sigma_x(i) = 0.d0!流出部にのみBufferをつけるのでx左側もσは0となる
+          else
+            sigma_x(i) = alpha_sigma*c_infty*((x1-(Xmax-Wrx))/Wrx)**3.d0
+          endif
+        enddo
+      !$omp end parallel do
        !dx不要かも？
      Ux(0:NUx) = 0.d0!x左側のBufferを取るためにWlxの範囲のUxを確実に0に設定している
      ! open(100,file="ux-check.csv")
@@ -837,18 +981,20 @@ contains
       double precision,parameter ::alpha_u=1.15d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
       Ymax = (Ly/2.d0);Ymin = -(Ly/2d0)
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
-      do i = 0,Ny
-        y1 = zeta_fy(i)
-        Uy(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(y1-Ymax)/(-Wry))&
-        -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(y1-Ymin)/Wly))
-        if(y1<(Wly+Ymin)) then
-          sigma_y(i) = alpha_sigma*c_infty*((-y1+Ymin+Wly)/Wly)**3.d0
-        elseif((y1>=(Wly+Ymin)).and.(y1<(Ymax-Wry))) then
-          sigma_y(i) = 0.d0
-        elseif(y1>=(Ymax-Wry)) then
-          sigma_y(i) = alpha_sigma*c_infty*((y1-(Ymax-Wry))/Wry)**3.d0
-        endif
-      enddo
+      !$omp parallel do num_threads(5)
+        do i = 0,Ny
+          y1 = zeta_fy(i)
+          Uy(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(y1-Ymax)/(-Wry))&
+          -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(y1-Ymin)/Wly))
+          if(y1<(Wly+Ymin)) then
+            sigma_y(i) = alpha_sigma*c_infty*((-y1+Ymin+Wly)/Wly)**3.d0
+          elseif((y1>=(Wly+Ymin)).and.(y1<(Ymax-Wry))) then
+            sigma_y(i) = 0.d0
+          elseif(y1>=(Ymax-Wry)) then
+            sigma_y(i) = alpha_sigma*c_infty*((y1-(Ymax-Wry))/Wry)**3.d0
+          endif
+        enddo
+      !$omp end parallel do
     endsubroutine buffer_y
     !ζ,dζ/dxの定義subroutine
     subroutine lattice_x(dx,zeta_fx,dzeta_inx)
@@ -861,13 +1007,15 @@ contains
       !widthは格子間隔を細かくする範囲。この式では-width<=x<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数。このパラメータは条件によって適宜調整する
-      do i= 0,Nx
-        x = dx*dble(i)
-       zeta_fx(i) = b1 * ((1.7d0*x) - a1 * &
-        (-dlog(dcosh(a2*(x - width))) + dlog(dcosh(a2*(x + width)))))
-        dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
-        (-dtanh(a2*(x - width)) + dtanh(a2*(x + width))))
-      enddo
+      !$omp parallel do num_threads(5)
+        do i= 0,Nx
+          x = dx*dble(i)
+         zeta_fx(i) = b1 * ((1.7d0*x) - a1 * &
+          (-dlog(dcosh(a2*(x - width))) + dlog(dcosh(a2*(x + width)))))
+          dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
+          (-dtanh(a2*(x - width)) + dtanh(a2*(x + width))))
+        enddo
+      !$omp end parallel do
       dzeta_inx = 1.d0/dzeta
       deallocate(dzeta)
     endsubroutine lattice_x
@@ -883,13 +1031,17 @@ contains
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
       Ymin = -(Ly/2.d0)
-      do i= 0,Ny
-        y = Ymin + dy*dble(i)
-        zeta_fy(i) = b1 * ((1.7d0*y) - a1 * &
-        (-dlog(dcosh(a2*(y - width))) + dlog(dcosh(a2*(y + width)))))
-        dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
-        (-dtanh(a2*(y - width)) + dtanh(a2*(y + width))))
-      enddo
+
+      !$omp parallel do num_threads(5)
+        do i= 0,Ny
+          y = Ymin + dy*dble(i)
+          zeta_fy(i) = b1 * ((1.7d0*y) - a1 * &
+          (-dlog(dcosh(a2*(y - width))) + dlog(dcosh(a2*(y + width)))))
+          dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
+          (-dtanh(a2*(y - width)) + dtanh(a2*(y + width))))
+        enddo
+      !$omp end parallel do
+
       dzeta_iny = 1.d0/dzeta
       deallocate(dzeta)
     endsubroutine lattice_y
@@ -898,17 +1050,21 @@ contains
       integer i
       double precision,allocatable,dimension(:):: dzeta_in
       double precision,allocatable,dimension(:,:,:,:):: dFzeta,dF
-      do i=0,Nx
-        dFzeta(:,i,:,:) = dF(:,i,:,:) * dzeta_in(i)
-      enddo
+      !$omp parallel do num_threads(5)
+        do i=0,Nx
+          dFzeta(:,i,:,:) = dF(:,i,:,:) * dzeta_in(i)
+        enddo
+      !$omp end parallel do
     endsubroutine combine_x
     subroutine combine_y(dzeta_in,dF,dFzeta)
       integer i
       double precision,allocatable,dimension(:):: dzeta_in
       double precision,allocatable,dimension(:,:,:,:):: dFzeta,dF
-      do i=0,Ny
-        dFzeta(:,:,i,:) = dF(:,:,i,:) * dzeta_in(i)
-      enddo
+      !$omp parallel do num_threads(5)
+        do i=0,Ny
+          dFzeta(:,:,i,:) = dF(:,:,i,:) * dzeta_in(i)
+        enddo
+      !$omp end parallel do
     endsubroutine combine_y
 end module threedim
 
@@ -1028,26 +1184,36 @@ end module threedim
     !初期条件もζ_yの座標系で設定する
     ur(Ny/2) = ujet
     Tu(Ny/2) = Tjet
-    do i = (Ny/2)+1,Ny
-      !Top-hat型の分布になるような式を設定
-      ur(i) = ujet/2.d0*(1.d0 - dtanh((12.5d0/4.d0)*((zeta_fy(i)/b)- (b/zeta_fy(i)))))
-      !Crocco-Busemanの関係式と主流速度分布を用いて温度分布Tuを設定
-      Tu(i) = Ma**2.d0*(gamma-1.d0)/2.d0*(ur(i)*ujet-ur(i)**2.d0)/ujet+&
-              Tjet*ur(i)/ujet+Temp*(ujet-ur(i))/ujet
-    enddo
+
+    !$omp parallel do num_threads(5)
+      do i = (Ny/2)+1,Ny
+        !Top-hat型の分布になるような式を設定
+        ur(i) = ujet/2.d0*(1.d0 - dtanh((12.5d0/4.d0)*((zeta_fy(i)/b)- (b/zeta_fy(i)))))
+        !Crocco-Busemanの関係式と主流速度分布を用いて温度分布Tuを設定
+        Tu(i) = Ma**2.d0*(gamma-1.d0)/2.d0*(ur(i)*ujet-ur(i)**2.d0)/ujet+&
+                Tjet*ur(i)/ujet+Temp*(ujet-ur(i))/ujet
+      enddo
+    !$omp end parallel do
+
     !初期分布をx軸対象になるようにする。
     !そのためにy軸正の範囲の値を負の範囲に軸対象になるようにコピーする
-    do i = 0,(Ny/2)-1
-      ur(i) = ur(Ny-i)
-      Tu(i) = Tu(Ny-i)
-    enddo
+    !=====並列化できるかもだが、ミスると怖いのでやめておく==================================
+      do i = 0,(Ny/2)-1
+        ur(i) = ur(Ny-i)
+        Tu(i) = Tu(Ny-i)
+      enddo
+    !=====並列化できるかもだが、ミスると怖いのでやめておく==================================
+
     !初期値
     !全体にまず初期値を入れてしまう
+    !$omp parallel do num_threads(5)
       G(0,:,:,:) = 1.d0!ρ
       G(1,:,:,:) = 0.d0!u
       G(2,:,:,:) = 0.d0!v
       G(3,:,:,:) = 0.d0!w
       G(4,:,:,:) = G(0,:,:,:)*Temp/((Ma**2.d0)*gamma)!p
+    !$omp end parallel do
+
       !Bufferの計算のための初期値を用いて無限遠方での音速を定義
       c_infty = sqrt(Temp/Ma**2.d0)
       !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
@@ -1055,20 +1221,24 @@ end module threedim
       call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
     !流入条件
     !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
-    do i =0,Nz-1
-      in_G(0,:,i) = 1.d0/Tu(:)!密度ρは理想気体状態方程式に従うから
-      in_G(1,:,i) = ur(:)! NSCBC流入条件で使う流入値のみを保存する配列
-      in_G(2,:,i) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
-      in_G(3,:,i) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
-    enddo
+    !$omp parallel do num_threads(5)
+      do i =0,Nz-1
+        in_G(0,:,i) = 1.d0/Tu(:)!密度ρは理想気体状態方程式に従うから
+        in_G(1,:,i) = ur(:)! NSCBC流入条件で使う流入値のみを保存する配列
+        in_G(2,:,i) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
+        in_G(3,:,i) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
+      enddo
+    !$omp end parallel do
+
 !      !Doループ内でin_G(2,:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
       !初期値の出力
       !まずt=0はループ外で個別に作成
       !もちろん出力もζ_y座標系とζ_x座標系で行う
+      !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_rapid_more/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -1079,7 +1249,9 @@ end module threedim
               enddo
               close(10)
            enddo
-!      open(20,file = "result_rapid_more/1pressure.d")
+       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
+
+!      open(20,file = "result_omp/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1114,11 +1286,13 @@ end module threedim
        !  !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
        theta = 2.d0*pi*dble(M)*dt
        !計算高速化
+       !$omp parallel do num_threads(5)
        do i = 0,Ny
          if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
            in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
          endif
        enddo
+       !$omp end parallel do
        !========================================================================
         !Q1
         !F行列のdfx/dxの計算
@@ -1134,9 +1308,12 @@ end module threedim
         call dif_z(msigma,dz,Fmz,zm,LUmz)
         !NSCBCの境界条件を適用させるためにQ1を求める前にdFを定義してその両端に境界条件を
         !適用しなければならない
-                dFx = xm + xp
-                dFy = ym + yp
-                dFz = zm + zp
+        !$omp parallel do num_threads(5)
+                dFx(:,:,:,:) = xm(:,:,:,:) + xp(:,:,:,:)
+                dFy(:,:,:,:) = ym(:,:,:,:) + yp(:,:,:,:)
+                dFz(:,:,:,:) = zm(:,:,:,:) + zp(:,:,:,:)
+        !$omp end parallel do
+
         !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
         !main program内で1/3にする
                 ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
@@ -1179,6 +1356,7 @@ end module threedim
         call dif_x(ccs_sigma,dx,Q,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,dy,Q,dQy,LUccsy,dzeta_iny)
        !計算して求めたdF,dVそしてBuffer領域の計算のための値などを組み合わせ、代入してdQ/dtを求める
+     !$omp parallel do num_threads(5)
        do k=0,Nz-1
         do i=0,Ny
           do j=0,Nx
@@ -1190,6 +1368,7 @@ end module threedim
           end do
         enddo
       enddo
+    !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
       call inflow(Q1,in_G)!dirichlet条件で流入部を固定
@@ -1215,9 +1394,12 @@ end module threedim
       call dif_z(msigma,dz,Fmz,zm,LUmz)
       !NSCBCの境界条件を適用させるためにQ1を求める前にdFを定義してその両端に境界条件を
       !適用しなければならない
-              dFx = xm + xp
-              dFy = ym + yp
-              dFz = zm + zp
+      !$omp parallel do num_threads(5)
+              dFx(:,:,:,:) = xm(:,:,:,:) + xp(:,:,:,:)
+              dFy(:,:,:,:) = ym(:,:,:,:) + yp(:,:,:,:)
+              dFz(:,:,:,:) = zm(:,:,:,:) + zp(:,:,:,:)
+      !$omp end parallel do
+
       !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
       !main program内で1/3にする
               ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
@@ -1255,6 +1437,7 @@ end module threedim
         !Buffer領域の計算
         call dif_x(ccs_sigma,dx,Q1,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,dy,Q1,dQy,LUccsy,dzeta_iny)
+      !$omp parallel do num_threads(5)
         do k=0,Nz-1
          do i=0,Ny
            do j=0,Nx
@@ -1267,6 +1450,8 @@ end module threedim
              end do
            enddo
          enddo
+       !$omp end parallel do
+
 !        call Q_boundary(Q2)
         call inflow(Q2,in_G)
         !==========
@@ -1290,9 +1475,12 @@ end module threedim
       call dif_z(msigma,dz,Fmz,zm,LUmz)
       !NSCBCの境界条件を適用させるためにQ2を求める前にdFを定義してその両端に境界条件を
       !適用しなければならない
-              dFx = xm + xp
-              dFy = ym + yp
-              dFz = zm + zp
+      !$omp parallel do num_threads(5)
+              dFx(:,:,:,:) = xm(:,:,:,:) + xp(:,:,:,:)
+              dFy(:,:,:,:) = ym(:,:,:,:) + yp(:,:,:,:)
+              dFz(:,:,:,:) = zm(:,:,:,:) + zp(:,:,:,:)
+      !$omp end parallel do
+
       !角処理の際にx,y方向はNSCBCのdFx,dFyが計算されているがz方向は周期で扱いが違うので
       !main program内で1/3にする
               ! dFz(:,0,0,:)   = dFz(:,0,0,:)  / 3.d0
@@ -1334,6 +1522,8 @@ end module threedim
         !Buffer領域の計算
         call dif_x(ccs_sigma,dx,Q2,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,dy,Q2,dQy,LUccsy,dzeta_iny)
+
+      !$omp parallel do num_threads(5)
         do k=0,Nz-1
          do i=0,Ny
            do j=0,Nx
@@ -1346,6 +1536,8 @@ end module threedim
              end do
            enddo
          enddo
+       !$omp end parallel do
+
 !        call Q_boundary(Qn)
         call inflow(Qn,in_G)
         !==========
@@ -1362,17 +1554,25 @@ end module threedim
          call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
          call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
          call dif_z(ccs_sigma,dz,G,dGz,LUccsz)
+
+         !$omp parallel do num_threads(5)
            omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
            omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
            omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
-           call rho_u_p(oldG,Q)
+         !$omp end parallel do
+
+         call rho_u_p(oldG,Q)
+         !$omp parallel do num_threads(5)
            dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt
+         !$omp end parallel do
+
            write(filename, '(i6.6)') M
            !Mの計算毎に出力ファイル名を変更して出力する
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
+      !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_rapid_more/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1385,8 +1585,10 @@ end module threedim
              enddo
              close(10)
            enddo
+     !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
          endif
         !計算が破綻している場合に計算を終了させるプログラム
+      !=======最初にNaNでなっている場所を特定したいので、並列化不可能======================
         do k = 0,Nz-1
             do j = 0,Ny
               do i = 0,Nx
@@ -1419,7 +1621,7 @@ end module threedim
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_rapid_more/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1439,6 +1641,8 @@ end module threedim
                 enddo
               enddo
           enddo
+      !=======最初にNaNでなっている場所を特定したいので、並列化不可能======================
+      
 !              Q = Q1!オイラー法の時間の更新
         !RK法の時間の更新
               Q = Qn
