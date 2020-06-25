@@ -112,10 +112,10 @@ contains
     Fy=0.d0
     Fz=0.d0
     !$omp parallel do
-    !F行列の設定(x方向)
       do k=0,Nz-1
          do i=0,Ny
            do j=0,Nx
+       !F行列の設定(x方向)
         Fx(0,j,i,k) = Q(1,j,i,k)
         Fx(1,j,i,k) = 1.d0/(2.d0*Q(0,j,i,k))*((3.d0-gamma)*(Q(1,j,i,k)**2.d0)+&
                     (1.d0-gamma)*(Q(2,j,i,k)**2.d0 + Q(3,j,i,k)**2.d0))+(gamma-1.d0)*Q(4,j,i,k)
@@ -124,47 +124,30 @@ contains
         Fx(4,j,i,k) = gamma * Q(1,j,i,k) * Q(4,j,i,k) / Q(0,j,i,k) &
                    &+ (1.d0- gamma)*Q(1,j,i,k)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0&
                    +Q(3,j,i,k)**2.d0)/(2.d0 * (Q(0,j,i,k)**2.d0))
+         !F行列の設定(y方向)
+         Fy(0,j,i,k) = Q(2,j,i,k)
+         Fy(1,j,i,k) = Q(2,j,i,k)*Q(1,j,i,k)/Q(0,j,i,k)
+         Fy(2,j,i,k) = 1.d0/(2.d0*Q(0,j,i,k))*((3.d0 - gamma)*(Q(2,j,i,k)**2.d0) + &
+                       &(1.d0 - gamma)*(Q(1,j,i,k)**2.d0+Q(3,j,i,k)**2.d0))+(gamma - 1.d0)*Q(4,j,i,k)
+         Fy(3,j,i,k) = Q(2,j,i,k)*Q(3,j,i,k)/Q(0,j,i,k)
+         Fy(4,j,i,k) = gamma * Q(2,j,i,k) * Q(4,j,i,k) / Q(0,j,i,k) &
+                   &+ (1.d0- gamma)*Q(2,j,i,k)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0&
+                   +Q(3,j,i,k)**2.d0)/(2.d0 * (Q(0,j,i,k)**2.d0))
+         !F行列の設定(z方向)
+         Fz(0,j,i,k) = Q(3,j,i,k)
+         Fz(1,j,i,k) = Q(3,j,i,k)*Q(1,j,i,k)/Q(0,j,i,k)
+         Fz(2,j,i,k) = Q(3,j,i,k)*Q(2,j,i,k)/Q(0,j,i,k)
+         Fz(3,j,i,k) = 1.d0/(2.d0*Q(0,j,i,k))*((3.d0 - gamma)*(Q(3,j,i,k)**2.d0) + &
+         &(1.d0 - gamma)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0))+(gamma - 1.d0)*Q(4,j,i,k)
+         Fz(4,j,i,k) = gamma * Q(3,j,i,k) * Q(4,j,i,k) / Q(0,j,i,k) &
+                   &+ (1.d0- gamma)*Q(3,j,i,k)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0&
+                   +Q(3,j,i,k)**2.d0)/(2.d0 * (Q(0,j,i,k)**2.d0))
            end do
          end do
        enddo
    !$omp end parallel do
 
-   !$omp parallel do
-    !F行列の設定(y方向)
-    do k=0,Nz-1
-       do i=0,Ny
-         do j=0,Nx
-      Fy(0,j,i,k) = Q(2,j,i,k)
-      Fy(1,j,i,k) = Q(2,j,i,k)*Q(1,j,i,k)/Q(0,j,i,k)
-      Fy(2,j,i,k) = 1.d0/(2.d0*Q(0,j,i,k))*((3.d0 - gamma)*(Q(2,j,i,k)**2.d0) + &
-                    &(1.d0 - gamma)*(Q(1,j,i,k)**2.d0+Q(3,j,i,k)**2.d0))+(gamma - 1.d0)*Q(4,j,i,k)
-      Fy(3,j,i,k) = Q(2,j,i,k)*Q(3,j,i,k)/Q(0,j,i,k)
-      Fy(4,j,i,k) = gamma * Q(2,j,i,k) * Q(4,j,i,k) / Q(0,j,i,k) &
-                &+ (1.d0- gamma)*Q(2,j,i,k)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0&
-                +Q(3,j,i,k)**2.d0)/(2.d0 * (Q(0,j,i,k)**2.d0))
-        end do
-      end do
-    enddo
-  !$omp end parallel do
-
-    !$omp parallel do
-      do k=0,Nz-1
-        do i=0,Ny
-          do j=0,Nx
-      !F行列の設定(z方向)
-      Fz(0,j,i,k) = Q(3,j,i,k)
-      Fz(1,j,i,k) = Q(3,j,i,k)*Q(1,j,i,k)/Q(0,j,i,k)
-      Fz(2,j,i,k) = Q(3,j,i,k)*Q(2,j,i,k)/Q(0,j,i,k)
-      Fz(3,j,i,k) = 1.d0/(2.d0*Q(0,j,i,k))*((3.d0 - gamma)*(Q(3,j,i,k)**2.d0) + &
-      &(1.d0 - gamma)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0))+(gamma - 1.d0)*Q(4,j,i,k)
-      Fz(4,j,i,k) = gamma * Q(3,j,i,k) * Q(4,j,i,k) / Q(0,j,i,k) &
-                &+ (1.d0- gamma)*Q(3,j,i,k)*(Q(1,j,i,k)**2.d0+Q(2,j,i,k)**2.d0&
-                +Q(3,j,i,k)**2.d0)/(2.d0 * (Q(0,j,i,k)**2.d0))
-          end do
-        end do
-      enddo
-    !$omp end parallel do
-
+   !=======Fp,FmはFを使用するので、分割して並列化======================================
     !求めたFを特製速度の正負によって分割する
     !Lax-Friedrichの流速分割を用いる
     !$omp parallel do
@@ -172,12 +155,12 @@ contains
            do i=0,Ny
              do j=0,Nx
                do l=0,4
-        Fpx(l,j,i,k) = (Fx(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
-        Fmx(l,j,i,k) = (Fx(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
-        Fpy(l,j,i,k) = (Fy(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
-        Fmy(l,j,i,k) = (Fy(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
-        Fpz(l,j,i,k) = (Fz(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
-        Fmz(l,j,i,k) = (Fz(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
+                Fpx(l,j,i,k) = (Fx(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
+                Fmx(l,j,i,k) = (Fx(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
+                Fpy(l,j,i,k) = (Fy(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
+                Fmy(l,j,i,k) = (Fy(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
+                Fpz(l,j,i,k) = (Fz(l,j,i,k) + zeta * Q(l,j,i,k)) * 0.5d0
+                Fmz(l,j,i,k) = (Fz(l,j,i,k) - zeta * Q(l,j,i,k)) * 0.5d0
             end do
           end do
         enddo
@@ -196,15 +179,25 @@ contains
         do k=0,Nz-1
            do i=0,Ny
              do j=0,Nx
-        UVWT(0,j,i,k) = 0.d0
+               !UVWTはcall前に毎回0クリアされているのでUVWT0=0の代入は二度手間
+        ! UVWT(0,j,i,k) = 0.d0
         UVWT(1,j,i,k) = Q(1,j,i,k) / Q(0,j,i,k)!u
         UVWT(2,j,i,k) = Q(2,j,i,k) / Q(0,j,i,k)!v
         UVWT(3,j,i,k) = Q(3,j,i,k) / Q(0,j,i,k)!w
         UVWT(4,j,i,k) = (Ma**2.d0)*(gamma * (gamma - 1.d0) * (Q(4,j,i,k) - (((Q(1,j,i,k) **2.d0)+ &
         &(Q(2,j,i,k) **2.d0)+(Q(3,j,i,k)**2.d0)) / (2.d0 * Q(0,j,i,k))))) / Q(0,j,i,k)!T
         !Tの値はMa^2*gamma*p/rhoこれは速度で無次元化したもの
-!V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
-!UVWTからTの値を代入することで計算を簡略化している
+            end do
+          end do
+        enddo
+      !$omp end parallel do
+!==myuの表記を簡略化するためにUVWT(4)を使用しているため、並列化不可。Doループが大きいので分割する==
+      !$omp parallel do
+        do k=0,Nz-1
+           do i=0,Ny
+             do j=0,Nx
+    !V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
+    !UVWTからTの値を代入することで計算を簡略化している
         myu(j,i,k) = (UVWT(4,j,i,k) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,j,i,k) + Sc)
             end do
           end do
@@ -213,7 +206,6 @@ contains
     end subroutine variable_setting
 
     subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
-      !粘性項の設定(x方向)
       !基礎式右辺をV行列として設定
       double precision,allocatable,dimension(:,:,:,:) :: Vx,Vy,Vz
       double precision,allocatable,dimension(:,:,:,:) :: dUVWTx,dUVWTy,dUVWTz,UVWT
@@ -223,47 +215,46 @@ contains
         do k=0,Nz-1
            do i=0,Ny
              do j=0,Nx
-        Vx(0,j,i,k) = 0.d0
+               !粘性項の設定(x方向)
+               !Vx,y,zはcallする前に0クリアされているので、V0に0を代入する作業は二度手間
+               !したがってコメントアウトしてしまう(削除するとわからなくなるから消さない)
+        ! Vx(0,j,i,k) = 0.d0
         Vx(1,j,i,k) = (2.d0*myu(j,i,k)/(3.d0*Re)) * (2.d0 * dUVWTx(1,j,i,k) - dUVWTy(2,j,i,k)-dUVWTz(3,j,i,k))
         Vx(2,j,i,k) = (myu(j,i,k) / Re) * (dUVWTx(2,j,i,k) + dUVWTy(1,j,i,k))
         Vx(3,j,i,k) = (myu(j,i,k) / Re) * (dUVWTx(3,j,i,k) + dUVWTz(1,j,i,k))
-        Vx(4,j,i,k) =Vx(1,j,i,k)*UVWT(1,j,i,k) + Vx(2,j,i,k)* UVWT(2,j,i,k)+ &
-                      Vx(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTx(4,j,i,k))&
-                      / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
-            end do
-          end do
-        enddo
-      !$omp end parallel do
 
-      !粘性項の設定(y方向)
-      !$omp parallel do
-        do k=0,Nz-1
-           do i=0,Ny
-             do j=0,Nx
-        Vy(0,j,i,k) = 0.d0
+                !粘性項の設定(y方向)
+        ! Vy(0,j,i,k) = 0.d0
         Vy(1,j,i,k) = (myu(j,i,k) / Re) * (dUVWTx(2,j,i,k) + dUVWTy(1,j,i,k))
         Vy(2,j,i,k) = (2.d0*myu(j,i,k)/(3.d0*Re))*(-dUVWTx(1,j,i,k) + 2.d0*dUVWTy(2,j,i,k)-dUVWTz(3,j,i,k))
         Vy(3,j,i,k) = (myu(j,i,k) / Re) * (dUVWTy(3,j,i,k) + dUVWTz(2,j,i,k))
-        Vy(4,j,i,k) = Vy(1,j,i,k)*UVWT(1,j,i,k) + Vy(2,j,i,k)* UVWT(2,j,i,k)+ &
-                      Vy(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTy(4,j,i,k))&
-                      / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+
+                !粘性項の設定(z方向)
+        ! Vz(0,j,i,k) = 0.d0
+        Vz(1,j,i,k) = (myu(j,i,k) / Re) * (dUVWTx(3,j,i,k) + dUVWTz(1,j,i,k))
+        Vz(2,j,i,k) = (myu(j,i,k) / Re) * (dUVWTy(3,j,i,k) + dUVWTz(2,j,i,k))
+        Vz(3,j,i,k) = (2.d0*myu(j,i,k)/(3.d0*Re))*(-dUVWTx(1,j,i,k) - dUVWTy(2,j,i,k)+2.d0*dUVWTz(3,j,i,k))
             end do
           end do
         enddo
       !$omp end parallel do
-
-      !粘性項の設定(z方向)
+      !====V4だけが唯一V1~V3を必要とし、並列化不可能&Doループが大きいので分割して並列化する====
       !$omp parallel do
         do k=0,Nz-1
            do i=0,Ny
              do j=0,Nx
-        Vz(0,j,i,k) = 0.d0
-        Vz(1,j,i,k) = (myu(j,i,k) / Re) * (dUVWTx(3,j,i,k) + dUVWTz(1,j,i,k))
-        Vz(2,j,i,k) = (myu(j,i,k) / Re) * (dUVWTy(3,j,i,k) + dUVWTz(2,j,i,k))
-        Vz(3,j,i,k) = (2.d0*myu(j,i,k)/(3.d0*Re))*(-dUVWTx(1,j,i,k) - dUVWTy(2,j,i,k)+2.d0*dUVWTz(3,j,i,k))
-        Vz(4,j,i,k) = Vz(1,j,i,k)*UVWT(1,j,i,k) + Vz(2,j,i,k)* UVWT(2,j,i,k)+ &
-                      Vz(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTz(4,j,i,k))&
-                      / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+               !V4_x
+               Vx(4,j,i,k) =Vx(1,j,i,k)*UVWT(1,j,i,k) + Vx(2,j,i,k)* UVWT(2,j,i,k)+ &
+                             Vx(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTx(4,j,i,k))&
+                             / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+              !V4_y
+               Vy(4,j,i,k) = Vy(1,j,i,k)*UVWT(1,j,i,k) + Vy(2,j,i,k)* UVWT(2,j,i,k)+ &
+                             Vy(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTy(4,j,i,k))&
+                             / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
+              !V4_z
+               Vz(4,j,i,k) = Vz(1,j,i,k)*UVWT(1,j,i,k) + Vz(2,j,i,k)* UVWT(2,j,i,k)+ &
+                             Vz(3,j,i,k)*UVWT(3,j,i,k)+((myu(j,i,k) * dUVWTz(4,j,i,k))&
+                             / ((gamma - 1.d0)*Re*Pr*(Ma ** 2.d0)))
             end do
           end do
         enddo
@@ -428,12 +419,13 @@ contains
       A(N-1,N-1) = 1.d0
     !LU分解
       !まずL,Uの初期値を設定
-      !===============Doループが増えるので、並列化しない===============================
+      !===============L(i,0)はU(0,0)を必要とするので、並列化しない(Doループが小さいから)====
       do i = 0,N-1
         U(0,i) = A(0,i)
         L(i,0) = A(i,0) / U(0,0)
         L(i,i) = 1.d0
       enddo
+      !===============並列化しない================================================
 
       !========並列化不可能=======================================================
       !Uは行ごとに、Lは列ごとに求めていく。
@@ -504,7 +496,7 @@ contains
   !DCS右辺の計算(RHS)サブルーチン
   !x方向
     subroutine dif_x(sigma,dx,Fx,dFzeta,LU,dzeta_inx)
-      integer i,k,l
+      integer i,j,k,l
       double precision,allocatable,dimension(:,:,:,:) :: Fx,dFzeta
       double precision,allocatable,dimension(:) :: dzeta_inx
       double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
@@ -522,61 +514,71 @@ contains
       D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_x=0.d0;y=0.d0;x=0.d0
       !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
       dxinv = 1.d0/dx
-        !片側DCSの右辺設定
+
       !$omp parallel do
         do k=0,Nz-1
            do i=0,Ny
              do l=0,4
+       !片側DCSの右辺設定
         RHS_x(l,0,i,k)=((-17.d0/6.d0)*Fx(l,0,i,k)+1.5d0*(Fx(l,1,i,k)+&
                         Fx(l,2,i,k))-Fx(l,3,i,k)/6.d0)*dxinv
         RHS_x(l,Nx,i,k)=((1.d0/6.d0)*Fx(l,Nx-3,i,k)-1.5d0*(Fx(l,Nx-2,i,k)+&
                         Fx(l,Nx-1,i,k))+(17.d0/6.d0)*Fx(l,Nx,i,k))*dxinv
-              end do
-          end do
-        enddo
-      !$omp end parallel do
 
         !3次精度DCSの右辺設定
-      !$omp parallel do
-        do k=0,Nz-1
-           do i=0,Ny
-             do l=0,4
         RHS_x(l,1,i,k)=((1.5d0)*(-Fx(l,0,i,k)+Fx(l,2,i,k))*0.5d0*dxinv)+sigma*&
                       ((Fx(l,0,i,k)-2.d0*Fx(l,1,i,k)+Fx(l,2,i,k))*(0.5d0*dxinv))
         RHS_x(l,Nx-1,i,k)=((1.5d0)*(-Fx(l,Nx-2,i,k)+Fx(l,Nx,i,k))*(0.5d0*dxinv))+&
                       sigma*((Fx(l,Nx-2,i,k)-2.d0*Fx(l,Nx-1,i,k)+Fx(l,Nx,i,k))*(0.5d0*dxinv))
-            end do
+              end do
           end do
         enddo
       !$omp end parallel do
 
          !5次精度DCSの右辺設定
       !$omp parallel do
-       do i = 2,Nx-2
-         D2(:,i,:,:) = (-Fx(:,i-1,:,:)+Fx(:,i+1,:,:)) * (0.5d0*dxinv)
-         D4(:,i,:,:) = (-Fx(:,i-2,:,:)+Fx(:,i+2,:,:)) * (0.25d0*dxinv)
-         !D6(:,i,:,:) = (-Fx(:,i-3,:,:)+Fx(:,i+3,:,:)) / (6.d0*dx)
+      do k=0,Nz-1
+       do i=0,Ny
+        do j=2,Nx-2
+          do l=0,4
+         D2(l,j,i,k) = (-Fx(l,j-1,i,k)+Fx(l,j+1,i,k)) * (0.5d0*dxinv)
+         D4(l,j,i,k) = (-Fx(l,j-2,i,k)+Fx(l,j+2,i,k)) * (0.25d0*dxinv)
+         !D6(l,j,i,k) = (-Fx(l,j-3,i,k)+Fx(l,j+3,i,k)) / (6.d0*dx)
          !7次精度DCS用のため不要
-         D6(:,i,:,:) = (Fx(:,i-1,:,:)+Fx(:,i+1,:,:)- 2.d0* Fx(:,i,:,:)) * dxinv
-         D8(:,i,:,:) = (Fx(:,i-2,:,:)+Fx(:,i+2,:,:)- 2.d0* Fx(:,i,:,:)) * (0.25d0*dxinv)
-         ! D12(:,i,:,:) = (Fx(:,i-3,:,:)+Fx(:,i+3,:,:)- 2.d0* Fx(:,i,:,:)) / (9.d0*dx)
+         D6(l,j,i,k) = (Fx(l,j-1,i,k)+Fx(l,j+1,i,k)- 2.d0* Fx(l,j,i,k)) * dxinv
+         D8(l,j,i,k) = (Fx(l,j-2,i,k)+Fx(l,j+2,i,k)- 2.d0* Fx(l,j,i,k)) * (0.25d0*dxinv)
+         ! D12(l,j,i,k) = (Fl(:,j-i,k,:)+Fl(:,j+i,k,:)- 2.d0* Fx(l,j,i,k)) / (9.d0*dx)
          !7次精度DCS用のため不要
-         RHS_x(:,i,:,:)=ra*D2(:,i,:,:)+rb*D4(:,i,:,:)+sigma*(da*D6(:,i,:,:)+db*D8(:,i,:,:))
+           end do
+         end do
+        end do
        enddo
      !$omp end parallel do
+     !==========RHSにはD2~D8が必要で、Doループが大きいので、分割して並列化する===============
+     !$omp parallel do
+     do k=0,Nz-1
+      do i=0,Ny
+       do j=2,Nx-2
+         do l=0,4
+        RHS_x(l,j,i,k)=ra*D2(l,j,i,k)+rb*D4(l,j,i,k)+sigma*(da*D6(l,j,i,k)+db*D8(l,j,i,k))
+         end do
+       end do
+      end do
+     enddo
+    !$omp end parallel do
 
      !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
      !前進代入法、後退代入法の計算サブルーチン(x方向)
             !前進代入
             y(:,0,:,:) = RHS_x(:,0,:,:)!例外の境界値
-            do i = 1,Nx!y(:,k)でk=0は上で定義したので残りの1〜Nxを定義する
-              y(:,i,:,:) = RHS_x(:,i,:,:) - LU(-1,i)*y(:,i-1,:,:)
+            do j = 1,Nx!y(:,k)でk=0は上で定義したので残りの1〜Nxを定義する
+              y(:,j,:,:) = RHS_x(:,j,:,:) - LU(-1,j)*y(:,j-1,:,:)
             enddo
             !後退代入
             x(:,Nx,:,:) = y(:,Nx,:,:) / LU(0,Nx)!例外の境界値
-            !x(:,i)でi=Nxは定義したので残りのi=0~Nx-1を定義する
-            do i = Nx-1, 0, -1!後退するので-1ずつ進む
-              x(:,i,:,:) = (y(:,i,:,:) - LU(1,i)*x(:,i+1,:,:)) / LU(0,i)
+            !x(:,j)でj=Nxは定義したので残りのj=0~Nx-1を定義する
+            do j = Nx-1, 0, -1!後退するので-1ずつ進む
+              x(:,j,:,:) = (y(:,j,:,:) - LU(1,j)*x(:,j+1,:,:)) / LU(0,j)
             enddo
      !============並列化不可能＝＝＝＝＝=＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝==＝＝＝=======
 
@@ -602,37 +604,55 @@ contains
        D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_y=0.d0;y=0.d0;x=0.d0
        dyinv = 1.d0 / dy
        !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
-         !片側DCSの右辺設定
        !$omp parallel do
          do k=0,Nz-1
           do j=0,Nx
             do l=0,4
+              !片側DCSの右辺設定
          RHS_y(l,j,0,k) = ((-17.d0/6.d0)*Fy(l,j,0,k)+(1.5d0)*Fy(l,j,1,k)+&
          (1.5d0)*Fy(l,j,2,k)-Fy(l,j,3,k)/6.d0)*dyinv
          RHS_y(l,j,Ny,k)=((1.d0/6.d0)*Fy(l,j,Ny-3,k)-(1.5d0)&
          &*Fy(l,j,Ny-2,k)-(1.5d0)*Fy(l,j,Ny-1,k)+(17.d0/6.d0)*Fy(l,j,Ny,k))*dyinv
+
          !3次精度DCSの右辺設定
          RHS_y(l,j,1,k)=((1.5d0)*(-Fy(l,j,0,k)+Fy(l,j,2,k))*(0.5d0*dyinv))+sigma*&
          ((Fy(l,j,0,k)-2.d0*Fy(l,j,1,k)+Fy(l,j,2,k))*(0.5d0*dyinv))
          RHS_y(l,j,Ny-1,k)=((1.5d0)*(-Fy(l,j,Ny-2,k)+Fy(l,j,Ny,k))*(0.5d0*dyinv))&
             +sigma*((Fy(l,j,Ny-2,k)-2.d0*Fy(l,j,Ny-1,k)+Fy(l,j,Ny,k))*(0.5d0*dyinv))
-          !5次精度DCSの右辺設定
               end do
             enddo
           enddo
         !$omp end parallel do
 
     !$omp parallel do
+    do k=0,Nz-1
       do i = 2,Ny-2
-        D2(:,:,i,:) = (-Fy(:,:,i-1,:)+Fy(:,:,i+1,:)) * (0.5d0*dyinv)
-        D4(:,:,i,:) = (-Fy(:,:,i-2,:)+Fy(:,:,i+2,:)) * (0.25d0*dyinv)
-        !D6(:,:,i,:) = (-Fy(:,:,i-3,:)+Fy(:,:,i+3,:)) / (6.d0*dy)
+        do j=0,Nx
+          do l=0,4
+        !5次精度DCSの右辺設定
+        D2(l,j,i,k) = (-Fy(l,j,i-1,k)+Fy(l,j,i+1,k)) * (0.5d0*dyinv)
+        D4(l,j,i,k) = (-Fy(l,j,i-2,k)+Fy(l,j,i+2,k)) * (0.25d0*dyinv)
+        !D6(l,j,i,k) = (-Fy(l,j,i-3,k)+Fy(l,j,i+3,k)) / (6.d0*dy)
         !7次精度DCS用のため不要
-        D6(:,:,i,:) = (Fy(:,:,i-1,:)+Fy(:,:,i+1,:)- 2.d0* Fy(:,:,i,:)) * dyinv
-        D8(:,:,i,:) = (Fy(:,:,i-2,:)+Fy(:,:,i+2,:)- 2.d0* Fy(:,:,i,:)) * (0.25d0*dyinv)
-        ! D12(:,:,i,:) = (Fy(:,:,i-3,:)+Fy(:,:,i+3,:)- 2.d0* Fy(:,:,i,:)) / (9.d0*dy)
+        D6(l,j,i,k) = (Fy(l,j,i-1,k)+Fy(l,j,i+1,k)- 2.d0* Fy(l,j,i,k)) * dyinv
+        D8(l,j,i,k) = (Fy(l,j,i-2,k)+Fy(l,j,i+2,k)- 2.d0* Fy(l,j,i,k)) * (0.25d0*dyinv)
+        ! D12(l,j,i,k) = (Fy(l,j,i-3,k)+Fy(l,j,i+3,k)- 2.d0* Fy(l,j,i,k)) / (9.d0*dy)
         !7次精度DCS用のため不要
-        RHS_y(:,:,i,:)=ra*D2(:,:,i,:)+rb*D4(:,:,i,:)+sigma*(da*D6(:,:,i,:)+db*D8(:,:,i,:))
+          end do
+        end do
+      enddo
+    enddo
+    !$omp end parallel do
+    !==========RHSにはD2~D8が必要で、Doループが大きいので、分割して並列化する===============
+    !$omp parallel do
+      do k=0,Nz-1
+        do i = 2,Ny-2
+          do j=0,Nx
+            do l=0,4
+        RHS_y(l,j,i,k)=ra*D2(l,j,i,k)+rb*D4(l,j,i,k)+sigma*(da*D6(l,j,i,k)+db*D8(l,j,i,k))
+            end do
+          end do
+        enddo
       enddo
     !$omp end parallel do
 
@@ -640,7 +660,7 @@ contains
       !前進代入法、後退代入法の計算サブルーチン(y方向)
         !前進代入
         y(:,:,0,:) = RHS_y(:,:,0,:)
-        do i = 1,Ny!y(:,:,i)でi=0は上で定義したので残りの1〜Nyを定義する
+        do i = 1,Ny!y(:,:,i,:)でi=0は上で定義したので残りの1〜Nyを定義する
           y(:,:,i,:) = RHS_y(:,:,i,:) - LU(-1,i)*y(:,:,i-1,:)
         enddo
         !後退代入
@@ -656,7 +676,7 @@ contains
        end subroutine dif_y
 
        subroutine dif_z(sigma,dz,Fz,x,LU)
-         integer i,j,r,k,l
+         integer i,j,k,l
          double precision,allocatable,dimension(:,:,:,:):: Fz,x
          double precision,allocatable,dimension(:,:,:,:):: D2,D4,D6,D8
          double precision,allocatable,dimension(:,:,:,:):: y,RHS_z
@@ -686,57 +706,66 @@ contains
                           rb*dzinv*((-Fz(l,j,i,Nz-1)+Fz(l,j,i,3))*0.25d0)+&
                           sigma*dzinv*(da*(Fz(l,j,i,0)+Fz(l,j,i,2)-2.d0*Fz(l,j,i,1))+&
                           db*((Fz(l,j,i,Nz-1)+Fz(l,j,i,3)-2.d0*Fz(l,j,i,1))*0.25d0))
+
+          RHS_z(l,j,i,Nz-2) =  ra*dzinv*((-Fz(l,j,i,Nz-3)+Fz(l,j,i,Nz-1))*0.5d0)+&
+                          rb*dzinv*((-Fz(l,j,i,Nz-4)+Fz(l,j,i,0))*0.25d0)+&
+                          sigma*dzinv*(da*(Fz(l,j,i,Nz-3)+Fz(l,j,i,Nz-1)-2.d0*Fz(l,j,i,Nz-2))+&
+                          db*((Fz(l,j,i,Nz-4)+Fz(l,j,i,0)-2.d0*Fz(l,j,i,Nz-2))*0.25d0))
+
+          RHS_z(l,j,i,Nz-1) =  ra*dzinv*((-Fz(l,j,i,Nz-2)+Fz(l,j,i,0))*0.5d0)+&
+                          rb*dzinv*((-Fz(l,j,i,Nz-3)+Fz(l,j,i,1))*0.25d0)+&
+                          sigma*dzinv*(da*(Fz(l,j,i,Nz-2)+Fz(l,j,i,0)-2.d0*Fz(l,j,i,Nz-1))+&
+                          db*((Fz(l,j,i,Nz-3)+Fz(l,j,i,1)-2.d0*Fz(l,j,i,Nz-1))*0.25d0))
                 end do
               enddo
             enddo
           !$omp end parallel do
 
           !$omp parallel do
-           do i = 2,Nz-3
-             D2(:,:,:,i) = (-Fz(:,:,:,i-1)+Fz(:,:,:,i+1)) * (0.5d0*dzinv)
-             D4(:,:,:,i) = (-Fz(:,:,:,i-2)+Fz(:,:,:,i+2)) * (0.25d0*dzinv)
+           do k = 2,Nz-3
+            do i=0,Ny
+              do j=0,Nx
+                do l=0,4
+             D2(l,j,i,k) = (-Fz(l,j,i,k-1)+Fz(l,j,i,k+1)) * (0.5d0*dzinv)
+             D4(l,j,i,k) = (-Fz(l,j,i,k-2)+Fz(l,j,i,k+2)) * (0.25d0*dzinv)
 
-             D6(:,:,:,i) = (Fz(:,:,:,i-1)+Fz(:,:,:,i+1)- 2.d0* Fz(:,:,:,i)) * dzinv
-             D8(:,:,:,i) = (Fz(:,:,:,i-2)+Fz(:,:,:,i+2)- 2.d0* Fz(:,:,:,i)) * (0.25d0*dzinv)
-           RHS_z(:,:,:,i)=ra*D2(:,:,:,i)+rb*D4(:,:,:,i)+sigma*(da*D6(:,:,:,i)+db*D8(:,:,:,i))
+             D6(l,j,i,k) = (Fz(l,j,i,k-1)+Fz(l,j,i,k+1)- 2.d0* Fz(l,j,i,k)) * dzinv
+             D8(l,j,i,k) = (Fz(l,j,i,k-2)+Fz(l,j,i,k+2)- 2.d0* Fz(l,j,i,k)) * (0.25d0*dzinv)
+                end do
+              end do
+            end do
            enddo
          !$omp end parallel do
-
+         !==========RHSにはD2~D8が必要で、Doループが大きいので、分割して並列化する
          !$omp parallel do
+         do k = 2,Nz-3
            do i=0,Ny
-             do j=0,Nx
-               do l=0,4
-           RHS_z(l,j,i,Nz-2) =  ra*dzinv*((-Fz(l,j,i,Nz-3)+Fz(l,j,i,Nz-1))*0.5d0)+&
-                           rb*dzinv*((-Fz(l,j,i,Nz-4)+Fz(l,j,i,0))*0.25d0)+&
-                           sigma*dzinv*(da*(Fz(l,j,i,Nz-3)+Fz(l,j,i,Nz-1)-2.d0*Fz(l,j,i,Nz-2))+&
-                           db*((Fz(l,j,i,Nz-4)+Fz(l,j,i,0)-2.d0*Fz(l,j,i,Nz-2))*0.25d0))
-
-           RHS_z(l,j,i,Nz-1) =  ra*dzinv*((-Fz(l,j,i,Nz-2)+Fz(l,j,i,0))*0.5d0)+&
-                           rb*dzinv*((-Fz(l,j,i,Nz-3)+Fz(l,j,i,1))*0.25d0)+&
-                           sigma*dzinv*(da*(Fz(l,j,i,Nz-2)+Fz(l,j,i,0)-2.d0*Fz(l,j,i,Nz-1))+&
-                           db*((Fz(l,j,i,Nz-3)+Fz(l,j,i,1)-2.d0*Fz(l,j,i,Nz-1))*0.25d0))
-               end do
-             enddo
-           enddo
+            do j=0,Nx
+              do l=0,4
+            RHS_z(l,j,i,k)=ra*D2(l,j,i,k)+rb*D4(l,j,i,k)+sigma*(da*D6(l,j,i,k)+db*D8(l,j,i,k))
+              end do
+            end do
+           end do
+         enddo
          !$omp end parallel do
 
     !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
            !前進代入法、後退代入法の計算サブルーチン(x方向)
               !前進代入
               y(:,:,:,0) = RHS_z(:,:,:,0)!例外の境界値
-              do i = 1,Nz-2!y(:,k)でk=0は上で定義したので残りの1〜Nz-2を定義する
+              do k = 1,Nz-2!y(:,k)でk=0は上で定義したので残りの1〜Nz-2を定義する
                 !これはfill-inのない通常部分
-                y(:,:,:,i) = RHS_z(:,:,:,i) - LU(-1,i)*y(:,:,:,i-1)
+                y(:,:,:,k) = RHS_z(:,:,:,k) - LU(-1,k)*y(:,:,:,k-1)
               enddo
               !Fill-in部はΣの計算が必要になるので追加 Lの最後の行i=Nz-1のみ別で計算
-              do k= 0,Ny
-                do r = 0,Nx
-                  do j= 0,4
+              do i= 0,Ny
+                do j = 0,Nx
+                  do l= 0,4
                     Lsum = 0.d0
-                    do i = 0,Nz-3
-                      Lsum = Lsum +LU(2,i)*y(j,r,k,i)
+                    do k = 0,Nz-3
+                      Lsum = Lsum +LU(2,k)*y(l,j,i,k)
                     enddo
-                      y(j,r,k,Nz-1) = RHS_z(j,r,k,Nz-1) - LU(-1,Nz-1)*y(j,r,k,Nz-2)-Lsum
+                      y(l,j,i,Nz-1) = RHS_z(l,j,i,Nz-1) - LU(-1,Nz-1)*y(l,j,i,Nz-2)-Lsum
                   enddo
                 enddo
               enddo
@@ -745,8 +774,8 @@ contains
               !fill-inの計算の範囲外なので別で計算
               x(:,:,:,Nz-2) = (y(:,:,:,Nz-2) -LU(1,Nz-2)*x(:,:,:,Nz-1))/ LU(0,Nz-2)
               !x(:,i)でi=Nxは定義したので残りのi=0~Nx-1を定義する
-              do i = Nz-3, 0, -1!後退するので-1ずつ進む
-                x(:,:,:,i) = (y(:,:,:,i) - LU(1,i)*x(:,:,:,i+1)-LU(-2,i)*x(:,:,:,Nz-1)) / LU(0,i)
+              do k = Nz-3, 0, -1!後退するので-1ずつ進む
+                x(:,:,:,k) = (y(:,:,:,k) - LU(1,k)*x(:,:,:,k+1)-LU(-2,k)*x(:,:,:,Nz-1)) / LU(0,k)
               enddo
     !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
 
@@ -771,7 +800,7 @@ contains
 
       L0=0.d0;d0=0.d0;c_NS=0.d0;Ma_NS=0.d0
 
-    !$omp parallel do
+    !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
       do k = 0,Nz-1
         do i = 0,Ny
           !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
@@ -780,7 +809,7 @@ contains
           Ma_NS(i,k) = G(1,0,i,k) / c_NS(i,k)!uを使う
         end do
       end do
-    !$omp end parallel do
+    !========並列化しない==========================================================
 
     !============L0(2)は同時並列化できないので、並列化をしない===========================
       do k = 0,Nz-1
@@ -854,7 +883,7 @@ contains
       allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
       LNx=0.d0;dNx=0.d0;c_NS=0.d0;Ma_NS=0.d0
 
-    !$omp parallel do
+    !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
       do k = 0,Nz-1
         do i = 0,Ny
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
@@ -863,7 +892,7 @@ contains
       Ma_NS(i,k) = G(1,Nx,i,k) / c_NS(i,k)
         end do
       end do
-    !$omp end parallel do
+    !========並列化しない＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝=＝＝＝＝＝＝＝＝＝
 
     !$omp parallel do
       do k = 0,Nz-1
@@ -934,7 +963,8 @@ contains
 
       L0=0.d0;d0=0.d0;c_NS0=0.d0;Ma_NS0=0.d0
       L1=0.d0;d1=0.d0;c_NS1=0.d0;Ma_NS1=0.d0
-    !$omp parallel do
+
+    !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
       do k=0,Nz-1
         do j=0,Nx
       !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
@@ -945,7 +975,7 @@ contains
       Ma_NS1(j,k) = G(2,j,Ny,k) / c_NS1(j,k)
         end do
       end do
-    !$omp end parallel do
+    !========並列化しない＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 
     !$omp parallel do
       do k=0,Nz-1
@@ -1166,10 +1196,9 @@ contains
       Xmax = Lx;Xmin = 0.d0
       !$omp parallel do
         do i = 0,Nx
-          !Uxは本来0:Nxの一次の配列で十分だが座標変換の際に他の配列と計算する際に配列が揃っていないと:で省略して計算できないので
-          !無駄に同じ値を入れて4次の配列にしている
           Ux(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(zeta_fx(i)-Xmax)/(-Wrx))&
           -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(zeta_fx(i)-Xmin)/Wlx))
+
           if(zeta_fx(i)<(Xmax-Wrx)) then
             sigma_x(i) = 0.d0!流出部にのみBufferをつけるのでx左側もσは0となる
           else
@@ -1199,6 +1228,7 @@ contains
         do i = 0,Ny
           Uy(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(zeta_fy(i)-Ymax)/(-Wry))&
           -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(zeta_fy(i)-Ymin)/Wly))
+
           if(zeta_fy(i)<(Wly+Ymin)) then
             sigma_y(i) = alpha_sigma*c_infty*((-zeta_fy(i)+Ymin+Wly)/Wly)**3.d0
           elseif((zeta_fy(i)>=(Wly+Ymin)).and.(zeta_fy(i)<(Ymax-Wry))) then
@@ -1261,23 +1291,35 @@ contains
     endsubroutine lattice_y
     !作成したdx/dζをdF/dyなどに掛けて微分変換を行うsubroutine
     subroutine combine_x(dzeta_in,dF,dFzeta)
-      integer i
+      integer i,j,k,l
       double precision,allocatable,dimension(:):: dzeta_in
       double precision,allocatable,dimension(:,:,:,:):: dFzeta,dF
       !$omp parallel do
-        do i=0,Nx
-          dFzeta(:,i,:,:) = dF(:,i,:,:) * dzeta_in(i)
-        enddo
+      do k=0,Nz-1
+       do i=0,Ny
+         do j=0,Nx
+           do l=0,4
+             dFzeta(l,j,i,k) = dF(l,j,i,k) * dzeta_in(j)
+           enddo
+         end do
+       end do
+      end do
       !$omp end parallel do
     endsubroutine combine_x
     subroutine combine_y(dzeta_in,dF,dFzeta)
-      integer i
+      integer i,j,k,l
       double precision,allocatable,dimension(:):: dzeta_in
       double precision,allocatable,dimension(:,:,:,:):: dFzeta,dF
       !$omp parallel do
-        do i=0,Ny
-          dFzeta(:,:,i,:) = dF(:,:,i,:) * dzeta_in(i)
-        enddo
+      do k=0,Nz-1
+       do i=0,Ny
+         do j=0,Nx
+           do l=0,4
+             dFzeta(l,j,i,k) = dF(l,j,i,k) * dzeta_in(i)
+           enddo
+         end do
+       end do
+      end do
       !$omp end parallel do
     endsubroutine combine_y
 end module threedim
@@ -1399,7 +1441,8 @@ end module threedim
     ur(Ny/2) = ujet
     Tu(Ny/2) = Tjet
 
-    !=Tuを求めるのにurが必要なため1つのDoループで並列化不可能。ここはDoループが小さいので、並列化しない=
+    !========並列化しない=========================================================
+    !Tuを求めるのにurが必要なため1つのDoループで並列化不可能。ここはDoループが小さいので、並列化しない
       do i = (Ny/2)+1,Ny
         !Top-hat型の分布になるような式を設定
         ur(i) = ujet/2.d0*(1.d0 - dtanh((12.5d0/4.d0)*((zeta_fy(i)/b)- (b/zeta_fy(i)))))

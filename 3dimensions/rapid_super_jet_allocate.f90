@@ -35,7 +35,7 @@
 !NSCBCの流出条件を適用する際のdVの置換もx,yで異なり、今はNSCBC_x_Nxを適用していないので、分割後y方向のみ適用
 !variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
 !使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
-!2020.06.24 2次元での計算結果と同じになるかどうかを確かめてみる。
+!2020.06.24 2次元での計算結果と同じになるかどうかを確かめてみる。>ならない！！！
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -809,8 +809,6 @@ contains
       Xmax = Lx;Xmin = 0.d0
       do i = 0,Nx
         x1 = zeta_fx(i)
-        !Uxは本来0:Nxの一次の配列で十分だが座標変換の際に他の配列と計算する際に配列が揃っていないと:で省略して計算できないので
-        !無駄に同じ値を入れて4次の配列にしている
         Ux(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(x1-Xmax)/(-Wrx))&
         -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(x1-Xmin)/Wlx))
         if(x1<(Xmax-Wrx)) then
