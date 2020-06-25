@@ -45,11 +45,11 @@ module threedim
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
   double precision,parameter :: dt = 2.d-3
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
+  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
