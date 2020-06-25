@@ -303,7 +303,6 @@ contains
       allocate(A(0:N,0:N),L(0:N,0:N),U(0:N,0:N))
       A=0.d0;L=0.d0;U=0.d0!Nx,Nyで同じsubroutineを用いているため0クリアが必要
       LU=0.d0
-      call system_clock(t0)
       !非周期条件よりi=0,Nでは片側DCS、i=1,N-1では3次精度DCSを用いる
       !その他の箇所は5次精度DCSを使う(sigmaを0にすれば6次CCSとなる)
       !0行目 片側DCS
@@ -393,14 +392,6 @@ contains
       enddo
       !$omp end parallel do
       deallocate(A,L,U)
-      ! open(999, file="LU_o.csv")
-      !   do i=0,N
-      !     write(999,*) LU(-1,i),",",LU(0,i),",",LU(1,i)
-      !   end do
-      ! close(999)
-      ! call system_clock(t1,tr)
-      ! write(*,'(f10.3,A)')10000*(t1-t0)/dble(tr),"[s]"
-      ! stop
     endsubroutine LU_DecompoNonP
 
     !z方向用の周期条件で計算するA,L,Uの設定subroutine
@@ -437,13 +428,12 @@ contains
       A(N-1,N-1) = 1.d0
     !LU分解
       !まずL,Uの初期値を設定
-      !$omp parallel do
+      !===============Doループが増えるので、並列化しない===============================
       do i = 0,N-1
         U(0,i) = A(0,i)
         L(i,0) = A(i,0) / U(0,0)
         L(i,i) = 1.d0
       enddo
-      !$omp end parallel do
 
       !========並列化不可能=======================================================
       !Uは行ごとに、Lは列ごとに求めていく。
@@ -774,7 +764,7 @@ contains
       double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
       double precision,allocatable,dimension(:,:,:):: L0,d0
       double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
-      integer i,k,l!!!lとLがかぶってる！！
+      integer i,k,l
       ! double precision p0x_infty
       allocate(L0(1:5,0:Ny,0:Nz-1),d0(1:5,0:Ny,0:Nz-1))
       allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
@@ -792,7 +782,7 @@ contains
       end do
     !$omp end parallel do
 
-    !$omp parallel do
+    !============L0(2)は同時並列化できないので、並列化をしない===========================
       do k = 0,Nz-1
         do i = 0,Ny
       !x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
@@ -807,7 +797,7 @@ contains
       L0(2,i,k)=(0.5d0)*(gamma-1.d0)*(L0(5,i,k)+L0(1,i,k))!+G(0,0,i,k)*c_NS(i,k)**2.d0/T*dT/dtが本来はあるが
         end do
       end do
-    !$omp end parallel do
+    !============L0(2)は同時並列化できないので、並列化をしない===========================
 
       !$omp parallel do
         do k = 0,Nz-1
@@ -1092,25 +1082,25 @@ contains
       !$omp end parallel do
     endsubroutine Q_boundary
 
-    subroutine inflow(Q,in_G)
+    subroutine inflow(Q,in_G0,in_G1,in_G2,in_G3)
       double precision,allocatable,dimension(:,:,:,:):: Q
-      double precision,allocatable,dimension(:,:,:):: in_G
+      double precision,allocatable,dimension(:,:):: in_G0,in_G1,in_G2,in_G3
       integer i,k
       !$omp parallel do
         do k=0,Nz-1
           do i=0,Ny
-       Q(0,0,i,k) = in_G(0,i,k)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
-       Q(1,0,i,k) = in_G(0,i,k)*in_G(1,i,k)!rho*u
-       Q(2,0,i,k) = in_G(0,i,k)*in_G(2,i,k)!rho*v
-       Q(3,0,i,k) = in_G(0,i,k)*in_G(3,i,k)!rho*w
+       Q(0,0,i,k) = in_G0(i,k)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
+       Q(1,0,i,k) = in_G0(i,k)*in_G1(i,k)!rho*u
+       Q(2,0,i,k) = in_G0(i,k)*in_G2(i,k)!rho*v
+       Q(3,0,i,k) = in_G0(i,k)*in_G3(i,k)!rho*w
        Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                   +in_G(0,i,k)*(in_G(1,i,k)**2.d0+in_G(2,i,k)**2.d0+in_G(3,i,k)**2.d0)*0.5d0!Et
+                   +in_G0(i,k)*(in_G1(i,k)**2.d0+in_G2(i,k)**2.d0+in_G3(i,k)**2.d0)*0.5d0!Et
     !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
-      ! Q(1,0,i,k) = Q(0,0,i,k)*in_G(1,i,k)!rho*u
-      ! Q(2,0,i,k) = Q(0,0,i,k)*in_G(2,i,k)!rho*v
-      ! Q(3,0,i,k) = Q(0,0,i,k)*in_G(3,i,k)!rho*w
+      ! Q(1,0,i,k) = Q(0,0,i,k)*in_G1(i,k)!rho*u
+      ! Q(2,0,i,k) = Q(0,0,i,k)*in_G2(i,k)!rho*v
+      ! Q(3,0,i,k) = Q(0,0,i,k)*in_G3(i,k)!rho*w
       ! Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-      !             +Q(0,0,i,k)*(in_G(1,i,k)**2.d0+in_G(2,i,k)**2.d0+in_G(3,i,k)**2.d0)*0.5d0!Et
+      !             +Q(0,0,i,k)*(in_G1(i,k)**2.d0+in_G2(i,k)**2.d0+in_G3(i,k)**2.d0)*0.5d0!Et
           enddo
         end do
       !$omp end parallel do
@@ -1222,60 +1212,52 @@ contains
     !ζ,dζ/dxの定義subroutine
     subroutine lattice_x(dx,zeta_fx,dzeta_inx)
       integer i
-      double precision,allocatable,dimension(:):: zeta_fx,x
+      double precision,allocatable,dimension(:):: zeta_fx
       double precision,allocatable,dimension(:):: dzeta,dzeta_inx
       double precision dx,width,a1,a2,b1
-      allocate(dzeta(0:Nx),x(0:Nx))
+      allocate(dzeta(0:Nx))
       dzeta=0.d0;width=10.8d0;a1=1d0/14d0;a2=7.d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=x<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数。このパラメータは条件によって適宜調整する
-      !$omp parallel do
-        do i=0,Nx
-          x(i) = dx*dble(i)
-        enddo
-      !$omp end parallel do
 
+      !並列化するために、xの座標をzeta_fxやdzetaの式の中に組み込んだ
       !$omp parallel do
         do i= 0,Nx
-         zeta_fx(i) = b1 * ((1.7d0*x(i)) - a1 * &
-          (-dlog(dcosh(a2*(x(i) - width))) + dlog(dcosh(a2*(x(i) + width)))))
+         zeta_fx(i) = b1 * ((1.7d0*(dx*dble(i))) - a1 * &
+          (-dlog(dcosh(a2*((dx*dble(i)) - width))) + dlog(dcosh(a2*((dx*dble(i)) + width)))))
           dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
-          (-dtanh(a2*(x(i) - width)) + dtanh(a2*(x(i) + width))))
+          (-dtanh(a2*((dx*dble(i)) - width)) + dtanh(a2*((dx*dble(i)) + width))))
         enddo
       !$omp end parallel do
       dzeta_inx = 1.d0/dzeta
-      deallocate(dzeta,x)
+      deallocate(dzeta)
     endsubroutine lattice_x
     !ζ,dζ/dyの定義subroutine
     subroutine lattice_y(dy,zeta_fy,dzeta_iny)
       integer i
-      double precision,allocatable,dimension(:):: zeta_fy,y
+      double precision,allocatable,dimension(:):: zeta_fy
       double precision,allocatable,dimension(:):: dzeta,dzeta_iny
       double precision dy,width,a1,a2,b1,Ymin
-      allocate(dzeta(0:Ny),y(0:Ny))
+      allocate(dzeta(0:Ny))
       dzeta=0.d0;width=3.d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=y<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
       Ymin = -(Ly/2.d0)
-      !$omp parallel do
-        do i=0,Ny
-          y(i) = Ymin + dy*dble(i)
-        enddo
-      !$omp end parallel do
 
+      !並列化するために、yの座標をzeta_fyやdzetaの式の中に組み込んだ
       !$omp parallel do
         do i= 0,Ny
-          zeta_fy(i) = b1 * ((1.7d0*y(i)) - a1 * &
-        (-dlog(dcosh(a2*(y(i) - width))) + dlog(dcosh(a2*(y(i) + width)))))
+          zeta_fy(i) = b1 * ((1.7d0*(Ymin + dy*dble(i))) - a1 * &
+        (-dlog(dcosh(a2*((Ymin + dy*dble(i)) - width))) + dlog(dcosh(a2*((Ymin + dy*dble(i)) + width)))))
         dzeta(i) = b1 * (1.7d0 - (a1*a2) * &
-        (-dtanh(a2*(y(i) - width)) + dtanh(a2*(y(i) + width))))
+        (-dtanh(a2*((Ymin + dy*dble(i)) - width)) + dtanh(a2*((Ymin + dy*dble(i)) + width))))
         enddo
       !$omp end parallel do
 
       dzeta_iny = 1.d0/dzeta
-      deallocate(dzeta,y)
+      deallocate(dzeta)
     endsubroutine lattice_y
     !作成したdx/dζをdF/dyなどに掛けて微分変換を行うsubroutine
     subroutine combine_x(dzeta_in,dF,dFzeta)
@@ -1333,7 +1315,7 @@ end module threedim
       double precision,allocatable,dimension(:,:,:,:) :: Vz,dVz,dUVWTz
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
-      double precision,allocatable,dimension(:,:,:) :: in_G
+      double precision,allocatable,dimension(:,:) :: in_G0,in_G1,in_G2,in_G3
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,pNx_infty
@@ -1344,7 +1326,7 @@ end module threedim
       double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
       integer i,j,k,l,M,ii,jj,kk
-      double precision theta!,t0,t1
+      double precision theta
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
       double precision,allocatable,dimension(:) :: Ux,sigma_x,Uy,sigma_y
@@ -1354,7 +1336,6 @@ end module threedim
       double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
-      ! call cpu_time(t0)
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
       ,Q1(0:4,0:Nx,0:Ny,0:Nz-1),Q2(0:4,0:Nx,0:Ny,0:Nz-1),Qn(0:4,0:Nx,0:Ny,0:Nz-1)&
@@ -1377,7 +1358,7 @@ end module threedim
       allocate(Vz(0:4,0:Nx,0:Ny,0:Nz-1),dVz(0:4,0:Nx,0:Ny,0:Nz-1),&
       dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
-      allocate(in_G(0:3,0:Ny,0:Nz-1))
+      allocate(in_G0(0:Ny,0:Nz-1),in_G1(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
@@ -1404,7 +1385,8 @@ end module threedim
       dz = Lz / dble(Nz)
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
-      pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;in_G=0.d0;ur=0.d0;Tu=0.d0
+      pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
+      in_G0=0.d0;in_G1=0.d0;in_G2=0.d0;in_G3=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
 
@@ -1417,7 +1399,7 @@ end module threedim
     ur(Ny/2) = ujet
     Tu(Ny/2) = Tjet
 
-    !$omp parallel do
+    !=Tuを求めるのにurが必要なため1つのDoループで並列化不可能。ここはDoループが小さいので、並列化しない=
       do i = (Ny/2)+1,Ny
         !Top-hat型の分布になるような式を設定
         ur(i) = ujet/2.d0*(1.d0 - dtanh((12.5d0/4.d0)*((zeta_fy(i)/b)- (b/zeta_fy(i)))))
@@ -1425,7 +1407,8 @@ end module threedim
         Tu(i) = Ma**2.d0*(gamma-1.d0)/2.d0*(ur(i)*ujet-ur(i)**2.d0)/ujet+&
                 Tjet*ur(i)/ujet+Temp*(ujet-ur(i))/ujet
       enddo
-    !$omp end parallel do
+      !========並列化しない========================================================
+
 
     !初期分布をx軸対象になるようにする。
     !そのためにy軸正の範囲の値を負の範囲に軸対象になるようにコピーする
@@ -1441,15 +1424,25 @@ end module threedim
       do k=0,Nz-1
         do i=0,Ny
           do j=0,Nx
-      G(0,j,i,k) = 1.d0!ρ
-      G(1,j,i,k) = 0.d0!u
-      G(2,j,i,k) = 0.d0!v
-      G(3,j,i,k) = 0.d0!w
-      G(4,j,i,k) = G(0,j,i,k)*Temp/((Ma**2.d0)*gamma)!p
+            G(0,j,i,k) = 1.d0!ρ
+            G(1,j,i,k) = 0.d0!u
+            G(2,j,i,k) = 0.d0!v
+            G(3,j,i,k) = 0.d0!w
           end do
         enddo
       enddo
     !$omp end parallel do
+    !=====大きいDoループ&G4にはG0が必要なので、分けて並列化する===========================
+    !$omp parallel do
+      do k=0,Nz-1
+        do i=0,Ny
+          do j=0,Nx
+            G(4,j,i,k) = G(0,j,i,k)*Temp/((Ma**2.d0)*gamma)!p
+          end do
+        enddo
+      enddo
+    !$omp end parallel do
+    !===========================================================================
 
       !Bufferの計算のための初期値を用いて無限遠方での音速を定義
       c_infty = sqrt(Temp/Ma**2.d0)
@@ -1458,16 +1451,18 @@ end module threedim
       call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
     !流入条件
     !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
+    !MのDoループ内でin_G2(:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
+    !in_G3は初期で0クリアしているので、二度手間になるのでコメントアウト
     !$omp parallel do
       do k =0,Nz-1
-          in_G(0,:,k) = 1.d0/Tu(:)!密度ρは理想気体状態方程式に従うから
-          in_G(1,:,k) = ur(:)! NSCBC流入条件で使う流入値のみを保存する配列
-          in_G(2,:,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
-          in_G(3,:,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
+        do i=0,Ny
+          in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
+          in_G1(i,k) = ur(i)! NSCBC流入条件で使う流入値のみを保存する配列
+          ! in_G2(i,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
+          ! in_G3(i,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
+        end do
       enddo
     !$omp end parallel do
-
-!      !Doループ内でin_G(2,:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
       !初期値の出力
       !まずt=0はループ外で個別に作成
       !もちろん出力もζ_y座標系とζ_x座標系で行う
@@ -1524,10 +1519,12 @@ end module threedim
        theta = 2.d0*pi*dble(M)*dt
        !計算高速化
        !$omp parallel do
-       do i = 0,Ny
-         if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-           in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-         endif
+       do k=0,Nz-1
+         do i = 0,Ny
+           if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+             in_G2(i,k) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+           endif
+         enddo
        enddo
        !$omp end parallel do
        !========================================================================
@@ -1616,7 +1613,7 @@ end module threedim
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(Q1,in_G)!dirichlet条件で流入部を固定
+      call inflow(Q1,in_G0,in_G1,in_G2,in_G3)!dirichlet条件で流入部を固定
       !==========
       !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
       !NSCBC_xを上書きしてNeumannにしてしまう
@@ -1706,7 +1703,7 @@ end module threedim
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        call inflow(Q2,in_G)
+        call inflow(Q2,in_G0,in_G1,in_G2,in_G3)
         !==========
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
@@ -1800,7 +1797,7 @@ end module threedim
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        call inflow(Qn,in_G)
+        call inflow(Qn,in_G0,in_G1,in_G2,in_G3)
         !==========
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !===========
@@ -1820,9 +1817,9 @@ end module threedim
            do k=0,Nz-1
              do i=0,Ny
                do j=0,Nx
-           omega_1(j,i,k) = dGy(3,j,i,k) - dGz(2,j,i,k)
-           omega_2(j,i,k) = dGz(1,j,i,k) - dGx(3,j,i,k)
-           omega_3(j,i,k) = dGx(2,j,i,k) - dGy(1,j,i,k)
+                 omega_1(j,i,k) = dGy(3,j,i,k) - dGz(2,j,i,k)
+                 omega_2(j,i,k) = dGz(1,j,i,k) - dGx(3,j,i,k)
+                 omega_3(j,i,k) = dGx(2,j,i,k) - dGy(1,j,i,k)
                end do
              enddo
            enddo
@@ -1833,7 +1830,7 @@ end module threedim
            do k=0,Nz-1
              do i=0,Ny
                do j=0,Nx
-           dp(j,i,k) = (G(4,j,i,k) - oldG(4,j,i,k))/dt
+                 dp(j,i,k) = (G(4,j,i,k) - oldG(4,j,i,k))/dt
                end do
              enddo
            enddo
@@ -1847,7 +1844,6 @@ end module threedim
              write(z_name, '(i2.2)') kk
              open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
-             ! z=dz*dble(Nz/2)
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1872,19 +1868,19 @@ end module threedim
                     call dif_x(ccs_sigma,dx,oldG,dGx,LUccsx,dzeta_inx)
                     call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
                     call dif_z(ccs_sigma,dz,oldG,dGz,LUccsz)
-                    omega_1(:,:,:) = dGy(3,:,:,:) - dGz(2,:,:,:)
-                    omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
-                    omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
-                    !===========================================================
-                    !z_checkでz方向の出力結果に差があるかどうか見る
-                    ! do ii = 0,Ny
-                    !   do jj = 0,Nx
-                    !     z_check(jj,ii,1) = oldG(0,jj,ii,0) - oldG(0,jj,ii,10)
-                    !   enddo
-                    ! enddo
-                    !===========================================================
 
-                    !dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt
+                    !$omp parallel do
+                    do kk=0,Nz-1
+                      do ii=0,Ny
+                        do jj=0,Nx
+                          omega_1(jj,ii,kk) = dGy(3,jj,ii,kk) - dGz(2,jj,ii,kk)
+                          omega_2(jj,ii,kk) = dGz(1,jj,ii,kk) - dGx(3,jj,ii,kk)
+                          omega_3(jj,ii,kk) = dGx(2,jj,ii,kk) - dGy(1,jj,ii,kk)
+                        end do
+                      end do
+                    end do
+                    !$omp end parallel do
+
                     !Gは計算破綻時間には常にNaNなのでdpは計算不能
 
                     !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
@@ -1906,9 +1902,6 @@ end module threedim
                       close(10)
                     enddo
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M
-                    ! call cpu_time(t1)
-                    ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-                    ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
                     stop "rho becomes NAN"
                   endif
                 enddo
@@ -1921,17 +1914,12 @@ end module threedim
               Q = Qn
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo
-      ! call cpu_time(t1)
-      ! write(*,'("Time required = ",i3,"min",f4.1,"sec")') &
-      ! &int((((t1-t0) - mod(t1-t0,60.d0)) /60.d0)), mod(t1-t0,60.d0)
-!      write(20,'(2A1,1f24.16,1A1,1f24.16)') "#","x",zeta_fx(Nx/2),"y",zeta_fy(Ny/2),"z",dz*dble(Nz/2)
-!      write(20,'(3A15)')"#","M","Local Pressure"
 !      close(20)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
-      deallocate(in_G,dGx,dFx,dGy,dFy,dGz,dFz)
+      deallocate(in_G0,in_G1,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       deallocate(omega_1,omega_2,omega_3,dp)
     end program main
