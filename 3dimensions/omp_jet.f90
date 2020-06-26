@@ -823,17 +823,9 @@ contains
                  do j=0,Nx
                    do l=0,4
                      x(l,j,i,Nz-1) = y(l,j,i,Nz-1) / LU(0,Nz-1)!例外の境界値
-                     ! x(l,j,i,Nz-2) = (y(l,j,i,Nz-2) -LU(1,Nz-2)*(y(l,j,i,Nz-1)/LU(0,Nz-1)))/ LU(0,Nz-2)
+                     x(l,j,i,Nz-2) = (y(l,j,i,Nz-2) -LU(1,Nz-2)*(y(l,j,i,Nz-1)/LU(0,Nz-1)))/ LU(0,Nz-2)
                      !本来は以下のようだったが、x(Nz-1)が計算前で並列化できないので、埋め込んでDoループ1つにまとめた
-                   end do
-                 end do
-                end do
-              !$omp end parallel do
-              !$omp parallel do
-                do i=0,Ny
-                 do j=0,Nx
-                   do l=0,4
-                     x(:,:,:,Nz-2) = (y(:,:,:,Nz-2) -LU(1,Nz-2)*x(:,:,:,Nz-1))/ LU(0,Nz-2)
+                     ! x(:,:,:,Nz-2) = (y(:,:,:,Nz-2) -LU(1,Nz-2)*x(:,:,:,Nz-1))/ LU(0,Nz-2)
                    end do
                  end do
                 end do
