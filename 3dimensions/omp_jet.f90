@@ -40,7 +40,7 @@
 !NSCBC_yのL,dやin_Gの配列縮小やF,V行列生成subroutineでのDoループの統合
 !そしてUVWT0,V0のコメントアウト化とdif_x,y,zのDoループの番号l,j,i,kの統一なども同時に行った。
 
-module omp_mod
+module three_omp
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -191,25 +191,21 @@ contains
         UVWT(4,j,i,k) = (Ma**2.d0)*(gamma * (gamma - 1.d0) * (Q(4,j,i,k) - (((Q(1,j,i,k) **2.d0)+ &
         &(Q(2,j,i,k) **2.d0)+(Q(3,j,i,k)**2.d0)) / (2.d0 * Q(0,j,i,k))))) / Q(0,j,i,k)!T
         !Tの値はMa^2*gamma*p/rhoこれは速度で無次元化したもの
-        myu(j,i,k) = (((Ma**2.d0)*(gamma * (gamma - 1.d0) * (Q(4,j,i,k) - (((Q(1,j,i,k) **2.d0)+ &
-        &(Q(2,j,i,k) **2.d0)+(Q(3,j,i,k)**2.d0)) / (2.d0 * Q(0,j,i,k))))) / Q(0,j,i,k)) ** 1.5d0) * &
-        (1.d0 + Sc) / (((Ma**2.d0)*(gamma * (gamma - 1.d0) * (Q(4,j,i,k) - (((Q(1,j,i,k) **2.d0)+ &
-        &(Q(2,j,i,k) **2.d0)+(Q(3,j,i,k)**2.d0)) / (2.d0 * Q(0,j,i,k))))) / Q(0,j,i,k)) + Sc)
             end do
           end do
         enddo
       !$omp end parallel do
 !!==UVWT(4)を使用しているし、Doループが大きいので、並列化にあたり分けた。 UVWT(4)を埋め込むと計算量が増えるので、行わない===
-      ! !$omp parallel do
-      !   do k=0,Nz-1
-      !      do i=0,Ny
-      !        do j=0,Nx
-      !       !UVWTからTの値を代入することで計算を簡略化している
-      !       ! myu(j,i,k) = (UVWT(4,j,i,k) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,j,i,k) + Sc)
-      !       end do
-      !     end do
-      !   enddo
-      ! !$omp end parallel do
+      !$omp parallel do
+        do k=0,Nz-1
+           do i=0,Ny
+             do j=0,Nx
+            !UVWTからTの値を代入することで計算を簡略化している
+            myu(j,i,k) = (UVWT(4,j,i,k) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,j,i,k) + Sc)
+            end do
+          end do
+        enddo
+      !$omp end parallel do
     end subroutine variable_setting
 
     subroutine V_matrix(Vx,Vy,Vz,myu,UVWT,dUVWTx,dUVWTy,dUVWTz)
@@ -1384,10 +1380,10 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_y
-end module omp_mod
+end module three_omp
 
     program main
-      use omp_mod
+      use three_omp
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
