@@ -36,8 +36,11 @@
 !variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
 !使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
 !2020.06.24 並列化を実装開始
+!2020.06.25 一応実装完了。自宅PCで、rapidと同じ計算結果になるかを確かめる。
+!NSCBC_yのL,dやin_Gの配列縮小やF,V行列生成subroutineでのDoループの統合
+!そしてUVWT0,V0のコメントアウト化とdif_x,y,zのDoループの番号l,j,i,kの統一なども同時に行った。
 
-module threedim
+module omp_mod
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -172,6 +175,7 @@ contains
 !UVWT,myuの計算はrho,u,pをそのまま代入しても良いがその場合は求めたtQから毎回rho_u_pのsubroutineを
 !呼び出して計算しなければいけないので今回はQから直接計算できるようにプログラムを組んだ
     subroutine variable_setting(UVWT,Q,myu)
+      !V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
       double precision,allocatable,dimension(:,:,:,:) :: UVWT,Q
       double precision,allocatable,dimension(:,:,:) :: myu
       integer i,j,k
@@ -191,14 +195,13 @@ contains
           end do
         enddo
       !$omp end parallel do
-!==myuの表記を簡略化するためにUVWT(4)を使用しているため、並列化不可。Doループが大きいので分割する==
+!!==UVWT(4)を使用しているし、Doループが大きいので、並列化にあたり分けた。 UVWT(4)を埋め込むと計算量が増えるので、行わない===
       !$omp parallel do
         do k=0,Nz-1
            do i=0,Ny
              do j=0,Nx
-    !V行列を設定する際にμの計算が複雑になっているのでそれを簡略に示すために別でμを計算するsubroutine
-    !UVWTからTの値を代入することで計算を簡略化している
-        myu(j,i,k) = (UVWT(4,j,i,k) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,j,i,k) + Sc)
+            !UVWTからTの値を代入することで計算を簡略化している
+            myu(j,i,k) = (UVWT(4,j,i,k) ** 1.5d0) * (1.d0 + Sc) / (UVWT(4,j,i,k) + Sc)
             end do
           end do
         enddo
@@ -566,17 +569,34 @@ contains
       end do
      enddo
     !$omp end parallel do
-
-     !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
      !前進代入法、後退代入法の計算サブルーチン(x方向)
-            !前進代入
-            y(:,0,:,:) = RHS_x(:,0,:,:)!例外の境界値
+          !前進代入
+          !$omp parallel do
+          do k=0,Nz-1
+            do i=0,Ny
+              do l=0,4
+                y(l,0,i,k) = RHS_x(l,0,i,k)!例外の境界値
+              end do
+            end do
+          end do
+          !$omp end parallel do
+    !=============前後のyを使用するので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
             do j = 1,Nx!y(:,k)でk=0は上で定義したので残りの1〜Nxを定義する
               y(:,j,:,:) = RHS_x(:,j,:,:) - LU(-1,j)*y(:,j-1,:,:)
             enddo
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
             !後退代入
-            x(:,Nx,:,:) = y(:,Nx,:,:) / LU(0,Nx)!例外の境界値
+            !$omp parallel do
+            do k=0,Nz-1
+              do i=0,Ny
+                do l=0,4
+                  x(l,Nx,i,k) = y(l,Nx,i,k) / LU(0,Nx)!例外の境界値(Nx)
+                end do
+              end do
+            end do
+            !$omp end parallel do
             !x(:,j)でj=Nxは定義したので残りのj=0~Nx-1を定義する
+    !=============前後のxを使用するので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝===＝＝＝======
             do j = Nx-1, 0, -1!後退するので-1ずつ進む
               x(:,j,:,:) = (y(:,j,:,:) - LU(1,j)*x(:,j+1,:,:)) / LU(0,j)
             enddo
@@ -656,15 +676,33 @@ contains
       enddo
     !$omp end parallel do
 
-      !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
       !前進代入法、後退代入法の計算サブルーチン(y方向)
         !前進代入
-        y(:,:,0,:) = RHS_y(:,:,0,:)
+      !$omp parallel do
+        do k=0,Nz-1
+          do j=0,Nx
+            do l=0,4
+              y(l,j,0,k) = RHS_y(l,j,0,k)
+            end do
+          end do
+        end do
+      !$omp end parallel do
+    !=============前後のyを使うので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝=====
         do i = 1,Ny!y(:,:,i,:)でi=0は上で定義したので残りの1〜Nyを定義する
           y(:,:,i,:) = RHS_y(:,:,i,:) - LU(-1,i)*y(:,:,i-1,:)
         enddo
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
         !後退代入
-        x(:,:,Ny,:) = y(:,:,Ny,:) / LU(0,Ny)
+        !$omp parallel do
+          do k=0,Nz-1
+            do j=0,Nx
+              do l=0,4
+                x(l,j,Ny,k) = y(l,j,Ny,k) / LU(0,Ny)!境界値(Ny)
+              end do
+            end do
+          end do
+        !$omp end parallel do
+    !=============前後のxを使うので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
         !x(:,:,i)でi=Nyは定義したので残りのi=0~Ny-1を定義する
         do i = Ny-1, 0, -1!後退するので-1ずつ進む
           x(:,:,i,:) = (y(:,:,i,:) - LU(1,i)*x(:,:,i+1,:)) / LU(0,i)
@@ -749,10 +787,18 @@ contains
          enddo
          !$omp end parallel do
 
-    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
-           !前進代入法、後退代入法の計算サブルーチン(x方向)
-              !前進代入
-              y(:,:,:,0) = RHS_z(:,:,:,0)!例外の境界値
+        !前進代入法、後退代入法の計算サブルーチン(z方向)
+          !前進代入
+          !$omp parallel do
+            do i=0,Ny
+             do j=0,Nx
+               do l=0,4
+                 y(l,j,i,0) = RHS_z(l,j,i,0)!例外の境界値
+               end do
+             end do
+            end do
+          !$omp end parallel do
+    !=============前後のyを使うので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
               do k = 1,Nz-2!y(:,k)でk=0は上で定義したので残りの1〜Nz-2を定義する
                 !これはfill-inのない通常部分
                 y(:,:,:,k) = RHS_z(:,:,:,k) - LU(-1,k)*y(:,:,:,k-1)
@@ -769,10 +815,22 @@ contains
                   enddo
                 enddo
               enddo
+    !=============並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝====＝＝＝======
               !後退代入
-              x(:,:,:,Nz-1) = y(:,:,:,Nz-1) / LU(0,Nz-1)!例外の境界値
               !fill-inの計算の範囲外なので別で計算
-              x(:,:,:,Nz-2) = (y(:,:,:,Nz-2) -LU(1,Nz-2)*x(:,:,:,Nz-1))/ LU(0,Nz-2)
+              !$omp parallel do
+                do i=0,Ny
+                 do j=0,Nx
+                   do l=0,4
+                     x(l,j,i,Nz-1) = y(l,j,i,Nz-1) / LU(0,Nz-1)!例外の境界値
+                     x(l,j,i,Nz-2) = (y(l,j,i,Nz-2) -LU(1,Nz-2)*(y(l,j,i,Nz-1)/LU(0,Nz-1)))/ LU(0,Nz-2)
+                     !本来は以下のようだったが、x(Nz-1)が計算前で並列化できないので、埋め込んでDoループ1つにまとめた
+                     ! x(:,:,:,Nz-2) = (y(:,:,:,Nz-2) -LU(1,Nz-2)*x(:,:,:,Nz-1))/ LU(0,Nz-2)
+                   end do
+                 end do
+                end do
+              !$omp end parallel do
+    !=============前後のxを使うので、並列化不可能＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
               !x(:,i)でi=Nxは定義したので残りのi=0~Nx-1を定義する
               do k = Nz-3, 0, -1!後退するので-1ずつ進む
                 x(:,:,:,k) = (y(:,:,:,k) - LU(1,k)*x(:,:,:,k+1)-LU(-2,k)*x(:,:,:,Nz-1)) / LU(0,k)
@@ -1322,10 +1380,10 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_y
-end module threedim
+end module omp_mod
 
     program main
-      use threedim
+      use omp_mod
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
