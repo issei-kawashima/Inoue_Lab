@@ -12,8 +12,8 @@ double precision,dimension(0:Nx2,0:Ny2,12) :: in_dim2
 double precision,dimension(0:Nx1,0:Ny1,12) :: compare_dim
 double precision result_1,result_3,result_7
 result_1=0.d0;result_3=0.d0;result_7=0.d0
-open(41, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001271_18.txt")
-open(42, file = "/Users/isseyshome/Downloads/parameter001271_18.txt")
+open(41, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_13.txt")
+open(42, file = "/Users/isseyshome/Downloads/parameter001000_13.txt")
 
 open(99, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_analysis/omp_paralell.txt")
 
