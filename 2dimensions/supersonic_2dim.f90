@@ -23,6 +23,7 @@
 !M=1482でNaN。同じ結果にはならなかった。
 !こちらではNSCBC_Xは適用していない。それはinflowのsubroutineでrhoまでを上書きしていること&流出条件はNeumannにしているため,
 !NSCBCの結果をx方向では必要としていないからである。これは3次元計算でも理屈は同じで、あちらではNSCBC_x_0を計算していたが、ただの無駄だった。
+!2020.06.30 dtをより細かくしたら計算が長持ちするのか確かめてみる。
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -35,7 +36,7 @@ module supersonic
   integer,parameter :: Nx = 180
   integer,parameter :: Ny = 100
   integer,parameter :: NUx = 90
-  double precision,parameter :: dt = 2.d-3
+  double precision,parameter :: dt = 5.d-4
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを0.5sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
   double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
@@ -714,7 +715,7 @@ end module supersonic
       G(3,:,:) = G(0,:,:)*Temp/((Ma**2.d0)*gamma)!p
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_super/parameter000000.txt")
+      open(10, file = "result_super_5d-4/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       do i = 0,Ny
         do j = 0,Nx
@@ -727,7 +728,7 @@ end module supersonic
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      ! open(20,file = "result_super/1pressure.txt")
+      ! open(20,file = "result_super_5d-4/1pressure.txt")
       ! write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
@@ -917,7 +918,7 @@ end module supersonic
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
             !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-            open(10, file = "result_super/parameter"//trim(filename)//".txt")
+            open(10, file = "result_super_5d-4/parameter"//trim(filename)//".txt")
             do i = 0,Ny
               do j = 0,Nx
                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -938,7 +939,7 @@ end module supersonic
                 call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
                 omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
                 write(filename, '(i6.6)') M-1
-                open(10, file = "result_super/parameter"//trim(filename)//".txt")
+                open(10, file = "result_super_5d-4/parameter"//trim(filename)//".txt")
                 do ii = 0,Ny
                   do jj = 0,Nx
                     write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)')&
