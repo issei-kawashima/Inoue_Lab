@@ -378,7 +378,7 @@ call parapara()
                         *(DUDX(K)*DDMDT2(K)*DTDX(K) &
                         +DMYUDT(K)*DDUDX2(K) &
                         +DUDX(K)*DMYUDT(K)*CIJ(K,K) )
-!     &                  -DUDX(K)*DMYUDT(K)*DTDX(K)/(T(K)*T(K)))
+!     &                  -DUDX(K)*DMYUDT(K)*DTDX(K)/(T(K)*T(K)))!"/(T(K)*T(K))"これいらなくない？
 
       AMAIN(5*K+2,5*K)=-CI*(DTDX(K)+T(K)*CIJ(K,K)) &
                         /(GAMMA*ROU(K)*M1*M1)
@@ -429,14 +429,14 @@ call parapara()
       AMAIN(5*K+4,5*K+4)=ALFA*U(K) &
                         +CI*GAMMA*(GAMMA-1.0d0)*M1*M1 &
                         /(ROU(K)*RE)*DMYUDT(K) &
-                        *DUDX(K)*DUDX(K)/T(K) &
+                        *DUDX(K)*DUDX(K)/T(K) & !"/T(K)"がなぜあるか不明
                         -CI*GAMMA/(ROU(K)*RE*PR) &
                         *(MYU(K)*(ALFA*ALFA &
                         -DIJ(K,K)+BETA*BETA) &
-                        -DMYUDT(K)*(2.0d0)*DTDX(K)*CIJ(K,K) &
-                        -DDMDT2(K)*DTDX(K)*DTDX(K) &
+                        -DMYUDT(K)*(2.0d0)*DTDX(K)*CIJ(K,K) &!論文と並びが違うだけ(2)
+                        -DDMDT2(K)*DTDX(K)*DTDX(K) &!論文と並びが違うだけ(1)
                         -DMYUDT(K)*DDTDX2(K) )
-!     &                  +DMYUDT(K)*DTDX(K)*DTDX(K)/(T(K)*T(K)))
+!     &                  +DMYUDT(K)*DTDX(K)*DTDX(K)/(T(K)*T(K)))!これの存在意味がわからない>だからコメントアウトしてるのかも？
 
       ELSE
 
