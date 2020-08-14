@@ -1,3 +1,4 @@
+!色々と補足を書いた
 ! *************** WAKE *****************************************
 ! *********** TOSHI program for eigenfunction (WAKE) ***********
 ! **************************************************************
@@ -473,6 +474,7 @@ call parapara()
 	end do
 
 !*******************BOUNDARY CONDITIONS*********************
+!この箇所はJETの方にはない。
       DO K=0,LDA-1
        DO L=0,LDA-1
         BMAIN(K,L)=0.0d0
@@ -597,7 +599,10 @@ call parapara()
 	end do
       ENDIF
 !***************GYOLETU NO HOSEI*****************************
-      DO K=0,LDA-1
+!補正とは、V=1.d-16以下の成分に関しては0にしてしまうこと。
+!大小を比較するさいに、実数じゃないとできないのか、一度虚部を抽出して、比較してから、CMPLXで組み合わせて
+!複素数を再度生成してAMAINに組み込んでいる。
+      DO K=0,LDA-1!LDA=5*(N+1)なので、LDA-1=5N-4
       DO L=0,LDA-1
 
       TES(K,L)=DBLE(AMAIN(K,L))
@@ -607,14 +612,14 @@ call parapara()
       MAR(K,L)=TES(K,L)
       ENDIF
 
-      TE(K,L)=DIMAG(AMAIN(K,L))
+      TE(K,L)=DIMAG(AMAIN(K,L))!DIMAGは倍精度の虚部を返す関数
       IF (ABS(TE(K,L)).LT.V) THEN
       MAI(K,L)=0.0d0
       ELSE
       MAI(K,L)=TE(K,L)
       ENDIF
 
-      AMAIN(K,L)=CMPLX((MAR(K,L)),(MAI(K,L)))
+      AMAIN(K,L)=CMPLX((MAR(K,L)),(MAI(K,L)))!CMPLX(x,y)でx+iyの複素数を作成する関数
 	end do
 	end do
 !**********************KOYUCHI NO KEISAN***************************
@@ -639,7 +644,7 @@ call parapara()
          IF(RVAL(I).NE.0.0d0) THEN
             CRE(I)=(RVAL(I))/ALFA
          ELSE
-            CRE(I)=1.E3
+            CRE(I)=1.E3!1.d3の単精度版
          ENDIF
 	end do
 
