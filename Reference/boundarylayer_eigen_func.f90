@@ -601,7 +601,7 @@ call parapara()
       DO L=0,LDA-1
 
       TES(K,L)=DBLE(AMAIN(K,L))
-      IF (ABS(TES(K,L)).LT.V) THEN
+      IF (ABS(TES(K,L)).LT.V) THEN !LTは<を意味する
       MAR(K,L)=0.0d0
       ELSE
       MAR(K,L)=TES(K,L)
@@ -885,7 +885,7 @@ call parapara()!      REAL(8):: Re_d,s_para,Ly
        coef(0)=2.0d0
        coef(N)=2.0d0
        do j=1,N-1
-       coef(j)=1.0d0
+       coef(j)=1.0d0!吉野論文のC_lのこと
 	end do
 
        do m=0,N
@@ -901,8 +901,8 @@ call parapara()!      REAL(8):: Re_d,s_para,Ly
                    /coef(j)/coef(k)/coef(l)
 	end do
 	end do
-       Eij(m,l)=2.0d0*se/dble(N)
-       Cij(m,l)=4.0d0* s/dble(N)
+       Eij(m,l)=2.0d0*se/dble(N)!一体なんのか不明
+       Cij(m,l)=4.0d0* s/dble(N)!吉野論文のc_ijのこと。Σの計算はsで済ませている。ユーキのc_ijとは計算式が異なる。
 	end do
 	end do
 
@@ -917,7 +917,7 @@ call parapara()!      REAL(8):: Re_d,s_para,Ly
          /coef(j)/coef(k)/coef(l)
 	end do
 	end do
-       Dij(m,l)=2.0d0*s/dble(N)
+       Dij(m,l)=2.0d0*s/dble(N)!吉野論文のd_ijのこと。Σの計算はsで済ませている。ユーキのd_ijとは計算式が異なる。
 	end do
 	end do
 !***********************************************************************
