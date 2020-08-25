@@ -837,6 +837,7 @@ call parapara()
 contains
 !///////////////////////////////////////////////////////////////////////
 !///////////////////////////////////////////////////////////////////////
+      !Cij, DijÇãÅÇﬂÇÈsubroutine
       SUBROUTINE CAL_mF(ZU,ZdUdy,ZddUdy,ZEIJ,ZCIJ,ZDIJ,y)
 use Para_
       IMPLICIT NONE
@@ -1089,11 +1090,10 @@ call parapara()
 ! -----------------------------------------------------------
       do Iy=0,By
          YY(Iy) = DBLE(Iy)*dy
-	end do
+	    end do
 !c -----------------------------------------------------------
-
        DO Iy=0,N
-      DO Jy=0,By-1
+         DO Jy=0,By-1
           IF (Y(Iy).GE.YY(Jy).and.Y(Iy).LE.YY(Jy+1)) THEN
                U(Iy)= (Y(Iy)-YY(Jy))/(YY(Jy+1)-YY(Jy))*(HU(Jy+1)-HU(Jy)) &
                       +HU(Jy)
@@ -1101,9 +1101,8 @@ call parapara()
           IF (Y(Iy).GE.Ly) THEN
                U(Iy)=1.0d0
           ENDIF
-	end do
-	end do
-
+	       end do
+	     end do
 
       RETURN
       END  SUBROUTINE CAL_mU
