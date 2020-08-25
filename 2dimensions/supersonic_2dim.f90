@@ -648,7 +648,7 @@ end module supersonic
       double precision,dimension(0:3,0:Nx,0:Ny) :: dzeta_iny,dzeta_inx
       double precision,dimension(0:Nx) :: zeta_fx
       double precision,dimension(0:Ny) :: zeta_fy
-      double precision,dimension(0:Nx,0:Ny) :: omega_z,dp!渦度と圧力変動差を入れる配列
+      double precision,dimension(0:Nx,0:Ny) :: omega_z,dp,div_u!渦度と圧力変動差と音響成分を入れる配列
       !計算にかかる時間をCPU時間で計測する
       ! call cpu_time(t0)
 
@@ -668,7 +668,7 @@ end module supersonic
       Vx=0.d0;dVx=0.d0;UVT=0.d0;dUVTx=0.d0;dFx=0.d0;dGx=0.d0
       Vy=0.d0;dVy=0.d0;dUVTy=0.d0;dFy=0.d0;dGy=0.d0;in_G=0.d0;ur=0.d0;Tu=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;dQx=0.d0;dQy=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
-      zeta_fx=0.d0;dzeta_inx=0.d0;omega_z=0.d0;dp=0.d0;oldG=0.d0
+      zeta_fx=0.d0;dzeta_inx=0.d0;omega_z=0.d0;dp=0.d0;oldG=0.d0;div_u=0.d0
       !y方向の格子伸長のための座標設定
       call lattice_y(dy,zeta_fy,dzeta_iny)
       !x方向も
@@ -720,7 +720,7 @@ end module supersonic
       do i = 0,Ny
         do j = 0,Nx
           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,G(1,j,i)
+                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,div_u(j,i)
         enddo
         write(10,*)
       enddo
@@ -913,6 +913,8 @@ end module supersonic
             dGx=0.d0;dGy=0.d0
             call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
             call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
+            !音響成分du/dx+dv/dy
+            div_u(:,:) =dGx(1,:,:)+dGy(2,:,:)
             omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
             dp(:,:) = (G(3,:,:) - oldG(3,:,:))/dt
             write(filename, '(i6.6)') M
@@ -922,7 +924,7 @@ end module supersonic
             do i = 0,Ny
               do j = 0,Nx
                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),G(1,j,i)
+                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),div_u(j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -937,13 +939,15 @@ end module supersonic
                 call rho_u_p(oldG,Q)
                 call dif_x(ccs_sigma,dx,oldG,dGx,LUccsx,dzeta_inx)
                 call dif_y(ccs_sigma,dy,oldG,dGy,LUccsy,dzeta_iny)
+                !音響成分du/dx+dv/dy
+                div_u(:,:) =dGx(1,:,:)+dGy(2,:,:)
                 omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
                 write(filename, '(i6.6)') M-1
                 open(10, file = "result_super_5d-4/parameter"//trim(filename)//".txt")
                 do ii = 0,Ny
                   do jj = 0,Nx
                     write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)')&
-                     zeta_fx(jj),zeta_fy(ii),oldG(0,jj,ii),omega_z(jj,ii),G(1,jj,ii)
+                     zeta_fx(jj),zeta_fy(ii),oldG(0,jj,ii),omega_z(jj,ii),div_u(jj,ii)
                   enddo
                   write(10,*)
                   !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
