@@ -24,6 +24,8 @@
 !こちらではNSCBC_Xは適用していない。それはinflowのsubroutineでrhoまでを上書きしていること&流出条件はNeumannにしているため,
 !NSCBCの結果をx方向では必要としていないからである。これは3次元計算でも理屈は同じで、あちらではNSCBC_x_0を計算していたが、ただの無駄だった。
 !2020.06.30 dtをより細かくしたら計算が長持ちするのか確かめてみる。
+!2020.06.30 ダメだった。
+!2020.08.25 音響成分のdiv_uを実装。Ma=2.0の超音速に変更し計算できるかどうかを試す。
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -33,10 +35,10 @@ module supersonic
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 150 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
-  integer,parameter :: NUx = 90
-  double precision,parameter :: dt = 5.d-4
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
+  integer,parameter :: NUx = 213
+  double precision,parameter :: dt = 2.d-3
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを0.5sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
   double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
@@ -55,8 +57,8 @@ module supersonic
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 2.4d0
-  !Ma数を1.5~5にして超音速にする
+  double precision,parameter :: Ma = 2.0d0
+  !Ma数を上げて超音速にする
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.12d0*Temp
   double precision,parameter :: ujet = 1.d0
@@ -476,7 +478,6 @@ contains
     !x方向のi=0の流入部はdirichlet条件で固定。i=Nxの流出条件はNeumann条件を設定する。
     !なぜなら超音速のため流入部ではLが全て0になり、dFxは全て0になり、計算の意味そのものがなくなってしまうから。
     subroutine  Neumann(Q)
-      integer i
       double precision,dimension(0:3,0:Nx,0:Ny) :: Q
         Q(:,Nx,:) = Q(:,Nx-1,:)
     endsubroutine Neumann
@@ -636,10 +637,10 @@ end module supersonic
       double precision,dimension(0:2,0:Ny) :: in_G
       !x方向
       double  precision,dimension(0:3,0:Nx,0:Ny) :: dGx,dFx
-      double precision  dx,x,pNx_infty
+      double precision  dx,pNx_infty
       !y方向
       double precision,dimension(0:3,0:Nx,0:Ny) :: dGy,dFy
-      double precision dy,y,p0y_infty,pNy_infty
+      double precision dy,p0y_infty,pNy_infty
       integer i,j,ii,jj,M,Mmax
       double precision theta!,t0,t1
       double precision c_infty
@@ -715,12 +716,12 @@ end module supersonic
       G(3,:,:) = G(0,:,:)*Temp/((Ma**2.d0)*gamma)!p
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_super_5d-4/parameter000000.txt")
+      open(10, file = "result_super_2d-3/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       do i = 0,Ny
         do j = 0,Nx
           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,div_u(j,i)
+          &f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,div_u(j,i)
         enddo
         write(10,*)
       enddo
@@ -728,7 +729,7 @@ end module supersonic
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      ! open(20,file = "result_super_5d-4/1pressure.txt")
+      ! open(20,file = "result_super_2d-3/1pressure.txt")
       ! write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
@@ -920,11 +921,11 @@ end module supersonic
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
             !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-            open(10, file = "result_super_5d-4/parameter"//trim(filename)//".txt")
+            open(10, file = "result_super_2d-3/parameter"//trim(filename)//".txt")
             do i = 0,Ny
               do j = 0,Nx
                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),div_u(j,i)
+                  &f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),div_u(j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -943,7 +944,7 @@ end module supersonic
                 div_u(:,:) =dGx(1,:,:)+dGy(2,:,:)
                 omega_z(:,:) = dGx(2,:,:) - dGy(1,:,:)
                 write(filename, '(i6.6)') M-1
-                open(10, file = "result_super_5d-4/parameter"//trim(filename)//".txt")
+                open(10, file = "result_super_2d-3/parameter"//trim(filename)//".txt")
                 do ii = 0,Ny
                   do jj = 0,Nx
                     write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)')&

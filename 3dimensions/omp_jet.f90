@@ -39,6 +39,7 @@
 !2020.06.25 一応実装完了。自宅PCで、rapidと同じ計算結果になるかを確かめる。
 !NSCBC_yのL,dやin_Gの配列縮小やF,V行列生成subroutineでのDoループの統合
 !そしてUVWT0,V0のコメントアウト化とdif_x,y,zのDoループの番号l,j,i,kの統一なども同時に行った。
+!2020.08.25 音響成分のdiv_uを実装。Ma=2.0に変更し計算できるかどうかを試す。
 
 module three_omp
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -72,10 +73,8 @@ module three_omp
   double precision,parameter :: NS_sigma = 0.25d0
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
-  !亜音速流入のためRe数は小さめに
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.2d0
-  !Ma数も同様に小さめに
+  double precision,parameter :: Ma = 2.0d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
