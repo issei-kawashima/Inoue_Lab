@@ -27,17 +27,26 @@ set yrange [-3:3]
 #set zrange [0:1]
 
 set term x11 1
+#3次元
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:5  w pm3d t ""
+
+####dpの出力位置を変更する前のデータ用(8.25~26)#######################
 #3次元　通常
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:7  w pm3d t ""
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:7  w pm3d t ""
 #3次元 Nan直前
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:6  w pm3d t ""
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:6  w pm3d t ""
+#################################################################
+
 
 set term x11 2
-#2次元　通常
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma2/parameter001000.txt' u 1:2:6  w pm3d t ""
-#2次元　NaN直前
+#2次元
 splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma2/parameter001000.txt' u 1:2:5  w pm3d t ""
 
+####dpの出力位置を変更する前のデータ用(8.25~26)#######################
+#NaNの場合は上のコードで大丈夫
+#2次元　通常
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma2/parameter001000.txt' u 1:2:6  w pm3d t ""
+#################################################################
 #se term jpeg
 #se out "/Users/isseyshome/Documents/Lab/3-dimensions/result_2D/vorticity000000.jpg"
 #rep

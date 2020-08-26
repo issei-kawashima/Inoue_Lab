@@ -1581,7 +1581,7 @@ end module three_omp
                 do j = 0,Nx
                   write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                   &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),z,&
-                  G(0,j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt,div_u(j,i,k)
+                  G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt
                 enddo
                 write(10,*)
               enddo
@@ -1961,7 +1961,7 @@ end module three_omp
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                  &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),z,&
-                 G(0,jj,ii,kk),Invariant_2(jj,ii,kk),dp(jj,ii,kk),div_u(jj,ii,kk)
+                 G(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),dp(jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -2018,7 +2018,7 @@ end module three_omp
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                           &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),z,&
-                          oldG(0,jj,ii,kk),Invariant_2(jj,ii,kk),div_u(jj,ii,kk)
+                          oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない

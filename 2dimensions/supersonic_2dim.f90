@@ -726,7 +726,7 @@ end module modsupersonic
         do j = 0,Nx
           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
           &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),&
-          &dp(j,i)/dt,div_u(j,i),Invariant_2(j,i)
+          &div_u(j,i),Invariant_2(j,i),dp(j,i)/dt
         enddo
         write(10,*)
       enddo
@@ -932,7 +932,7 @@ end module modsupersonic
               do j = 0,Nx
                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                   &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),&
-                  &dp(j,i),div_u(j,i),Invariant_2(j,i)
+                  &div_u(j,i),Invariant_2(j,i),dp(j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない

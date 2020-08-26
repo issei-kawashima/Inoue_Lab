@@ -28,11 +28,9 @@ set yrange [-10:10]
 
 set term x11 1
 #3次元
-#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001500_18.txt' u 1:2:5  w pm3d t ""
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001500_18.txt' u 1:2:6  w pm3d t ""
 
-#2次元　通常
-#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma1.6/parameter001500.txt' u 1:2:7  w pm3d t ""
-#2次元　NaN直前
+#2次元
 splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma1.6/parameter002367.txt' u 1:2:6  w pm3d t ""
 
 #se term jpeg
