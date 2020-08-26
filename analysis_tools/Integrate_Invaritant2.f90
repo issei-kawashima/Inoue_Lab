@@ -1,5 +1,6 @@
 !3次元結果の第二不変量Qのみを複数z面から1つのtxtファイルにまとめるコード
-!2次元txtを1つのtxtにまとめる昨日も兼ねている
+!2次元txtを1つのtxtにまとめる機能も兼ねている
+!NaNの時でも対応できるように、読み込む変数の数を調整したコードも書いてある(コメントアウト済み)
 !2020.08.26 Q=xxxの特定面のみの情報を切り出す処理は未実装
 program main
 implicit none
@@ -24,7 +25,10 @@ do k=0,Nz-1
   !入力データの読み込みと確認
   do i=0,Ny
     do j = 0,Nx
+      !通常はこちら
       read(11,'(14f24.16)') dim_kukei(j,i,k,1:14)
+      !NaN直前ファイルはこちら
+      ! read(11,'(12f24.16)') dim_kukei(j,i,k,1:12)
     end do
   end do
   close(11)
@@ -42,17 +46,30 @@ do k = 0,Nz-1
       if((dim_kukei(j,i,k,1) == 0.d0) .and. (dim_kukei(j,i,k,3) == 0.d0) .and.&
        (dim_kukei(j,i,k,5) == 0.d0) .and. (dim_kukei(j,i,k,7) == 0.d0)) then
       else
+        !通常時はこちら
         write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16)') &
         dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&
         dim_kukei(j,i,k,13)!x,y,z,第二不変量Q(~2020.08.26)
         ! dim_kukei(j,i,k,11)!x,y,z,第二不変量Q(2020.08.27~出力順を変更した)
 
-!全ての変数を1つのtxtファイルにまとめる時はこちら
+        !NaN直前ファイルはこちら
+        write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16)') &
+        dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&
+        dim_kukei(j,i,k,9)!x,y,z,第二不変量Q(~2020.08.26)
+        ! dim_kukei(j,i,k,11)!x,y,z,第二不変量Q(2020.08.27~出力順を変更した)
+
+!(通常)全ての変数を1つのtxtファイルにまとめる時はこちら
         ! write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,&
         ! ",",f24.16,",",f24.16)') &
         ! dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&
         ! dim_kukei(j,i,k,7),dim_kukei(j,i,k,9),dim_kukei(j,i,k,11),&
         ! dim_kukei(j,i,k,13)
+
+!(NaN直前)全ての変数を1つのtxtファイルにまとめる時はこちら
+        ! write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,&
+        ! ",",f24.16)') &
+        ! dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&
+        ! dim_kukei(j,i,k,7),dim_kukei(j,i,k,9),dim_kukei(j,i,k,11)
       endif
     end do
   end do
