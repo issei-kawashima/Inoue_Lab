@@ -29,7 +29,7 @@
 !2020.08.26 音響成分の可視化には成功。ただしMa=2.0, 1.8共に計算できなかった。
 !2020.08.26 速度勾配テンソルの第二不変量Qを実装。Ma=1.6にしてみて計算してみる。
 
-module supersonic
+module modsupersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -59,7 +59,7 @@ module supersonic
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.6d0
+  double precision,parameter :: Ma = 1.5d0
   !Ma数を上げて超音速にする
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.12d0*Temp
@@ -609,10 +609,10 @@ contains
       double precision,dimension(0:3,0:Nx,0:Ny) :: dzeta_in,dFzeta,dF
       dFzeta(:,:,:) = dF(:,:,:) * dzeta_in(:,:,:)
     endsubroutine combine
-end module supersonic
+end module modsupersonic
 
     program main
-      use supersonic
+      use modsupersonic
       implicit none
       character(len = 16) filename
       !時間更新毎に出力ファイルを変更するためのファイル名設定
