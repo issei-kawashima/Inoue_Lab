@@ -1433,7 +1433,7 @@ end module three_omp
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
       double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
-      double precision,allocatable,dimension(:,:,:) :: div_u !音響成分を入れる配列
+      double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
 
@@ -1467,7 +1467,8 @@ end module three_omp
 
       allocate(dzeta_inx(0:Nx),dzeta_iny(0:Ny))
       allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
-      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1))
+      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
+      Invariant_2(0:Nx,0:Ny,0:Nz-1))
 
       allocate(zeta_fx(0:Nx),zeta_fy(0:Ny))
       allocate(ur(0:Ny),Tu(0:Ny))
@@ -1489,7 +1490,7 @@ end module three_omp
       in_G0=0.d0;in_G1=0.d0;in_G2=0.d0;in_G3=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
-      div_u=0.d0
+      div_u=0.d0;Invariant_2=0.d0
 
       !y方向の格子伸長のための座標設定
       call lattice_y(dy,zeta_fy,dzeta_iny)
@@ -1578,7 +1579,7 @@ end module three_omp
                 do j = 0,Nx
                   write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                   &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),z,&
-                  G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt,div_u(j,i,k)
+                  G(0,j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt,div_u(j,i,k)
                 enddo
                 write(10,*)
               enddo
@@ -1920,10 +1921,16 @@ end module three_omp
            do k=0,Nz-1
              do i=0,Ny
                do j=0,Nx
+                 !音響成分div u
                  div_u(j,i,k) = dGx(1,j,i,k)+dGy(2,j,i,k)+dGz(3,j,i,k)
-                 omega_1(j,i,k) = dGy(3,j,i,k) - dGz(2,j,i,k)!dw/dy-dv/dz
-                 omega_2(j,i,k) = dGz(1,j,i,k) - dGx(3,j,i,k)!du/dz-dw/dx
-                 omega_3(j,i,k) = dGx(2,j,i,k) - dGy(1,j,i,k)!dv/dx-du/dy
+                 !速度勾配テンソルの第二不変量Q
+                 Invariant_2(j,i,k) = dGx(1,j,i,k)*dGy(2,j,i,k)+&
+                     dGy(2,j,i,k)*dGz(3,j,i,k)+dGz(3,j,i,k)*dGx(1,j,i,k)-&
+                     (dGz(1,j,i,k)*dGx(3,j,i,k)+dGy(3,j,i,k)*dGz(2,j,i,k)+&
+                     dGx(2,j,i,k)*dGy(1,j,i,k))
+                 ! omega_1(j,i,k) = dGy(3,j,i,k) - dGz(2,j,i,k)!dw/dy-dv/dz
+                 ! omega_2(j,i,k) = dGz(1,j,i,k) - dGx(3,j,i,k)!du/dz-dw/dx
+                 ! omega_3(j,i,k) = dGx(2,j,i,k) - dGy(1,j,i,k)!dv/dx-du/dy
                end do
              enddo
            enddo
@@ -1952,7 +1959,7 @@ end module three_omp
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                  &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),z,&
-                 G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk),div_u(jj,ii,kk)
+                 G(0,jj,ii,kk),Invariant_2(jj,ii,kk),dp(jj,ii,kk),div_u(jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -1980,12 +1987,16 @@ end module three_omp
                         do jj=0,Nx
                           !音響成分du/dx+dv/dy+dw/dz
                           div_u(jj,ii,kk) =dGx(1,jj,ii,kk)+dGy(2,jj,ii,kk)+dGz(3,jj,ii,kk)
-                          !dw/dy-dv/dz
-                          omega_1(jj,ii,kk) = dGy(3,jj,ii,kk) - dGz(2,jj,ii,kk)
-                          !du/dz-dw/dx
-                          omega_2(jj,ii,kk) = dGz(1,jj,ii,kk) - dGx(3,jj,ii,kk)
-                          !dv/dx-du/dy
-                          omega_3(jj,ii,kk) = dGx(2,jj,ii,kk) - dGy(1,jj,ii,kk)
+                          Invariant_2(jj,ii,kk) = dGx(1,jj,ii,kk)*dGy(2,jj,ii,kk)+&
+                          dGy(2,jj,ii,kk)*dGz(3,jj,ii,kk)+dGz(3,jj,ii,kk)*dGx(1,jj,ii,kk)-&
+                          (dGz(1,jj,ii,kk)*dGx(3,jj,ii,kk)+dGy(3,jj,ii,kk)*dGz(2,jj,ii,kk)+&
+                          dGx(2,jj,ii,kk)*dGy(1,jj,ii,kk))
+                          ! !dw/dy-dv/dz
+                          ! omega_1(jj,ii,kk) = dGy(3,jj,ii,kk) - dGz(2,jj,ii,kk)
+                          ! !du/dz-dw/dx
+                          ! omega_2(jj,ii,kk) = dGz(1,jj,ii,kk) - dGx(3,jj,ii,kk)
+                          ! !dv/dx-du/dy
+                          ! omega_3(jj,ii,kk) = dGx(2,jj,ii,kk) - dGy(1,jj,ii,kk)
                         end do
                       end do
                     end do
@@ -2005,7 +2016,7 @@ end module three_omp
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                           &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),z,&
-                          oldG(0,jj,ii,kk),omega_3(jj,ii,kk),div_u(jj,ii,kk)
+                          oldG(0,jj,ii,kk),Invariant_2(jj,ii,kk),div_u(jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -2032,5 +2043,5 @@ end module three_omp
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
       deallocate(in_G0,in_G1,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
-      deallocate(omega_1,omega_2,omega_3,dp,div_u)
+      deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
     end program main
