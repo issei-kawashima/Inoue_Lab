@@ -40,6 +40,8 @@
 !NSCBC_yのL,dやin_Gの配列縮小やF,V行列生成subroutineでのDoループの統合
 !そしてUVWT0,V0のコメントアウト化とdif_x,y,zのDoループの番号l,j,i,kの統一なども同時に行った。
 !2020.08.25 音響成分のdiv_uを実装。Ma=2.0に変更し計算できるかどうかを試す。
+!2020.08.26 音響成分の可視化には成功。ただしMa=2.0では計算できなかった。
+!2020.08.26 速度勾配テンソルの第二不変量Qを実装。Ma=1.6にしてみて計算してみる。
 
 module three_omp
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -74,7 +76,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 2.0d0
+  double precision,parameter :: Ma = 1.6d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
