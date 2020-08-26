@@ -27,12 +27,12 @@ set yrange [-10:10]
 #set zrange [0:1]
 
 set term x11 1
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001916_18.txt' u 1:2:5  w pm3d t ""
+#3次元　通常 (2020/08/26 Invariant_2第二不変量を投入する前のデータのみ)
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001916_18.txt' u 1:2:5  w pm3d t ""
 
-#set term x11 2
-#splot '/Users/isseyshome/Documents/Lab/thesis/result_KO1/parameter009000.d' u 1:2:4  w pm3d t ""
-#set term x11 3
-#splot '/Users/isseyshome/Documents/Lab/thesis/result_KO/parameter009000.d' u 1:2:4  w pm3d t ""
+#2次元
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma1.6/parameter001500.txt' u 1:2:4  w pm3d t ""
+
 #se term jpeg
 #se out "/Users/isseyshome/Documents/Lab/3-dimensions/result_2D/vorticity000000.jpg"
 #rep

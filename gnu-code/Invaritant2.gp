@@ -1,6 +1,6 @@
 reset
 set term x11
-se pm3d map
+#se pm3d map
 #se size square
 #se view 90,270,1,1
 se contour#等高線の表示
@@ -19,24 +19,21 @@ set key below right box font "Arial,12"
 
 set xl "x"
 set yl "y"
-set zl "Sound element div_u"
+set zl "Invaritant 2"
 set grid
 
-set xrange [0:10]
-set yrange [-3:3]
+set xrange [0:36]
+set yrange [-10:10]
 #set zrange [0:1]
 
 set term x11 1
-#3次元　通常
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:7  w pm3d t ""
-#3次元 Nan直前
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001000_18.txt' u 1:2:6  w pm3d t ""
+#3次元
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001500_18.txt' u 1:2:5  w pm3d t ""
 
-set term x11 2
 #2次元　通常
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma2/parameter001000.txt' u 1:2:6  w pm3d t ""
+#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma1.6/parameter001500.txt' u 1:2:7  w pm3d t ""
 #2次元　NaN直前
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma2/parameter001000.txt' u 1:2:5  w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/2dimensions/result_super_2d-3Ma1.6/parameter002367.txt' u 1:2:6  w pm3d t ""
 
 #se term jpeg
 #se out "/Users/isseyshome/Documents/Lab/3-dimensions/result_2D/vorticity000000.jpg"
