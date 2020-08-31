@@ -3,7 +3,6 @@
 program kakusan
   !$use omp_lib
   implicit none
-  character filename*128
   integer,parameter::NX=100,NY=70,NZ=50
   integer,parameter::Kmx=10,Kmy=10,Kmz=10
   double precision,parameter::PI=dacos(-1d0)
@@ -13,7 +12,7 @@ program kakusan
   double precision,parameter::dz=Lz/dble(NZ)
   double precision,parameter::Kmax=1d0
 
-  integer::i,j,k,n,t
+  integer::i,j,k
   integer::Kx,Ky,Kz
   double precision::x(0:NX),y(0:NY),ys(0:NY),z(0:NZ-1)
   double precision,dimension(0:NY,0:NZ-1)::WF3d1,WF3d2,WF3d
@@ -21,7 +20,7 @@ program kakusan
   double precision::ES3d(Kmx,Kmy,Kmz)
   double precision::Rand_x,Rand_y,Rand_z
   double precision::theta_x,theta_y,theta_z
-  double precision::max_E,wf
+  double precision::max_E
   double precision::max_u,max_v,max_w
   double precision::abs_k,NAN=1,ran=1,a1=0.13d0
   double precision,dimension(0:NX,0:NY,0:NZ-1)::kakuran_u,kakuran_v,kakuran_w
@@ -30,30 +29,31 @@ program kakusan
   do i=0,NX
      x(i)=dx*dble(i)
   end do
-    do i=0,NY
-       y(i)=dy*dble(i)
-    end do
-    ys=(Ly)*dexp(-a1*(Ly-y)) - (Ly - y)*dexp(-a1*(Ly))
-
+  do i=0,NY
+     y(i)=dy*dble(i)
+  end do
+  ys=(Ly)*dexp(-a1*(Ly-y)) - (Ly - y)*dexp(-a1*(Ly))
   do i=0,NZ-1
      z(i)=dz*dble(i)
   end do
-WF3d2=0d0
-  do k=0,NZ-1
-     do j=0,NY
- !       WF3d1(j,k)=dtanh(19d0*ys(j))*dexp(-10.8d0*(ys(j)**(6d0)))
- !       wf3d2(j,k)=dtanh(19d0*(-ys(j)+2d0))*dexp(-10.8d0*((-ys(j)+2d0)**(6d0)))
-     end do
-  end do
+  WF3d2=0d0
+  !ここって必要ないループなんじゃ？
+ !  do k=0,NZ-1
+ !     do j=0,NY
+ ! !       WF3d1(j,k)=dtanh(19d0*ys(j))*dexp(-10.8d0*(ys(j)**(6d0)))
+ ! !       wf3d2(j,k)=dtanh(19d0*(-ys(j)+2d0))*dexp(-10.8d0*((-ys(j)+2d0)**(6d0)))
+ !     end do
+ !  end do
  !  wf3d=wf3d1+wf3d2
 
   WF3d(0,:)=0d0
   WF3d(NY,:)=0d0
 wf3d=1d0
-  do j=0,NY
-!     WF3d(j,:)=(dcos(pi*ys(j)*0.5d0)**2)*dexp(-2d-5*ys(j)**6)
-!     wf3d(j,:)=1d0-ys(j)**10d0
-  end do
+!ここって必要ないループなんじゃ？
+!   do j=0,NY
+! !     WF3d(j,:)=(dcos(pi*ys(j)*0.5d0)**2)*dexp(-2d-5*ys(j)**6)
+! !     wf3d(j,:)=1d0-ys(j)**10d0
+!   end do
 
   open(11,file='WF3D.csv')
   do j=0,NY
@@ -102,7 +102,7 @@ if (Nan==1)then
     u_d3(NX,:,:)=u_d3(0,:,:)
     u_d3(:,NY,:)=u_d3(:,0,:)
     u_d3(:,:,NZ-1)=u_d3(:,:,0)
-	write(*,*)'a'
+    write(*,*)'step-1'
      !$omp section
     !!!            v
     do j=0,NY
@@ -130,7 +130,7 @@ if (Nan==1)then
     v_d3(NX,:,:)=v_d3(0,:,:)
     v_d3(:,NY,:)=v_d3(:,0,:)
     v_d3(:,:,NZ-1)=v_d3(:,:,0)
-	write(*,*)'a'
+    write(*,*)'step-2'
 !$omp section
 !!!!!!!!!!!!!!!!!!!!!!                  w
     do j=0,NY
@@ -158,7 +158,7 @@ if (Nan==1)then
     w_d3(NX,:,:)=w_d3(0,:,:)
     w_d3(:,NY,:)=w_d3(:,0,:)
     w_d3(:,:,NZ-1)=w_d3(:,:,0)
-	write(*,*)'a'
+    write(*,*)'step-3'
      !$omp end parallel sections
     open(120,file='randam_tasikame.csv')
     do i=0,NY
