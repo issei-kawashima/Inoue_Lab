@@ -1,12 +1,33 @@
-!!!kakusan
-!!!森山史孝　1024
+!森山が作成したランダム撹乱作成コード(境界層用)
+!を河島がジェット用に改変(2020/08/31)
 program kakusan
   !$use omp_lib
   implicit none
-  integer,parameter::NX=100,NY=70,NZ=50
-  integer,parameter::Kmx=10,Kmy=10,Kmz=10
+  integer,parameter :: NX = 360
+  integer,parameter :: NY = 200
+  integer,parameter :: NZ = 20
+  !x方向格子伸長
+  double precision,parameter :: x_width=10.8d0
+  double precision,parameter :: a1=1d0/14d0
+  double precision,parameter :: a2=7.d0
+  double precision,parameter :: b1=1.d0/1.4d0
+  !y方向格子伸長
+  double precision,parameter :: y_width=3.d0!!!以下はxと同じなのでコメントアウト!!!a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
+  double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
+  double precision,parameter :: Cx = 24.d0*b !x軸の幅の設定
+  double precision,parameter :: Cy = 8.d0*b !y軸の幅の設定
+  !Buffer領域の幅は常にWx<=Cxと計算領域よりも小さくてはならない
+  double precision,parameter :: Wrx = 12.d0*b!Buffer領域x方向右側の幅
+  double precision,parameter :: Wlx = Wrx!Buffer領域x方向左側の幅
+  double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
+  double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
+  double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
+  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
+  double precision,parameter :: Lz = 1.d0
+  double precision :: Ymin
+
+  integer,parameter::Kmx=10,Kmy=10,Kmz=10!kx,ky,kz(打ち切り波数)
   double precision,parameter::PI=dacos(-1d0)
-  double precision,parameter::Lx=150d0,Ly=8d0,Lz=12d0
   double precision,parameter::dx=Lx/dble(NX)
   double precision,parameter::dy=Ly/dble(NY)
   double precision,parameter::dz=Lz/dble(NZ)
@@ -14,83 +35,81 @@ program kakusan
 
   integer::i,j,k
   integer::Kx,Ky,Kz
-  double precision::x(0:NX),y(0:NY),ys(0:NY),z(0:NZ-1)
-  double precision,dimension(0:NY,0:NZ-1)::WF3d1,WF3d2,WF3d
+  double precision::x(0:NX),xs(0:NX),y(0:NY),ys(0:NY),z(0:NZ-1)
   double precision,dimension(0:NX,0:NY,0:NZ-1)::u_d3,v_d3,w_d3
   double precision::ES3d(Kmx,Kmy,Kmz)
   double precision::Rand_x,Rand_y,Rand_z
   double precision::theta_x,theta_y,theta_z
   double precision::max_E
   double precision::max_u,max_v,max_w
-  double precision::abs_k,NAN=1,ran=1,a1=0.13d0
+  double precision::abs_k
   double precision,dimension(0:NX,0:NY,0:NZ-1)::kakuran_u,kakuran_v,kakuran_w
 
 !!!初期座標および格子伸長
+  !x座標設定
   do i=0,NX
      x(i)=dx*dble(i)
   end do
+  !x方向の格子伸長
+  do i= 0,NX
+   xs(i) = b1 * (1.7d0*x(i)-a1*&
+    (-dlog(dcosh(a2*(x(i) - x_width))) + dlog(dcosh(a2*(x(i) + x_width)))))
+  enddo
+
+  !y座標設定
+  Ymin = -(Ly/2.d0)
   do i=0,NY
-     y(i)=dy*dble(i)
+     y(i)=Ymin + dy*dble(i)
   end do
-  ys=(Ly)*dexp(-a1*(Ly-y)) - (Ly - y)*dexp(-a1*(Ly))
+  !y方向の格子伸長
+  do i= 0,NY
+    ys(i) = b1 * (1.7d0*y(i)-a1*&
+  (-dlog(dcosh(a2*(y(i) - y_width))) + dlog(dcosh(a2*(y(i)+ y_width)))))
+  enddo
+
+  !z座標設定
   do i=0,NZ-1
      z(i)=dz*dble(i)
   end do
-  WF3d2=0d0
-  !ここって必要ないループなんじゃ？
- !  do k=0,NZ-1
- !     do j=0,NY
- ! !       WF3d1(j,k)=dtanh(19d0*ys(j))*dexp(-10.8d0*(ys(j)**(6d0)))
- ! !       wf3d2(j,k)=dtanh(19d0*(-ys(j)+2d0))*dexp(-10.8d0*((-ys(j)+2d0)**(6d0)))
- !     end do
- !  end do
- !  wf3d=wf3d1+wf3d2
 
-  WF3d(0,:)=0d0
-  WF3d(NY,:)=0d0
-wf3d=1d0
-!ここって必要ないループなんじゃ？
-!   do j=0,NY
-! !     WF3d(j,:)=(dcos(pi*ys(j)*0.5d0)**2)*dexp(-2d-5*ys(j)**6)
-! !     wf3d(j,:)=1d0-ys(j)**10d0
-!   end do
-
-  open(11,file='WF3D.csv')
-  do j=0,NY
-     write(11,*) ys(j),',',WF3d(j,0),',',WF3d(j,NZ-1)
+  !撹乱エネルギースペクトルE(k)の計算
+  do kx=1,Kmx
+     do ky=1,Kmy
+        do kz=1,Kmz
+          !k=(kx,ky,kz)T(転置)
+          !|k|=(kx^2+ky^2+kz^2)
+           abs_k=dsqrt(dble(Kx*Kx)+dble(Ky*Ky)+dble(Kz*Kz))
+          !E(k)=(|k|/Kmax)^4 * exp(-2*(|k|/Kmax)^2)
+           ES3d(Kx,Ky,Kz)=(abs_k/Kmax)**4*dexp(-2d0*(abs_k/Kmax)**2)
+        end do
+     end do
   end do
-    do kx=1,Kmx
-       do ky=1,Kmy
-          do kz=1,Kmz
-             abs_k=dsqrt(dble(Kx*Kx)+dble(Ky*Ky)+dble(Kz*Kz))
-             ES3d(Kx,Ky,Kz)=(abs_k/Kmax)**4*dexp(-2d0*(abs_k/Kmax)**2)
-          end do
-       end do
-    end do
 
   max_E=maxval(ES3d)
-if(ran==1)then
   u_d3=0d0
   v_d3=0d0
   w_d3=0d0
-if (Nan==1)then
   call random_seed()
        !$omp parallel sections
      !$omp section
+    !ランダム撹乱のメイン部分
     do j=0,NY
        do i=0,NX
           do k=0,NZ-1
              do Kx=1,Kmx
                 do ky=1,Kmy
                    do kz=1,Kmz
+                     !0<=Rand_x<=1の範囲でランダムに値を与える
                       call random_number(Rand_x)
                       call random_number(Rand_y)
                       call random_number(Rand_z)
                       theta_x=Rand_x*Lx
                       theta_y=Rand_y*Ly
                       theta_z=Rand_z*Lz
+                      !撹乱の関数f(x,y,z)
+                      !xとyの座標はxs,ysと格子伸長適用済みのものに変更
                       u_d3(i,j,k)=u_d3(i,j,k)&
-                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(x(i)+theta_x)/Lx)&
+                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(xs(i)+theta_x)/Lx)&
                            *dsin(2d0*pi*Ky*(ys(j)+theta_y)/Ly)&
                            *dsin(2d0*pi*Kz*(z(k)+theta_z)/Lz)
                    end do
@@ -102,9 +121,9 @@ if (Nan==1)then
     u_d3(NX,:,:)=u_d3(0,:,:)
     u_d3(:,NY,:)=u_d3(:,0,:)
     u_d3(:,:,NZ-1)=u_d3(:,:,0)
-    write(*,*)'step-1'
+    write(*,*)'u方向撹乱計算完了'
      !$omp section
-    !!!            v
+    !!!v方向
     do j=0,NY
        do i=0,NX
           do k=0,NZ-1
@@ -118,7 +137,7 @@ if (Nan==1)then
                       theta_y=Rand_y*Ly
                       theta_z=Rand_z*Lz
                       v_d3(i,j,k)=v_d3(i,j,k)&
-                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(x(i)+theta_x)/Lx)&
+                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(xs(i)+theta_x)/Lx)&
                            *dsin(2d0*pi*Ky*(ys(j)+theta_y)/Ly)&
                            *dsin(2d0*pi*Kz*(z(k)+theta_z)/Lz)
                    end do
@@ -130,9 +149,9 @@ if (Nan==1)then
     v_d3(NX,:,:)=v_d3(0,:,:)
     v_d3(:,NY,:)=v_d3(:,0,:)
     v_d3(:,:,NZ-1)=v_d3(:,:,0)
-    write(*,*)'step-2'
+    write(*,*)'v方向撹乱計算完了'
 !$omp section
-!!!!!!!!!!!!!!!!!!!!!!                  w
+!w方向
     do j=0,NY
        do i=0,NX
           do k=0,NZ-1
@@ -146,7 +165,7 @@ if (Nan==1)then
                       theta_y=Rand_y*Ly
                       theta_z=Rand_z*Lz
                       w_d3(i,j,k)=w_d3(i,j,k)&
-                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(x(i)+theta_x)/Lx)&
+                       +dsqrt(ES3D(Kx,Ky,Kz))*dsin(2d0*pi*Kx*(xs(i)+theta_x)/Lx)&
                            *dsin(2d0*pi*Ky*(ys(j)+theta_y)/Ly)&
                            *dsin(2d0*pi*Kz*(z(k)+theta_z)/Lz)
                    end do
@@ -158,9 +177,10 @@ if (Nan==1)then
     w_d3(NX,:,:)=w_d3(0,:,:)
     w_d3(:,NY,:)=w_d3(:,0,:)
     w_d3(:,:,NZ-1)=w_d3(:,:,0)
-    write(*,*)'step-3'
+    write(*,*)'w方向撹乱計算完了'
      !$omp end parallel sections
-    open(120,file='randam_tasikame.csv')
+    open(120,file='random_check.csv')
+    !u方向の撹乱関数を確認(x=1)
     do i=0,NY
        do j=0,NZ-1
           write(120,*)i,j,u_d3(1,i,j)
@@ -173,9 +193,9 @@ if (Nan==1)then
 
 
  do i=0,NX
-    max_u=maxval(dabs(u_d3(i,:,:)*WF3D))
-    max_v=maxval(dabs(v_d3(i,:,:)*WF3D))
-    max_w=maxval(dabs(w_d3(i,:,:)*WF3D))
+    max_u=maxval(dabs(u_d3(i,:,:)))
+    max_v=maxval(dabs(v_d3(i,:,:)))
+    max_w=maxval(dabs(w_d3(i,:,:)))
     kakuran_u(i,:,:)=u_d3(i,:,:)/max_u
     kakuran_v(i,:,:)=v_d3(i,:,:)/max_v
     kakuran_w(i,:,:)=w_d3(i,:,:)/max_w
@@ -193,14 +213,13 @@ end do
  close(22)
  close(23)
 
- open(100,file='tasikame.csv')
+ open(100,file='check.csv')
+ !u方向の撹乱関数を確認
  do i=5,5
     do j=0,NY
        do k=0,NZ-1
-          write(100,*)j,k,kakuran_u(i,j,k)!*WF3d(j,k)
+          write(100,*)j,k,kakuran_u(i,j,k)
        end do
     end do
  end do
-end if
-end if
 end program kakusan
