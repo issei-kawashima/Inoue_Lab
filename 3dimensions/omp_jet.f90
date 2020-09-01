@@ -42,6 +42,8 @@
 !2020.08.25 音響成分のdiv_uを実装。Ma=2.0に変更し計算できるかどうかを試す。
 !2020.08.26 音響成分の可視化には成功。ただしMa=2.0では計算できなかった。
 !2020.08.26 速度勾配テンソルの第二不変量Qを実装。Ma=1.6にしてみて計算してみる。
+!2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
+
 
 module three_omp
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -1494,11 +1496,14 @@ end module three_omp
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
       div_u=0.d0;Invariant_2=0.d0
 
+      !============座標設定======================================================
       !y方向の格子伸長のための座標設定
       call lattice_y(dy,zeta_fy,dzeta_iny)
       !x方向も
       call lattice_x(dx,zeta_fx,dzeta_inx)
-    !流入条件の導出
+      !=========================================================================
+  !!!!!!============流入条件設定==================================================
+    !top-hat型ジェットの導出・計算
     !初期条件もζ_yの座標系で設定する
     ur(Ny/2) = ujet
     Tu(Ny/2) = Tjet
@@ -1523,7 +1528,64 @@ end module three_omp
         Tu(i) = Tu(Ny-i)
       enddo
     !$omp end parallel do
-    !初期値
+    !===============================流入ジェットの計算終了===========================
+    !==============================流入ランダム撹乱の読み込み========================
+      open(31,file='kakuran3D_u.txt',status='old')
+      open(32,file='kakuran3D_v.txt',status='old')
+      open(33,file='kakuran3D_w.txt',status='old')
+
+      do i=0,MXt!ここは要変更
+      	do j=0,MY!ここは要変更
+      		do k=0,MZ-1!ここは要変更
+       		read(31,*) kakuran_u(i,j,k)!ここは未定義
+       		read(32,*) kakuran_v(i,j,k)!ここは未定義
+       		read(33,*) kakuran_w(i,j,k)!ここは未定義
+       		enddo
+       	enddo
+      enddo
+
+      close(31)
+      close(32)
+      close(33)
+
+      do i=0,MXt!ここは要変更
+      	do j=0,MY!ここは要変更
+      	kakuran_u(i,j,MZ)=kakuran_u(i,j,0)!ここも未定義
+      	kakuran_v(i,j,MZ)=kakuran_v(i,j,0)!ここも未定義
+      	kakuran_w(i,j,MZ)=kakuran_w(i,j,0)!ここも未定義
+      	enddo
+      enddo
+
+      do j=0,MY!この窓関数はjetに合うやつを見つけてきて当てはめる
+      window(j,:)=dtanh(3.d0*y(j))*dexp(-2d-5*(y(j)**6.d0))
+      enddo
+
+      do i=0,MXt!この方達は流用可能(Mxtの定義は要変更)
+      kakuran_u(i,:,:)=kakuran_u(i,:,:)*window(:,:)
+      kakuran_v(i,:,:)=kakuran_v(i,:,:)*window(:,:)
+      kakuran_w(i,:,:)=kakuran_w(i,:,:)*window(:,:)
+      enddo
+
+      open(34,file='kakkuran_kakunin.txt',status='replace')
+      !open(101,file='window.csv',status='replace')
+      do k=0,MZ
+      	do j=0,MY
+      	write(34,'(3f24.16)') y(j),z(k),kakuran_u(2,j,k)
+      !	write(101,'(3f24.16)') y(j),z(k),window(j,k)
+      	enddo
+      	write(34,*)
+      !	write(101,*)
+      enddo
+      close(34)
+      !close(101)
+
+      !kakuran_u=0.d0
+      !kakuran_v=0.d0
+      !kakuran_w=0.d0
+
+      write(*,*) kakuran_u(2,10,5)
+!===============================================================================
+!==========初期値の設定===========================================================
     !全体にまず初期値を入れてしまう
     !$omp parallel do
       do k=0,Nz-1
