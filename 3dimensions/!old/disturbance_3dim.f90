@@ -2,11 +2,9 @@
 !2019.05.18 Nx=180 Ny=100 dt=5.d-3で実行すれば卒論の格子伸長適用時の条件になる
 !Nx,Nyの格子点数を2枚ずつ合計4枚に使用としたらメモリが不足して実行できなかった。
 !対策としては、配列を全てallocatableに配列を変更しないといけない。
-!M=75000(T=150)まで計算をすることが亜音速では少なくともできた。(3dim.f90で)
+!M=75000(T=150)まで計算をすることが撹乱なしでは少なくともできた。(3dim.f90で)
 !2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
-!2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
-!Pr=0.71>Pr=1へ変更。Ma数を0.5から1.4に変更(超音速化)
-!Nx=180,Ny=100,Nz=19,dt=2.d-3で計算。
+!今回は卒論でも取り入れた周期的撹乱を導入してある。
 
 module threedim
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -41,11 +39,11 @@ module threedim
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   !亜音速流入のためRe数は小さめに
-  double precision,parameter :: Pr = 1.0d0
-  double precision,parameter :: Ma = 1.4d0
+  double precision,parameter :: Pr = 0.71d0
+  double precision,parameter :: Ma = 0.5d0
   !Ma数も同様に小さめに
   double precision,parameter :: Temp = 1.d0
-  double precision,parameter :: Tjet = 1.4d0*Temp
+  double precision,parameter :: Tjet = 1.12d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
@@ -918,7 +916,7 @@ end module threedim
            do k=0,Nz-1
              z = dz*dble(k)
              write(z_name, '(i2.2)') k
-             open(10, file = "result_super/parameter000000_"//trim(z_name)//".txt")
+             open(10, file = "result_disturbance/parameter000000_"//trim(z_name)//".txt")
               ! z = dz*dble(Nz/2)
               do i = 0,Ny
                 do j = 0,Nx
@@ -929,7 +927,7 @@ end module threedim
               enddo
               close(10)
            enddo
-!      open(20,file = "result_super/1pressure.d")
+!      open(20,file = "result_disturbance/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -960,16 +958,14 @@ end module threedim
         !このDoループ内に入れる必要がある。
             !移流方程式の導出
             !3次精度Runge-Kutta法での導出！
-      !========================================================================
-       !  !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-       ! theta = 2.d0*pi*dble(M)*dt
-       ! !計算高速化
-       ! do i = 0,Ny
-       !   if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-       !     in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-       !   endif
-       ! enddo
-       !========================================================================
+        !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
+       theta = 2.d0*pi*dble(M)*dt
+       !計算高速化
+       do i = 0,Ny
+         if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+           in_G(2,i,:) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+         endif
+       enddo
         !Q1
         !F行列のdfx/dxの計算
         !x_axis
@@ -1035,10 +1031,9 @@ end module threedim
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
       call inflow(Q1,in_G)!dirichlet条件で流入部を固定
       !==========
-      !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
       !NSCBC_xを上書きしてNeumannにしてしまう
       !===========
-      call Neumann(Q1)
+      !call Neumann(Q1)
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1101,10 +1096,9 @@ end module threedim
 !        call Q_boundary(Q2)
         call inflow(Q2,in_G)
         !==========
-        !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        call Neumann(Q2)
+        !call Neumann(Q2)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1166,10 +1160,9 @@ end module threedim
 !        call Q_boundary(Qn)
         call inflow(Qn,in_G)
         !==========
-        !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
         !===========
-        call Neumann(Qn)
+        !call Neumann(Qn)
         call rho_u_p(G,Qn)
 !        if (mod(M,p_output) == 0) then
 !          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2,Nz/2)
@@ -1190,7 +1183,7 @@ end module threedim
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_disturbance/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              ! z=dz*dble(Nz/2)
              do ii = 0,Ny
@@ -1201,8 +1194,6 @@ end module threedim
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
              enddo
-             write(10,'(2A1,1I7)') "#","M",M
-             write(10,'(7A10)')"#","x","y","z","rho","vorticity","dp/dt"
              close(10)
            enddo
          endif
@@ -1239,7 +1230,7 @@ end module threedim
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_super/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_disturbance/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1248,7 +1239,6 @@ end module threedim
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
                       enddo
-                      write(10,'(7A10)')"#","x","y","z","rho","vorticity"
                       close(10)
                     enddo
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M

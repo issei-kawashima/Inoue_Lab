@@ -879,6 +879,7 @@ end module threedim
       use threedim
       implicit none
       character(len = 16) filename
+      character(len = 16) z_name
       !時間更新毎に出力ファイルを変更するためのファイル名設定
       !NSCBCでdrho,du,dpを計算する必要があるので計算しやすいようにG行列を作成しG(rho,u,p)
       !となるように設定した。すなわちdGは密度、速度、圧力のそれぞれの微分項を含む行列となる
@@ -1020,22 +1021,22 @@ end module threedim
 !      !Doループ内でin_G(2,:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_3D/parameter000000.txt")
-      !もちろん出力もζ_y座標系とζ_x座標系で行う
-      !      do k=0,Nz-1
-      !        z = dz*dble(k)
-              z = dz*dble(Nz/2)
-              do i = 0,Ny
-                y = -Ly + dy * dble(i)
-                do j = 0,Nx
-                  ! x = dx * dble(j)
-                  x = -Lx + dx * dble(j)!4方向流出
-                  write(10,'(6f24.16)') x,y,z,G(0,j,i,Nz/2),omega_3(j,i,Nz/2),dp(j,i,Nz/2)/dt
-                enddo
-                write(10,*)
-              enddo
-      !        write(10,*)
-      !      enddo
+      do k=0,Nz-1
+        z = dz*dble(k)
+        write(z_name, '(i2.2)') k
+        open(10, file = "result_3D/parameter000000_"//trim(z_name)//".txt")
+        do i = 0,Ny
+          y = -Ly + dy * dble(i)
+          do j = 0,Nx
+            ! x = dx * dble(j)
+            x = -Lx + dx * dble(j)!4方向流出
+            write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+            f24.16)') x,y,z,G(0,j,i,k),omega_3(j,i,k),dp(j,i,k)/dt
+          enddo
+          write(10,*)
+        enddo
+        close(10)
+      enddo
 !      open(20,file = "result_3D/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
@@ -1319,25 +1320,22 @@ end module threedim
            write(filename, '(i6.6)') M
            !Mの計算毎に出力ファイル名を変更して出力する
            !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-           open(10, file = "result_3D/parameter"//trim(filename)//".txt")
-           !do kk= 0,Nz-1
-             !z=dz*dble(kk)
-             z=dz*dble(Nz/2)
+           do kk= 0,Nz-1
+           write(z_name, '(i2.2)') kk
+           open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+           z=dz*dble(kk)
              do ii = 0,Ny
                y = -Ly + dy * dble(ii)
                do jj = 0,Nx
                  ! x = dx * dble(jj)
                  x = -Lx + dx * dble(jj)!4方向流出
-                 write(10,'(6f24.16)') x,y,z,G(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2),dp(jj,ii,Nz/2)
+                 write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                 f24.16)') x,y,z,G(0,jj,ii,kk),omega_3(jj,ii,kk),dp(jj,ii,kk)
                enddo
                write(10,*)
              enddo
-             !write(10,*)
-             !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
-           !enddo
-           write(10,'(2A1,1I7)') "#","M",M
-           write(10,'(7A10)')"#","x","y","z","rho","vorticity","dp/dt"
            close(10)
+           enddo
          endif
         !計算が破綻している場合に計算を終了させるプログラム
         do k = 0,Nz-1
@@ -1355,32 +1353,26 @@ end module threedim
                     omega_2(:,:,:) = dGz(1,:,:,:) - dGx(3,:,:,:)
                     omega_3(:,:,:) = dGx(2,:,:,:) - dGy(1,:,:,:)
                     !dp(:,:,:) = (G(4,:,:,:) - oldG(4,:,:,:))/dt Gは計算破綻時間には常にNaNなのでdpは計算不能
-                    write(filename, '(i6.6)') M
+                    write(filename, '(i6.6)') M-1
                     !Mの計算毎に出力ファイル名を変更して出力する
                     !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-!                    open(10, file = "result_3D/parameter"//trim(filename)//".txt")
                     do kk= 0,Nz-1
-!                      z=dz*dble(Nz/2)
+                      write(z_name, '(i2.2)') kk
+                      open(10, file = "result_3D/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       z=dz*dble(kk)
-                      write(filename, '(i6.6)') kk
-                      open(10, file = "result_3D/parameter"//trim(filename)//".txt")
                       do ii = 0,Ny
                         y = -Ly + dy * dble(ii)
                         do jj = 0,Nx
                           ! x = dx * dble(jj)
                           x = -Lx + dx * dble(jj)!4方向流出
-!                          write(10,'(6f24.16)') zeta_fx(jj),zeta_fy(ii),z,oldG(0,jj,ii,Nz/2),omega_3(jj,ii,Nz/2)
-                          write(10,'(6f24.16)') x,y,z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
+                          write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,","&
+                          ,f24.16)') x,y,z,oldG(0,jj,ii,kk),omega_3(jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
                       enddo
-                      write(10,'(7A10)')"#","x","y","z","rho","vorticity"
                       close(10)
                     enddo
-!                    write(10,'(2A1,1I7)') "#","M",M
-!                    write(10,'(7A10)')"#","x","y","z","rho","vorticity"
-!                    close(10)
                     write(*,*) "x=",i,"y=",j,"z=",k,"M=",M
                     call cpu_time(t1)
                     write(*,'("Time required = ",i3,"min",f4.1,"sec")') &

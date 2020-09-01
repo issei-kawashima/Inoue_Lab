@@ -11,7 +11,8 @@
 !2019.12.19 Ma=2.4/ 2.0では計算が途中で(M=920(t=4.5くらい))破綻してしまった
 !でも渡辺さん・姫野さんはMa=1.4で実験と計算を行なっているのでMa=1.4で進むことにした。
 !2019.12.20 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した。
-
+!2020.06.04 計算結果出力形式を.dから.txtへ変更した
+!2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 
 module supersonic
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -40,7 +41,7 @@ module supersonic
   double precision,parameter :: NS_sigma = 0.25d0
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
-  double precision,parameter :: Pr = 1.d0
+  double precision,parameter :: Pr = 0.71d0
   double precision,parameter :: Ma = 1.4d0
   !Ma数を1.5~5にして超音速にする
   double precision,parameter :: Temp = 1.d0
@@ -632,12 +633,14 @@ end module supersonic
       in_G(2,:) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
       !初期値の出力
       !まずt=0はループ外で個別に作成
-      open(10, file = "result_super/parameter000000.d")
+      open(10, file = "result_super/parameter000000.txt")
       !もちろん出力もζ_y座標系とζ_x座標系で行う
       do i = 0,Ny
         do j = 0,Nx
-          write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),G(3,j,i),G(1,j,i)
-          !write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,G(1,j,i)
+          write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                  f24.16)')zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),G(3,j,i),G(1,j,i)
+          !write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                  ! f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i)/dt,G(1,j,i)
         enddo
         write(10,*)
       enddo
@@ -645,8 +648,8 @@ end module supersonic
       write(10,'(2A1,1I1)') "#","M",0!#を入れているのはgnuplotでコメントアウトするため
       write(10,'(6A10)')"#","x","y","rho","vorticity","dp/dt"
       close(10)
-      open(20,file = "result_super/1pressure.d")
-      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
+      open(20,file = "result_super/1pressure.txt")
+      write(20,'(1I1,",",1f24.16)') 0,G(3,162,Ny/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(3,Nx,0)
       p0y_infty = G(3,0,0)
@@ -670,21 +673,18 @@ end module supersonic
         !このDoループ内に入れる必要がある。
             !移流方程式の導出
             !3次精度Runge-Kutta法での導出！
-!=====================================================================================
-!今回は撹乱入れない
-!=====================================================================================
         !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-        ! theta = 2.d0*pi*dble(M)*dt
-        ! in_G(2,:)=0.d0
-        ! do i = 0,Ny
-        !   if(zeta_fy(i) < -b) then
-        !     in_G(2,i) = 0.d0
-        !   elseif((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-        !     in_G(2,i) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-        !   elseif(zeta_fy(i) >= b) then
-        !     in_G(2,i) = 0.d0
-        !   endif
-        ! enddo
+        theta = 2.d0*pi*dble(M)*dt
+        in_G(2,:)=0.d0
+        do i = 0,Ny
+          if(zeta_fy(i) < -b) then
+            in_G(2,i) = 0.d0
+          elseif((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+            in_G(2,i) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+          elseif(zeta_fy(i) >= b) then
+            in_G(2,i) = 0.d0
+          endif
+        enddo
         !Q1
         !F行列のdfx/dxの計算
         !x_axis
@@ -820,7 +820,7 @@ end module supersonic
         call Neumann(Qn)
         call rho_u_p(G,Qn)
         if (mod(M,p_output) == 0) then
-          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2)
+          write(20,'(1I7,",",1f24.16)') M,G(3,162,Ny/2)
         endif
           if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
           !if(mod(M,561) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
@@ -834,11 +834,13 @@ end module supersonic
             write(filename, '(i6.6)') M
             !Mの計算毎に出力ファイル名を変更して出力する
             !i5.5で5桁分の数字を表示できるのでdt=1.d-5以下で計算するならここも変更が必要
-            open(10, file = "result_super/parameter"//trim(filename)//".d")
+            open(10, file = "result_super/parameter"//trim(filename)//".txt")
             do i = 0,Ny
               do j = 0,Nx
-                write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),G(3,j,i),G(1,j,i)
-                !write(10,'(6f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),G(1,j,i)
+                write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                        f24.16)')zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),G(3,j,i),G(1,j,i)
+                !write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+                        ! f24.16)') zeta_fx(j),zeta_fy(i),G(0,j,i),omega_z(j,i),dp(j,i),G(1,j,i)
               enddo
               write(10,*)
               !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
