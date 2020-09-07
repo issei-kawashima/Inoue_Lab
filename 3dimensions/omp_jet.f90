@@ -1443,7 +1443,7 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:,:) :: dFz,dGz
       double precision dz,z
       integer i,j,k,l,M,ii,jj,kk
-      double precision theta
+      ! double precision theta !時間での周期的撹乱用の変数
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
       double precision,allocatable,dimension(:) :: Ux,sigma_x,Uy,sigma_y
@@ -1523,8 +1523,8 @@ end module three_omp
   !!!!!!============流入条件設定==================================================
     !top-hat型ジェットの導出・計算
     !初期条件もζ_yの座標系で設定する
-    ur(Ny/2) = ujet
-    Tu(Ny/2) = Tjet
+      ur(Ny/2) = ujet
+      Tu(Ny/2) = Tjet
 
     !========並列化しない=========================================================
     !Tuを求めるのにurが必要なため1つのDoループで並列化不可能。ここはDoループが小さいので、並列化しない
@@ -1551,11 +1551,11 @@ end module three_omp
       open(33,file='kakuran3D_w.txt',status='old')
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       do k=0,Nz-1
-      	do i=0,Ny
-       		read(31,*) kakuran_u(i,k)
-       		read(32,*) kakuran_v(i,k)
-       		read(33,*) kakuran_w(i,k)
-       	enddo
+        do i=0,Ny
+          read(31,*) kakuran_u(i,k)
+          read(32,*) kakuran_v(i,k)
+          read(33,*) kakuran_w(i,k)
+        enddo
       enddo
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       close(31)
@@ -1565,10 +1565,10 @@ end module three_omp
       open(34,file='kakkuran_kakunin.txt',status='replace')
       do k=0,Nz-1
         z = dz*dble(k)
-      	do i=0,Ny
-        	write(34,'(3f24.16)') zeta_fy(i),z,kakuran_u(i,k)
-      	enddo
-      	write(34,*)
+        do i=0,Ny
+          write(34,'(3f24.16)') zeta_fy(i),z,kakuran_u(i,k)
+        enddo
+        write(34,*)
       enddo
       close(34)
    !============================================================================
@@ -1694,7 +1694,7 @@ end module three_omp
        !     endif
        !   enddo
        ! enddo
-       !$omp end parallel do
+       !!$omp end parallel do
        !========================================================================
         !Q1
         !F行列のdfx/dxの計算
