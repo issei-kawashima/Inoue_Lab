@@ -43,6 +43,9 @@
 !2020.08.26 音響成分の可視化には成功。ただしMa=2.0では計算できなかった。
 !2020.08.26 速度勾配テンソルの第二不変量Qを実装。Ma=1.6にしてみて計算してみる。
 !2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
+!2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
+!これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
+!またz方向は、矩型ジェットの太さに合わせてkakuran_u,v,w=0.d0とすることで適用
 
 
 module three_omp
@@ -56,6 +59,8 @@ module three_omp
   integer,parameter :: Nx = 360
   integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
+  integer,parameter :: kukei_Nz_from = 8 !矩型ジェットの流入させるz格子の始点
+  integer,parameter :: kukei_Nz_to = 10!矩型ジェットの流入させるz格子の終点
   double precision,parameter :: dt = 2.d-3
   integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = t_end / dt
@@ -1181,9 +1186,9 @@ contains
         do k=0,Nz-1
           do i=0,Ny
        Q(0,0,i,k) = in_G0(i,k)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
-       Q(1,0,i,k) = in_G0(i,k)*in_G1(i,k)!rho*u
-       Q(2,0,i,k) = in_G0(i,k)*in_G2(i,k)!rho*v
-       Q(3,0,i,k) = in_G0(i,k)*in_G3(i,k)!rho*w
+       Q(1,0,i,k) = in_G0(i,k)*(in_G1(i,k)+dis_strength*kakuran_u(i,k))!rho*(u_in+kakuran_u)
+       Q(2,0,i,k) = in_G0(i,k)*dis_strength*kakuran_v(i,k)!rho*v
+       Q(3,0,i,k) = in_G0(i,k)*dis_strength*kakuran_w(i,k)!rho*w
        Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
                    +in_G0(i,k)*(in_G1(i,k)**2.d0+in_G2(i,k)**2.d0+in_G3(i,k)**2.d0)*0.5d0!Et
     !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
@@ -1438,6 +1443,7 @@ end module three_omp
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
       double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
+      double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
       ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
       !計算にかかる時間をCPU時間で計測する
 
@@ -1473,6 +1479,8 @@ end module three_omp
       allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
       omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
       Invariant_2(0:Nx,0:Ny,0:Nz-1))
+      allocate(kakuran_u(0:Ny,0:Nz-1),kakuran_v(0:Ny,0:Nz-1),&
+      kakuran_w(0:Ny,0:Nz-1))
 
       allocate(zeta_fx(0:Nx),zeta_fy(0:Ny))
       allocate(ur(0:Ny),Tu(0:Ny))
@@ -1494,7 +1502,7 @@ end module three_omp
       in_G0=0.d0;in_G1=0.d0;in_G2=0.d0;in_G3=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
-      div_u=0.d0;Invariant_2=0.d0
+      div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
 
       !============座標設定======================================================
       !y方向の格子伸長のための座標設定
@@ -1533,123 +1541,104 @@ end module three_omp
       open(31,file='kakuran3D_u.txt',status='old')
       open(32,file='kakuran3D_v.txt',status='old')
       open(33,file='kakuran3D_w.txt',status='old')
-
-      do i=0,MXt!ここは要変更
-      	do j=0,MY!ここは要変更
-      		do k=0,MZ-1!ここは要変更
-       		read(31,*) kakuran_u(i,j,k)!ここは未定義
-       		read(32,*) kakuran_v(i,j,k)!ここは未定義
-       		read(33,*) kakuran_w(i,j,k)!ここは未定義
-       		enddo
+      !=====読み込みは順番が大切だろうから、並列化しない==================================
+      do k=0,Nz-1
+      	do i=0,Ny
+       		read(31,*) kakuran_u(i,k)
+       		read(32,*) kakuran_v(i,k)
+       		read(33,*) kakuran_w(i,k)
        	enddo
       enddo
-
+      !=====読み込みは順番が大切だろうから、並列化しない==================================
       close(31)
       close(32)
       close(33)
 
-      do i=0,MXt!ここは要変更
-      	do j=0,MY!ここは要変更
-      	kakuran_u(i,j,MZ)=kakuran_u(i,j,0)!ここも未定義
-      	kakuran_v(i,j,MZ)=kakuran_v(i,j,0)!ここも未定義
-      	kakuran_w(i,j,MZ)=kakuran_w(i,j,0)!ここも未定義
-      	enddo
-      enddo
-
-      do j=0,MY!この窓関数はjetに合うやつを見つけてきて当てはめる
-      window(j,:)=dtanh(3.d0*y(j))*dexp(-2d-5*(y(j)**6.d0))
-      enddo
-
-      do i=0,MXt!この方達は流用可能(Mxtの定義は要変更)
-      kakuran_u(i,:,:)=kakuran_u(i,:,:)*window(:,:)
-      kakuran_v(i,:,:)=kakuran_v(i,:,:)*window(:,:)
-      kakuran_w(i,:,:)=kakuran_w(i,:,:)*window(:,:)
-      enddo
-
       open(34,file='kakkuran_kakunin.txt',status='replace')
-      !open(101,file='window.csv',status='replace')
-      do k=0,MZ
-      	do j=0,MY
-      	write(34,'(3f24.16)') y(j),z(k),kakuran_u(2,j,k)
-      !	write(101,'(3f24.16)') y(j),z(k),window(j,k)
+      do k=0,Nz-1
+        z = dz*dble(k)
+      	do i=0,Ny
+        	write(34,'(3f24.16)') zeta_fy(i),z,kakuran_u(i,k)
       	enddo
       	write(34,*)
-      !	write(101,*)
       enddo
       close(34)
-      !close(101)
-
-      !kakuran_u=0.d0
-      !kakuran_v=0.d0
-      !kakuran_w=0.d0
-
-      write(*,*) kakuran_u(2,10,5)
-!===============================================================================
-!==========初期値の設定===========================================================
-    !全体にまず初期値を入れてしまう
-    !$omp parallel do
-      do k=0,Nz-1
-        do i=0,Ny
-          do j=0,Nx
-            G(0,j,i,k) = 1.d0!ρ
-            G(1,j,i,k) = 0.d0!u
-            G(2,j,i,k) = 0.d0!v
-            G(3,j,i,k) = 0.d0!w
-          end do
-        enddo
-      enddo
-    !$omp end parallel do
-    !=====大きいDoループ&G4にはG0が必要なので、分けて並列化する===========================
-    !$omp parallel do
-      do k=0,Nz-1
-        do i=0,Ny
-          do j=0,Nx
-            G(4,j,i,k) = G(0,j,i,k)*Temp/((Ma**2.d0)*gamma)!p
-          end do
-        enddo
-      enddo
-    !$omp end parallel do
-    !===========================================================================
-
-      !Bufferの計算のための初期値を用いて無限遠方での音速を定義
-      c_infty = sqrt(Temp/Ma**2.d0)
-      !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
-      call buffer_x(c_infty,Ux,sigma_x,zeta_fx)
-      call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
-    !流入条件
-    !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
-    !MのDoループ内でin_G2(:,:)をDirichlet条件で設定して撹乱を導入しているのでここでは設定しない
-    !in_G3は初期で0クリアしているので、二度手間になるのでコメントアウト
-    !$omp parallel do
-      do k =0,Nz-1
-        do i=0,Ny
-          in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
-          in_G1(i,k) = ur(i)! NSCBC流入条件で使う流入値のみを保存する配列
-          ! in_G2(i,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
-          ! in_G3(i,k) = 0.d0! NSCBC流入条件で使う流入値のみを保存する配列
-        end do
-      enddo
-    !$omp end parallel do
-      !初期値の出力
-      !まずt=0はループ外で個別に作成
-      !もちろん出力もζ_y座標系とζ_x座標系で行う
-      !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
-           do k=0,Nz-1
-             z = dz*dble(k)
-             write(z_name, '(i2.2)') k
-             open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
-              ! z = dz*dble(Nz/2)
-              do i = 0,Ny
-                do j = 0,Nx
-                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                  &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),z,&
-                  G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt
-                enddo
-                write(10,*)
-              enddo
-              close(10)
-           enddo
-       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
+   !============================================================================
+   !Bufferの計算のための初期値を用いて無限遠方での音速を定義
+   c_infty = sqrt(Temp/Ma**2.d0)
+   !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
+   call buffer_x(c_infty,Ux,sigma_x,zeta_fx)
+   call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
+   !流入条件
+   !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
+   !矩型JetをZ方向 k=8~10のみに流入させる
+   !ランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用
+   !これにより、ランダム撹乱は完全にジェットの中にのみ、存在する
+   !in_G3は初期で0クリアしているので、二度手間になるのでコメントアウト
+ !$omp parallel do
+   do k =kukei_Nz_from,kukei_Nz_to
+     do i=0,Ny
+       in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
+       in_G1(i,k) = ur(i)+dis_strength*kakuran_u(i,k)*ur(i)
+       in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
+       in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
+     end do
+   enddo
+ !$omp end parallel do
+   !==========初期値の設定=======================================================
+   !流入条件をx=0の場所にのみ適用する
+ !$omp parallel do
+   do k=0,Nz-1
+     do i=0,Ny
+       G(0,0,i,k) = in_G0(i,k)!ρ
+       !top-hat+ランダム撹乱
+       G(1,0,i,k) = in_G1(i,k)+dis_strength*kakuran_u(i,k)!u
+       !ランダム撹乱のみ
+       G(2,0,i,k) = dis_strength*kakuran_v(i,k)!v
+       !ランダム撹乱のみ
+       G(3,0,i,k) = dis_strength*kakuran_w(i,k)!w
+       G(4,0,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
+     enddo
+   enddo
+ !$omp end parallel do
+   !流入条件が関係ない残りの箇所に初期値を入れる
+ !=====大きいDoループなので並列化する==============================================
+ !$omp parallel do
+   do k=0,Nz-1
+     do i=0,Ny
+       do j=1,Nx!x=0の箇所には流入条件が入っている
+         G(0,j,i,k) = 1.d0!ρ
+         G(1,j,i,k) = 0.d0!u
+         G(2,j,i,k) = 0.d0!v
+         G(3,j,i,k) = 0.d0!w
+         !G(0)は単なる定数なので、分けて並列化するよりも、数値で代入してしまった方が計算量は少ない
+         G(4,j,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
+         ! G(4,j,i,k) = G(0,j,i,k)*Temp/((Ma**2.d0)*gamma)!p
+       end do
+     enddo
+   enddo
+ !$omp end parallel do
+ !=====大きいDoループなので並列化する==============================================
+  !初期値の出力
+  !まずt=0はループ外で個別に作成
+  !もちろん出力もζ_y座標系とζ_x座標系で行う
+  !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
+       do k=0,Nz-1
+         z = dz*dble(k)
+         write(z_name, '(i2.2)') k
+         open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
+          ! z = dz*dble(Nz/2)
+          do i = 0,Ny
+            do j = 0,Nx
+              write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
+              &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),z,&
+              G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt
+            enddo
+            write(10,*)
+          enddo
+          close(10)
+       enddo
+   !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
 
 !      open(20,file = "result_omp/1pressure.d")
 !      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
@@ -1684,16 +1673,17 @@ end module three_omp
             !3次精度Runge-Kutta法での導出！
       !========================================================================
        !  !v方向から流入させる撹乱のためのsin波の流入条件を設定。時間変動させている
-       theta = 2.d0*pi*dble(M)*dt
-       !計算高速化
-       !$omp parallel do
-       do k=0,Nz-1
-         do i = 0,Ny
-           if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
-             in_G2(i,k) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
-           endif
-         enddo
-       enddo
+       ! ランダム撹乱を入れるので、不要(2020/09/06)
+       ! theta = 2.d0*pi*dble(M)*dt
+       ! !計算高速化
+       ! !$omp parallel do
+       ! do k=0,Nz-1
+       !   do i = 0,Ny
+       !     if((zeta_fy(i) >= -b).and.(zeta_fy(i) < b)) then
+       !       in_G2(i,k) = A2*sin(T2*theta)!1秒で1周期になる。1/4*θなら4秒で1周期
+       !     endif
+       !   enddo
+       ! enddo
        !$omp end parallel do
        !========================================================================
         !Q1
