@@ -161,6 +161,7 @@ program kakusan
     w_d3(:,NZ-1)=w_d3(:,0)
     write(*,*)'w方向撹乱計算完了'
 !$omp end parallel sections
+
     open(120,file='random_check.csv')
     !u方向の撹乱関数を確認(x=1)
     do k=0,NZ-1
@@ -176,12 +177,12 @@ program kakusan
 
  ! do k=0,NZ-1
    do j=0,Ny
-    max_u=maxval(dabs(u_d3(:,k)))
-    max_v=maxval(dabs(v_d3(:,k)))
-    max_w=maxval(dabs(w_d3(:,k)))
-    kakuran_u(:,k)=u_d3(:,k)/max_u
-    kakuran_v(:,k)=v_d3(:,k)/max_v
-    kakuran_w(:,k)=w_d3(:,k)/max_w
+    max_u=maxval(dabs(u_d3(j,:)))
+    max_v=maxval(dabs(v_d3(j,:)))
+    max_w=maxval(dabs(w_d3(j,:)))
+    kakuran_u(j,:)=u_d3(j,:)/max_u
+    kakuran_v(j,:)=v_d3(j,:)/max_v
+    kakuran_w(j,:)=w_d3(j,:)/max_w
   enddo
  ! end do
 

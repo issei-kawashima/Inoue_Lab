@@ -46,6 +46,10 @@
 !2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
 !これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
 !またz方向は、矩型ジェットの太さに合わせてkakuran_u,v,w=0.d0とすることで適用
+!2020.09.07 ランダム撹乱の定義を変更し、配列を縮小したので、それに合わせてコードを書き換えた
+!ujetがLxに達するまでの時間=36秒になるまで徐々にランダム撹乱を強くするようにした
+!inflow subrouitneを改変して、top-hat Jet+撹乱を流入させるようにした
+!撹乱の強さはジェット中心速度ujetの5%とdis_strengthを設定
 
 
 module three_omp
@@ -73,7 +77,7 @@ module three_omp
   double precision,parameter :: Wlx = Wrx!Buffer領域x方向左側の幅
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
-  double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
+  double precision,parameter :: Lx =  Cx+Wrx!x方向の長さを定義=>流入部にはBufferを入れてはいけないので、Wlxは不要
   double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
   double precision,parameter :: Lz = 1.d0
 
@@ -87,6 +91,8 @@ module three_omp
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
+  double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
+  double precision,parameter :: times = (Lx/ujet)/dt!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
@@ -1178,25 +1184,28 @@ contains
       !$omp end parallel do
     endsubroutine Q_boundary
 
-    subroutine inflow(Q,in_G0,in_G1,in_G2,in_G3)
+    subroutine inflow(M,Q,in_G0,in_G1_top,in_G1_du,in_G2,in_G3)
       double precision,allocatable,dimension(:,:,:,:):: Q
-      double precision,allocatable,dimension(:,:):: in_G0,in_G1,in_G2,in_G3
-      integer i,k
+      double precision,allocatable,dimension(:,:):: in_G0,in_G1_top,in_G1_du,in_G2,in_G3
+      double precision :: fluct_dis_strength
+      integer i,k,M
+      if (M < times) then
+        fluct_dis_strength = dis_strength*dble(M)/times
+      else
+        fluct_dis_strength = dis_strength
+      endif
       !$omp parallel do
-        do k=0,Nz-1
+        ! do k=0,Nz-1
+        do k =kukei_Nz_from,kukei_Nz_to
           do i=0,Ny
        Q(0,0,i,k) = in_G0(i,k)!今までと違いrhoをNSCBCで求めずにdirichlet条件で固定してしまう
-       Q(1,0,i,k) = in_G0(i,k)*(in_G1(i,k)+dis_strength*kakuran_u(i,k))!rho*(u_in+kakuran_u)
-       Q(2,0,i,k) = in_G0(i,k)*dis_strength*kakuran_v(i,k)!rho*v
-       Q(3,0,i,k) = in_G0(i,k)*dis_strength*kakuran_w(i,k)!rho*w
+       Q(1,0,i,k) = in_G0(i,k)*(in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))!rho*(u_in+kakuran_u)
+       Q(2,0,i,k) = in_G0(i,k)*fluct_dis_strength*in_G2(i,k)!rho*kakuran_v
+       Q(3,0,i,k) = in_G0(i,k)*fluct_dis_strength*in_G3(i,k)!rho*kakuran_w
        Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                   +in_G0(i,k)*(in_G1(i,k)**2.d0+in_G2(i,k)**2.d0+in_G3(i,k)**2.d0)*0.5d0!Et
-    !まずは簡単な流入条件で試すために密度ρはNSCBCで求めたものを使うようにする
-      ! Q(1,0,i,k) = Q(0,0,i,k)*in_G1(i,k)!rho*u
-      ! Q(2,0,i,k) = Q(0,0,i,k)*in_G2(i,k)!rho*v
-      ! Q(3,0,i,k) = Q(0,0,i,k)*in_G3(i,k)!rho*w
-      ! Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-      !             +Q(0,0,i,k)*(in_G1(i,k)**2.d0+in_G2(i,k)**2.d0+in_G3(i,k)**2.d0)*0.5d0!Et
+                   +in_G0(i,k)*((in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))**2.d0&
+                   +(fluct_dis_strength*in_G2(i,k))**2.d0&
+                   +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
       !$omp end parallel do
@@ -1423,7 +1432,7 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:,:) :: Vz,dVz,dUVWTz
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
-      double precision,allocatable,dimension(:,:) :: in_G0,in_G1,in_G2,in_G3
+      double precision,allocatable,dimension(:,:) :: in_G0,in_G1_top,in_G1_du,in_G2,in_G3
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,pNx_infty
@@ -1468,7 +1477,8 @@ end module three_omp
       allocate(Vz(0:4,0:Nx,0:Ny,0:Nz-1),dVz(0:4,0:Nx,0:Ny,0:Nz-1),&
       dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
-      allocate(in_G0(0:Ny,0:Nz-1),in_G1(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
+      allocate(in_G0(0:Ny,0:Nz-1),in_G1_top(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
+      allocate(in_G1_du(0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
@@ -1499,7 +1509,7 @@ end module three_omp
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
-      in_G0=0.d0;in_G1=0.d0;in_G2=0.d0;in_G3=0.d0
+      in_G0=0.d0;in_G1_top=0.d0;in_G1_du=0.d0;in_G2=0.d0;in_G3=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
@@ -1526,8 +1536,6 @@ end module three_omp
                 Tjet*ur(i)/ujet+Temp*(ujet-ur(i))/ujet
       enddo
       !========並列化しない========================================================
-
-
     !初期分布をx軸対象になるようにする。
     !そのためにy軸正の範囲の値を負の範囲に軸対象になるようにコピーする
     !$omp parallel do
@@ -1569,48 +1577,18 @@ end module three_omp
    !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
    call buffer_x(c_infty,Ux,sigma_x,zeta_fx)
    call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
-   !流入条件
-   !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
-   !矩型JetをZ方向 k=8~10のみに流入させる
-   !ランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用
-   !これにより、ランダム撹乱は完全にジェットの中にのみ、存在する
-   !in_G3は初期で0クリアしているので、二度手間になるのでコメントアウト
- !$omp parallel do
-   do k =kukei_Nz_from,kukei_Nz_to
-     do i=0,Ny
-       in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
-       in_G1(i,k) = ur(i)+dis_strength*kakuran_u(i,k)*ur(i)
-       in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
-       in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
-     end do
-   enddo
- !$omp end parallel do
-   !==========初期値の設定=======================================================
-   !流入条件をx=0の場所にのみ適用する
+ !==========初期値の設定==========================================================
+   !まず全体に一括で、初期値を入れる
+ !=====大きいDoループなので並列化する=================================================
  !$omp parallel do
    do k=0,Nz-1
      do i=0,Ny
-       G(0,0,i,k) = in_G0(i,k)!ρ
-       !top-hat+ランダム撹乱
-       G(1,0,i,k) = in_G1(i,k)+dis_strength*kakuran_u(i,k)!u
-       !ランダム撹乱のみ
-       G(2,0,i,k) = dis_strength*kakuran_v(i,k)!v
-       !ランダム撹乱のみ
-       G(3,0,i,k) = dis_strength*kakuran_w(i,k)!w
-       G(4,0,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
-     enddo
-   enddo
- !$omp end parallel do
-   !流入条件が関係ない残りの箇所に初期値を入れる
- !=====大きいDoループなので並列化する==============================================
- !$omp parallel do
-   do k=0,Nz-1
-     do i=0,Ny
-       do j=1,Nx!x=0の箇所には流入条件が入っている
+       do j=0,Nx
          G(0,j,i,k) = 1.d0!ρ
-         G(1,j,i,k) = 0.d0!u
-         G(2,j,i,k) = 0.d0!v
-         G(3,j,i,k) = 0.d0!w
+         !以下は上で0クリアしているので、再度やるのは無駄
+         ! G(1,j,i,k) = 0.d0!u
+         ! G(2,j,i,k) = 0.d0!v
+         ! G(3,j,i,k) = 0.d0!w
          !G(0)は単なる定数なので、分けて並列化するよりも、数値で代入してしまった方が計算量は少ない
          G(4,j,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
          ! G(4,j,i,k) = G(0,j,i,k)*Temp/((Ma**2.d0)*gamma)!p
@@ -1619,6 +1597,38 @@ end module three_omp
    enddo
  !$omp end parallel do
  !=====大きいDoループなので並列化する==============================================
+ !流入条件
+ !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
+ !矩型JetをZ方向 k=8~10のみに流入させる
+ !ランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用
+ !これにより、ランダム撹乱は完全にジェットの中にのみ、存在する
+!$omp parallel do
+ do k =kukei_Nz_from,kukei_Nz_to
+   do i=0,Ny
+     in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
+     in_G1_top(i,k) = ur(i)
+     !本当は窓関数を別で適用するが、今回は窓関数=ur(i)なので、計算量削減のためそのまま適用
+     ! in_G1_du = dis_strength*kakuran_u*窓関数
+     in_G1_du(i,k) = dis_strength*kakuran_u(i,k)*ur(i)
+     in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
+     in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
+   end do
+ enddo
+!$omp end parallel do
+ !流入条件をGのx=0の場所にのみ適用する
+ !上で、定義している場所に上書きする形にした
+ !G(1,2,3)に撹乱入れない。時間進行によって徐々に強くするから初期条件で撹乱は0
+ !G(4)=pは同じなので、上書きしない
+!$omp parallel do
+ do k =kukei_Nz_from,kukei_Nz_to
+   do i=0,Ny
+     !Crocco-Busemannの関係式より
+     G(0,0,i,k) = in_G0(i,k)!ρ
+     !top-hat Jetのみ
+     G(1,0,i,k) = in_G1_top(i,k)!u
+   enddo
+ enddo
+!$omp end parallel do
   !初期値の出力
   !まずt=0はループ外で個別に作成
   !もちろん出力もζ_y座標系とζ_x座標系で行う
@@ -1771,7 +1781,7 @@ end module three_omp
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(Q1,in_G0,in_G1,in_G2,in_G3)!dirichlet条件で流入部を固定
+      call inflow(M,Q1,in_G0,in_G1_top,in_G1_du,in_G2,in_G3)!dirichlet条件で流入部を固定
       !==========
       !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
       !NSCBC_xを上書きしてNeumannにしてしまう
@@ -1861,7 +1871,7 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        call inflow(Q2,in_G0,in_G1,in_G2,in_G3)
+        call inflow(M,Q2,in_G0,in_G1_top,in_G1_du,in_G2,in_G3)
         !==========
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !NSCBC_xを上書きしてNeumannにしてしまう
@@ -1955,7 +1965,7 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        call inflow(Qn,in_G0,in_G1,in_G2,in_G3)
+        call inflow(M,Qn,in_G0,in_G1_top,in_G1_du,in_G2,in_G3)
         !==========
         !超音速のため、x=Nxの境界では逆流する流れがないものと仮定するとNSCBC_xは不要になる
         !===========
@@ -2095,7 +2105,7 @@ end module three_omp
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
-      deallocate(in_G0,in_G1,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
+      deallocate(in_G0,in_G1_top,in_G1_du,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
     end program main
