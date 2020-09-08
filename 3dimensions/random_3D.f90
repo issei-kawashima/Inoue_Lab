@@ -162,7 +162,7 @@ program kakusan
     write(*,*)'w方向撹乱計算完了'
 !$omp end parallel sections
 
-    open(120,file='random_check.csv')
+    open(120,file='dirturbance_conditions/random_check.csv')
     !u方向の撹乱関数を確認(x=1)
     do k=0,NZ-1
        do j=0,NY
@@ -170,9 +170,9 @@ program kakusan
        end do
     end do
 
- open(21,file='kakuran3D_u.txt',status='replace')
- open(22,file='kakuran3D_v.txt',status='replace')
- open(23,file='kakuran3D_w.txt',status='replace')
+ open(21,file='dirturbance_conditions/kakuran3D_u.txt',status='replace')
+ open(22,file='dirturbance_conditions/kakuran3D_v.txt',status='replace')
+ open(23,file='dirturbance_conditions/kakuran3D_w.txt',status='replace')
 
 
  ! do k=0,NZ-1
@@ -197,7 +197,7 @@ program kakusan
  close(22)
  close(23)
 
- open(100,file='check.csv')
+ open(100,file='dirturbance_conditions/check.csv')
  !u方向の撹乱関数を確認
 do k=0,NZ-1
    do j=0,NY

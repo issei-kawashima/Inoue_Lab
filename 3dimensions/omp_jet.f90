@@ -5,29 +5,22 @@
 !2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
 !超音速なので、x=Nxの境界条件では逆流が起きないとして、Neumann条件を適用することにする
 !計算時間短縮のために、NSCBCのx=Nxの部分は計算しなくて済むようにNSCBC_xのsubroutineを_0と_Nxに分割した。
-!Pr=0.71>Pr=1へ変更。Ma数を0.5から2.4に変更(超音速化)。2次元では計算できなかった条件。
+!Pr=0.71>Pr=1へ変更。
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 !2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
 !しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
 !Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
 !2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 !計算高速化のために以下のことをした。
-!1.dif_zのsubrouineをmodを使用しない形に変更。2. M=の出力をif文とmodを使用しないで行うように変更
+!1.dif_zのsubrouineをmodを使用しない形に変更。
+!2. M=の出力をif文とmodを使用しないで行うように変更
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
-!2020.06.14 上記の計算高速化の変更が正しく行えたかの検証をしていないので、Nx=180,Ny=100の従来の計算条件で再計算。
-!もしM=2200でNanになれば問題はなさそう。(現状では自宅desk topでは実行できない=>これはsuper_jet_allocate.f90でも同様の問題あり)
-!dif_zが間違えていた。修正した。Nx=180,Ny=100の従来の計算条件で再々計算
 !2020.06.15 格子数を変更する際にはNUxも変更しなくてはいけない。逆に言うとそれ以外は変更しなくて構わない
 !Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
-!2020.06.17 rapidがM=2181でNanになってしまう(2200でならない)のはPr数を1>0.71へ変更したから？
-!研究室PCで検証してみる
-!2020.06.17 正解！！ rapidの変更の仕方に問題はなかった。
 !2020.06.18 inflowのsubroutineでQ(0)もdirichlet条件で上書きしているので、NSCBCはn_0もn_Nxも不要なことが判明
 !2020.06.20 NSCBC_x_0の全ての使用廃止と、dFy,dFzの1/3の角処理も廃止。
 !しかし、流入条件で、全てのz面で流入させる条件を廃止すれば、NSCBC_x_0は部分的に必要になる
 !周期的撹乱を加えていなかったので、加えるように修正。使用していない変数を宣言している箇所は削除
-!Nxを360から720へ倍増。NUx=458へ変更。
-!M=709でNaN。格子点数が増えるほど早くNaNになってしまう。
 !2020.06.21 UVWT,dUVWTの配列サイズで(0:4、：、：、：)を(1:4,:,:,:)に縮小。使用してなかったから。
 !lattice_xとy、buffer_xとyでそれぞれ同じ値を多くの配列にただコピーしていただけなので、縮小した
 !またそれにより、subroutine combineもx,yで変更する必要があったので分割した
@@ -35,13 +28,10 @@
 !NSCBCの流出条件を適用する際のdVの置換もx,yで異なり、今はNSCBC_x_Nxを適用していないので、分割後y方向のみ適用
 !variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
 !使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
-!2020.06.24 並列化を実装開始
-!2020.06.25 一応実装完了。自宅PCで、rapidと同じ計算結果になるかを確かめる。
 !NSCBC_yのL,dやin_Gの配列縮小やF,V行列生成subroutineでのDoループの統合
 !そしてUVWT0,V0のコメントアウト化とdif_x,y,zのDoループの番号l,j,i,kの統一なども同時に行った。
-!2020.08.25 音響成分のdiv_uを実装。Ma=2.0に変更し計算できるかどうかを試す。
-!2020.08.26 音響成分の可視化には成功。ただしMa=2.0では計算できなかった。
-!2020.08.26 速度勾配テンソルの第二不変量Qを実装。Ma=1.6にしてみて計算してみる。
+!2020.08.25 音響成分のdiv_uを実装
+!2020.08.26 速度勾配テンソルの第二不変量Qを実装
 !2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
 !2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
 !これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
@@ -1189,7 +1179,7 @@ contains
       double precision,allocatable,dimension(:,:):: in_G0,in_G1_top,in_G1_du,in_G2,in_G3
       double precision :: fluct_dis_strength
       integer i,k,M
-      if (M < times) then
+      if (M < int(times)) then
         fluct_dis_strength = dis_strength*dble(M)/times
       else
         fluct_dis_strength = dis_strength
@@ -1405,7 +1395,7 @@ end module three_omp
       character(len = 16) filename
       character(len = 16) z_name
       !時間更新毎に出力ファイルを変更するためのファイル名設定
-      !NSCBCでdrho,du,dpを計算する必要があるので計算しやすいようにG行列を作成しG(rho,u,p)
+      !NSCBCでdrho,du,dv,dw,dpを計算する必要があるので計算しやすいようにG行列を作成しG(rho,u,v,w,p)
       !となるように設定した。すなわちdGは密度、速度、圧力のそれぞれの微分項を含む行列となる
       !x方向
       !Runge-Kutta法のためQ1,Q2用の値を設定
@@ -1453,8 +1443,6 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
-      ! double precision,dimension(0:Nx,0:Ny,1) :: z_check
-      !計算にかかる時間をCPU時間で計測する
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
       ,Q1(0:4,0:Nx,0:Ny,0:Nz-1),Q2(0:4,0:Nx,0:Ny,0:Nz-1),Qn(0:4,0:Nx,0:Ny,0:Nz-1)&
@@ -1546,9 +1534,9 @@ end module three_omp
     !$omp end parallel do
     !===============================流入ジェットの計算終了===========================
     !==============================流入ランダム撹乱の読み込み========================
-      open(31,file='kakuran3D_u.txt',status='old')
-      open(32,file='kakuran3D_v.txt',status='old')
-      open(33,file='kakuran3D_w.txt',status='old')
+      open(31,file='dirturbance_conditions/kakuran3D_u.txt',status='old')
+      open(32,file='dirturbance_conditions/kakuran3D_v.txt',status='old')
+      open(33,file='dirturbance_conditions/kakuran3D_w.txt',status='old')
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       do k=0,Nz-1
         do i=0,Ny
@@ -1562,7 +1550,7 @@ end module three_omp
       close(32)
       close(33)
 
-      open(34,file='kakkuran_kakunin.txt',status='replace')
+      open(34,file='result_omp/kakkuran_kakunin.txt',status='replace')
       do k=0,Nz-1
         z = dz*dble(k)
         do i=0,Ny
@@ -1650,8 +1638,6 @@ end module three_omp
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
 
-!      open(20,file = "result_omp/1pressure.d")
-!      write(20,'(1I1,1f24.16)') 0,G(3,162,Ny/2,Nz/2)!(23,7)を指定しているが実際は(22.89,6.97)にずれてしまう
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
       p0y_infty = G(4,0,0,0)
@@ -1971,10 +1957,7 @@ end module three_omp
         !===========
         call Neumann_Nx(Qn)
         call rho_u_p(G,Qn)
-!        if (mod(M,p_output) == 0) then
-!          write(20,'(1I7,1f24.16)') M,G(3,162,Ny/2,Nz/2)
-!        endif
-         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
+        if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
          !渦度用のdGの計算
          dGx=0.d0;dGy=0.d0;dGz=0.d0
          call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
