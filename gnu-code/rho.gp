@@ -36,8 +36,10 @@ set yrange [-10:10]
 #set zrange [0:0.2]
 
 #set dgrid3d
+set term x11 1
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter000095_11.txt'u 1:2:4 w pm3d t ""
 set term x11 2
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter001916_18.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter000095_07.txt'u 1:2:4 w pm3d t ""
 
 
 #se term jpeg

@@ -17,7 +17,8 @@
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
 !2020.06.15 格子数を変更する際にはNUxも変更しなくてはいけない。逆に言うとそれ以外は変更しなくて構わない
 !Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
-!2020.06.20 dFy,dFzの1/3の角処理も廃止。
+!2020.06.18 inflowのsubroutineでQ(0)もdirichlet条件で上書きしているので、NSCBCはn_0もn_Nxも不要なことが判明
+!2020.06.20 NSCBC_x_0の全ての使用廃止と、dFy,dFzの1/3の角処理も廃止。
 !しかし、流入条件で、全てのz面で流入させる条件を廃止すれば、NSCBC_x_0は部分的に必要になる
 !周期的撹乱を加えていなかったので、加えるように修正。使用していない変数を宣言している箇所は削除
 !2020.06.21 UVWT,dUVWTの配列サイズで(0:4、：、：、：)を(1:4,:,:,:)に縮小。使用してなかったから。
@@ -33,18 +34,14 @@
 !2020.08.26 速度勾配テンソルの第二不変量Qを実装
 !2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
 !2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
-!これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
-!またz方向は、矩型ジェットの太さに合わせてkakuran_u,v,w=0.d0とすることで適用
-!2020.09.07 ランダム撹乱の定義を変更し、配列を縮小したので、それに合わせてコードを書き換えた
 !ujetがLxに達するまでの時間=36秒になるまで徐々にランダム撹乱を強くするようにした
 !inflow subrouitneを改変して、top-hat Jet+撹乱を流入させるようにした
 !撹乱の強さはジェット中心速度ujetの5%とdis_strengthを設定
-!2020.09.08 NSCBC_x_0を適用することにした。これは矩形ジェットのため、ジェットが流入しないz面での流入境界条件は引き続き必要であるかである。
-!しかし矩形ジェット流入部にはdirichlet条件で、top-hatジェットと撹乱を入れているので、そこのQのみはinflow subroutineで上書きする方式になっている
-!矩形ジェットの計算条件は、矩形ジェットをある一部分だけ切り取った平面ジェットで計算することを刺すので、kukei_Nz_from/toは0/19になる
-!=>つまり今まで考えていた矩形ジェットとは計算条件が違う
-!dt=1.d-2にした。　これで計算時間が1/5になった=>計算回れば計算精度OK
-!とりあえずM=700くらい(t=70くらい)まで計算ができたので、自宅PCに投げる
+!これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
+!またz方向は、円形ジェットに合わせるけど、どうやるか未定
+!2020.09.08 円形ジェット用にプログラムを分けたkukei_Nz_from/toを0/Nz-1にすれば、z全面からジェットと撹乱が流入する。
+!これをどうにかして、円形に変更する作業を中間報告が話終わったらやる
+
 
 
 module three_omp
@@ -58,9 +55,9 @@ module three_omp
   integer,parameter :: Nx = 360
   integer,parameter :: Ny = 200
   integer,parameter :: Nz = 20
-  integer,parameter :: kukei_Nz_from = 0 !矩型ジェットの流入させるz格子の始点
-  integer,parameter :: kukei_Nz_to = 19!矩型ジェットの流入させるz格子の終点
-  double precision,parameter :: dt = 1.d-2
+  integer,parameter :: kukei_Nz_from = 8 !矩型ジェットの流入させるz格子の始点
+  integer,parameter :: kukei_Nz_to = 10!矩型ジェットの流入させるz格子の終点
+  double precision,parameter :: dt = 2.d-3
   integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = t_end / dt
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
@@ -87,9 +84,7 @@ module three_omp
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
-  integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = 50!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
-  integer,parameter :: observe_end_time = 55!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
+  double precision,parameter :: times = (Lx/ujet)/dt!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
@@ -1186,8 +1181,8 @@ contains
       double precision,allocatable,dimension(:,:):: in_G0,in_G1_top,in_G1_du,in_G2,in_G3
       double precision :: fluct_dis_strength
       integer i,k,M
-      if (M < times) then
-        fluct_dis_strength = dis_strength*dble(M)/dble(times)
+      if (M < int(times)) then
+        fluct_dis_strength = dis_strength*dble(M)/times
       else
         fluct_dis_strength = dis_strength
       endif
@@ -1644,11 +1639,6 @@ end module three_omp
           close(10)
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
-   open(41, file = "result_omp/turbulent_check_1.txt")
-   open(42, file = "result_omp/turbulent_check_2.txt")
-   open(43, file = "result_omp/turbulent_check_3.txt")
-   open(44, file = "result_omp/turbulent_check_4.txt")
-
 
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
@@ -1747,8 +1737,8 @@ end module three_omp
         call dif_z(ccs_sigma,dz,Vz,dVz,LUccsz)
         !NSCBCの計算開始
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         ! call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
@@ -1842,8 +1832,8 @@ end module three_omp
         !NSCBCの計算開始
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         ! call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
@@ -1935,8 +1925,8 @@ end module three_omp
         !密度すらもDirichlet条件で固定しているのでx方向のNSCBCは全て不要
         !=====================================================
         !x方向のNSCBCの計算
-        call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0(G,dGx,dFx)
+        ! call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        ! call NSCBC_x_0(G,dGx,dFx)
         ! call NSCBC_x_Nx(G,dGx,dFx,pNx_infty)
         ! call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
@@ -1969,14 +1959,6 @@ end module three_omp
         !===========
         call Neumann_Nx(Qn)
         call rho_u_p(G,Qn)
-        if((M >= observe_start_time).and.(observe_end_time >= M)) then
-          call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-          write(41,'(f24.16)') dGx(1,5*Nx/6,Ny/2,Nz/2)
-          write(42,'(f24.16)') dGx(1,5*Nx/6,Ny/4,Nz/4)
-          write(43,'(f24.16)') dGx(1,5*Nx/6,3*Ny/4,3*Nz/4)
-          write(44,'(f24.16)') dGx(1,3*Nx/4,3*Ny/4,3*Nz/4)
-        endif
-
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
          !渦度用のdGの計算
          dGx=0.d0;dGy=0.d0;dGz=0.d0
@@ -2103,11 +2085,7 @@ end module three_omp
               Q = Qn
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo
-! ===========メイン計算終了========================================================
-     close(41)
-     close(42)
-     close(43)
-     close(44)
+!      close(20)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
