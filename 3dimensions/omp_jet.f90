@@ -14,8 +14,6 @@
 !1.dif_zのsubrouineをmodを使用しない形に変更。
 !2. M=の出力をif文とmodを使用しないで行うように変更
 !3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
-!2020.06.15 格子数を変更する際にはNUxも変更しなくてはいけない。逆に言うとそれ以外は変更しなくて構わない
-!Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
 !2020.06.20 dFy,dFzの1/3の角処理も廃止。
 !variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
 !使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
@@ -24,7 +22,6 @@
 !2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
 !2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
 !これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
-!またz方向は、矩型ジェットの太さに合わせてkakuran_u,v,w=0.d0とすることで適用
 !2020.09.07 ランダム撹乱の定義を変更し、配列を縮小したので、それに合わせてコードを書き換えた
 !ujetがLxに達するまでの時間=36秒になるまで徐々にランダム撹乱を強くするようにした
 !inflow subrouitneを改変して、top-hat Jet+撹乱を流入させるようにした
@@ -39,6 +36,9 @@
 !また、流入条件も領域の中から外に逆流するものがないつまり、L1=0、またuに関してはランダム撹乱を入れない
 !そうすることで、du/dtの計算がなくなるので、結果的に、x=0の超音速流入条件はFx(0)=0だけになる、
 !y方向に関しては亜音速流出条件を適用し、NSCBCの角・縁処理は一旦やらないでおく。
+!2020.09.10 格子数を変更する際にはNUxも変更しなくてはいけない。
+!Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
+!加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
 
 
 module three_omp
@@ -74,7 +74,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.6d0
+  double precision,parameter :: Ma = 2.4d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
