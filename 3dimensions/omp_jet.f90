@@ -74,7 +74,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.6d0
+  double precision,parameter :: Ma = 1.4d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
@@ -973,8 +973,6 @@ contains
         do k = 0,Nz-1
           do i = 0,Ny
         !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
-        ! LNx(1,i,k)=NS_sigma*c_NS(i,k)*(1.d0-(Ma_NS(i,k)**2.d0))*(G(4,Nx,i,k)-&
-        ! &pNx_infty)/Lx
         !超音速無反射流出条件にするので、領域外から内部に流入する波が無いとする。したがって、L１=0とする
         LNx(1,i,k)=0.d0
         LNx(2,i,k)=G(1,Nx,i,k)*((c_NS(i,k)**2.d0)*dGx(0,Nx,i,k)-dGx(4,Nx,i,k))
@@ -1053,10 +1051,8 @@ contains
       do k = 0,Nz-1
         do i = 0,Ny
       !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
-      ! LNx(1,i,k)=NS_sigma*c_NS(i,k)*(1.d0-(Ma_NS(i,k)**2.d0))*(G(4,Nx,i,k)-&
-      ! &pNx_infty)/Lx
-      !超音速無反射流出条件にするので、領域外から内部に流入する波が無いとする。したがって、L１=0とする
-      LNx(1,i,k)=0.d0
+      LNx(1,i,k)=NS_sigma*c_NS(i,k)*(1.d0-(Ma_NS(i,k)**2.d0))*(G(4,Nx,i,k)-&
+      &pNx_infty)/Lx
       LNx(2,i,k)=G(1,Nx,i,k)*((c_NS(i,k)**2.d0)*dGx(0,Nx,i,k)-dGx(4,Nx,i,k))
       LNx(3,i,k)=G(1,Nx,i,k)*dGx(2,Nx,i,k)
       LNx(4,i,k)=G(1,Nx,i,k)*dGx(3,Nx,i,k)
