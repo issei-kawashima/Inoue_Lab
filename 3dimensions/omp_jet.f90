@@ -74,14 +74,14 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 2.4d0
+  double precision,parameter :: Ma = 1.6d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = 50!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
-  integer,parameter :: observe_end_time = 55!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
+  integer,parameter :: observe_start_time = int(50.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_end_time = int(55.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
@@ -1729,10 +1729,10 @@ end module three_omp
           close(10)
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
-   open(41, file = "result_omp/turbulent_check_1.txt")
-   open(42, file = "result_omp/turbulent_check_2.txt")
-   open(43, file = "result_omp/turbulent_check_3.txt")
-   open(44, file = "result_omp/turbulent_check_4.txt")
+   open(41, file = "result_omp/turbulent_check_1.csv")
+   open(42, file = "result_omp/turbulent_check_2.csv")
+   open(43, file = "result_omp/turbulent_check_3.csv")
+   open(44, file = "result_omp/turbulent_check_4.csv")
 
 
       !p_inftyの定義
