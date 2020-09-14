@@ -1,49 +1,7 @@
-!dx,dyの格子伸長の倍率は0.5倍/1.2倍に設定してある
-!2019.05.18 Nx=180 Ny=100 dt=5.d-3で実行すれば卒論の格子伸長適用時の条件になる
-!M=75000(T=150)まで計算をすることが亜音速では少なくともできた。(3dim.f90で)
-!2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
-!2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
-!計算時間短縮のために、NSCBCのx=Nxの部分は計算しなくて済むようにNSCBC_xのsubroutineを_0と_Nxに分割した。
-!Pr=0.71>Pr=1へ変更。
-!Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
-!2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
-!しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
-!Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
-!2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
-!計算高速化のために以下のことをした。
-!1.dif_zのsubrouineをmodを使用しない形に変更。
-!2. M=の出力をif文とmodを使用しないで行うように変更
-!3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
-!2020.06.20 dFy,dFzの1/3の角処理も廃止。
-!variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
-!使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
-!2020.08.25 音響成分のdiv_uを実装
-!2020.08.26 速度勾配テンソルの第二不変量Qを実装
-!2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
-!2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
-!これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
-!2020.09.07 ランダム撹乱の定義を変更し、配列を縮小したので、それに合わせてコードを書き換えた
-!ujetがLxに達するまでの時間=36秒になるまで徐々にランダム撹乱を強くするようにした
-!inflow subrouitneを改変して、top-hat Jet+撹乱を流入させるようにした
-!撹乱の強さはジェット中心速度ujetの5%とdis_strengthを設定
-!2020.09.08 NSCBC_x_0を適用することにした。これは矩形ジェットのため、ジェットが流入しないz面での流入境界条件は引き続き必要であるかである。
-!しかし矩形ジェット流入部にはdirichlet条件で、top-hatジェットと撹乱を入れているので、そこのQのみはinflow subroutineで上書きする方式になっている
-!矩形ジェットの計算条件は、矩形ジェットをある一部分だけ切り取った平面ジェットで計算することを指すので、0/toは0/19になる
-!=>つまり今まで考えていた矩形ジェットとは計算条件が違う
-!dt=1.d-2にした。　これで計算時間が1/5になった=>計算回れば計算精度OK
-!2020.09.09NSCBCの流入/流出条件を見直し、それに伴い撹乱uと流入条件も見直した
-!超音速なので、x=Nxの境界条件では逆流が起きないとして、NSCBCの無反射流出条件で逆流を示すL1を=0にする
-!また、流入条件も領域の中から外に逆流するものがないつまり、L1=0、またuに関してはランダム撹乱を入れない
-!そうすることで、du/dtの計算がなくなるので、結果的に、x=0の超音速流入条件はFx(0)=0だけになる、
-!y方向に関しては亜音速流出条件を適用し、NSCBCの角・縁処理は一旦やらないでおく。
-!2020.09.10 格子数を変更する際にはNUxも変更しなくてはいけない。
-!Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
-!加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
-!2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
-!乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。また乱流チェックタイムを70~75に後ろ倒しした。それは50~55では流れが座標に到達しないため。
+!NSCBCを超音速流入とNSCBC NSCBC_x_Nxを超音速流出に変更した。
+!しかしNaNになったので、ランダム撹乱のせいかどうか確かめるために、ランダム撹乱を与えないプログラムを作る
 
-
-module three_omp
+module without_random
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -1254,36 +1212,19 @@ contains
       !$omp end parallel do
     endsubroutine Q_boundary
 
-    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3)
-    ! subroutine inflow(M,Q,in_G1_top,in_G1_du,in_G2,in_G3)
+    subroutine inflow(Q,in_G1_top)
       double precision,allocatable,dimension(:,:,:,:):: Q
-      double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:):: in_G1_du
-      double precision :: fluct_dis_strength
-      integer i,k,M
-      if (M < times) then
-        fluct_dis_strength = dis_strength*dble(M)/dble(times)
-      else
-        fluct_dis_strength = dis_strength
-      endif
+      double precision,allocatable,dimension(:,:):: in_G1_top
+      integer i,k
       !$omp parallel do
         do k =0,Nz-1
           do i=0,Ny
             !Q(0)に関しては、NSCBCを使用して求めたF,Vから求めたQ(0)の密度を使用する
-        !uに撹乱を入れないパターン=>これで、流入条件の計算で、時間変動を気にしなくて良くなる
-       Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
-       Q(2,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G2(i,k)!rho*kakuran_v
-       Q(3,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G3(i,k)!rho*kakuran_w
-       Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-                   +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
-                   +(fluct_dis_strength*in_G2(i,k))**2.d0&
-                   +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
-       !uに撹乱を入れるパターン=>そのため、NSCBC流入条件の計算で、時間変動を計算しなくてはいけない
-       ! Q(1,0,i,k) = Q(0,0,i,k)*(in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))!rho*(u_in+kakuran_u)
-       ! Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-       !             +Q(0,0,i,k)*((in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G2(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
+           Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
+           Q(2,0,i,k) = 0.d0
+           Q(3,0,i,k) = 0.d0
+           Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
+                       +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
       !$omp end parallel do
@@ -1475,10 +1416,10 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_y
-end module three_omp
+end module without_random
 
     program main
-      use three_omp
+      use without_random
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1510,8 +1451,7 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:,:) :: Vz,dVz,dUVWTz
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
-      double precision,allocatable,dimension(:,:) :: in_G0,in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:) :: in_G1_du
+      double precision,allocatable,dimension(:,:) :: in_G0,in_G1_top
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,pNx_infty
@@ -1554,8 +1494,7 @@ end module three_omp
       allocate(Vz(0:4,0:Nx,0:Ny,0:Nz-1),dVz(0:4,0:Nx,0:Ny,0:Nz-1),&
       dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
-      allocate(in_G0(0:Ny,0:Nz-1),in_G1_top(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
-      ! allocate(in_G1_du(0:Ny,0:Nz-1))
+      allocate(in_G0(0:Ny,0:Nz-1),in_G1_top(0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
@@ -1586,8 +1525,7 @@ end module three_omp
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
-      in_G0=0.d0;in_G1_top=0.d0;in_G2=0.d0;in_G3=0.d0
-      ! in_G1_du=0.d0
+      in_G0=0.d0;in_G1_top=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
@@ -1623,33 +1561,6 @@ end module three_omp
       enddo
     !$omp end parallel do
     !===============================流入ジェットの計算終了===========================
-    !==============================流入ランダム撹乱の読み込み========================
-      ! open(31,file='dirturbance_conditions/kakuran3D_u.txt',status='old')
-      open(32,file='dirturbance_conditions/kakuran3D_v.txt',status='old')
-      open(33,file='dirturbance_conditions/kakuran3D_w.txt',status='old')
-      !=====読み込みは順番が大切だろうから、並列化しない==================================
-      do k=0,Nz-1
-        do i=0,Ny
-          ! read(31,*) kakuran_u(i,k)
-          read(32,*) kakuran_v(i,k)
-          read(33,*) kakuran_w(i,k)
-        enddo
-      enddo
-      !=====読み込みは順番が大切だろうから、並列化しない==================================
-      ! close(31)
-      close(32)
-      close(33)
-
-      ! open(34,file='result_omp/kakkuran_kakunin.txt',status='replace')
-      ! do k=0,Nz-1
-      !   z = dz*dble(k)
-      !   do i=0,Ny
-      !     write(34,'(3f24.16)') zeta_fy(i),z,kakuran_v(i,k)
-      !   enddo
-      !   write(34,*)
-      ! enddo
-      ! close(34)
-   !============================================================================
    !Bufferの計算のための初期値を用いて無限遠方での音速を定義
    c_infty = sqrt(Temp/Ma**2.d0)
    !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_yの計算
@@ -1666,11 +1577,6 @@ end module three_omp
    do i=0,Ny
      in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
      in_G1_top(i,k) = ur(i)
-     !本当は窓関数を別で適用するが、今回は窓関数=ur(i)なので、計算量削減のためそのまま適用
-     ! in_G1_du = dis_strength*kakuran_u*窓関数
-     ! in_G1_du(i,k) = dis_strength*kakuran_u(i,k)*ur(i)
-     in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
-     in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
    end do
  enddo
 !$omp end parallel do
@@ -1714,7 +1620,7 @@ end module three_omp
        do k=0,Nz-1
          z = dz*dble(k)
          write(z_name, '(i2.2)') k
-         open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_no_random/parameter000000_"//trim(z_name)//".txt")
           ! z = dz*dble(Nz/2)
           do i = 0,Ny
             do j = 0,Nx
@@ -1727,10 +1633,10 @@ end module three_omp
           close(10)
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
-   open(41, file = "result_omp/turbulent_check_1.csv")
-   open(42, file = "result_omp/turbulent_check_2.csv")
-   open(43, file = "result_omp/turbulent_check_3.csv")
-   open(44, file = "result_omp/turbulent_check_4.csv")
+   open(41, file = "result_no_random/turbulent_check_1.csv")
+   open(42, file = "result_no_random/turbulent_check_2.csv")
+   open(43, file = "result_no_random/turbulent_check_3.csv")
+   open(44, file = "result_no_random/turbulent_check_4.csv")
 
 
       !p_inftyの定義
@@ -1842,8 +1748,7 @@ end module three_omp
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      ! call inflow(M,Q1,in_G1_top,in_G1_du,in_G2,in_G3)!dirichlet条件で流入部を固定
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部を固定
+      call inflow(Q1,in_G1_top)!dirichlet条件で流入部を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1924,8 +1829,7 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        ! call inflow(M,Q2,in_G1_top,in_G1_du,in_G2,in_G3)
-        call inflow(M,Q2,in_G1_top,in_G2,in_G3)
+        call inflow(Q2,in_G1_top)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -2010,13 +1914,10 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        ! call inflow(M,Qn,in_G1_top,in_G1_du,in_G2,in_G3)
-        call inflow(M,Qn,in_G1_top,in_G2,in_G3)
+        call inflow(Qn,in_G1_top)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-          !xとy座標の位置はBuffer領域にならないように気をつける
-          ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
           write(41,'(f24.16)') dGx(1,2*Nx/3,Ny/2,Nz/2)
           write(42,'(f24.16)') dGx(1,2*Nx/3,Ny/4,Nz/4)
           write(43,'(f24.16)') dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)
@@ -2066,7 +1967,7 @@ end module three_omp
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_no_random/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              do ii = 0,Ny
                do jj = 0,Nx
@@ -2124,7 +2025,7 @@ end module three_omp
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_no_random/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2158,8 +2059,7 @@ end module three_omp
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
-      deallocate(in_G0,in_G1_top,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
-      ! deallocate(in_G1_du)
+      deallocate(in_G0,in_G1_top,dGx,dFx,dGy,dFy,dGz,dFz)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
     end program main
