@@ -1,24 +1,4 @@
 !dx,dyの格子伸長の倍率は0.5倍/1.2倍に設定してある
-!2019.05.18 Nx=180 Ny=100 dt=5.d-3で実行すれば卒論の格子伸長適用時の条件になる
-!M=75000(T=150)まで計算をすることが亜音速では少なくともできた。(3dim.f90で)
-!2020.06.03 ファイル出力形式を.dから.txtにした。これによってpara viewで可視化できるようになるし、gnuplotでも可視化できる。
-!2020.06.04 Tjet=1.12Tempでは適性膨張ジェットなのでTjet=1.4*Tempへ変更した
-!計算時間短縮のために、NSCBCのx=Nxの部分は計算しなくて済むようにNSCBC_xのsubroutineを_0と_Nxに分割した。
-!Pr=0.71>Pr=1へ変更。
-!Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
-!2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
-!しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
-!Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
-!2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
-!計算高速化のために以下のことをした。
-!1.dif_zのsubrouineをmodを使用しない形に変更。
-!2. M=の出力をif文とmodを使用しないで行うように変更
-!3.計算時間の計測をやめた。(実用的な意味がないし、三日間とかになると現状では桁不足だから)
-!2020.06.20 dFy,dFzの1/3の角処理も廃止。
-!variable_settingのUVWT,dUVWTの(0,:,:,:)は不要だが、微分の際に形式があっていないと同じsubroutineを
-!使用できないので、仕方なく今回は廃止を見逃す。将来的にdif_x,y,zを0:4ごとなどに縮小できたらUVWTの(0)は廃止可能
-!2020.08.25 音響成分のdiv_uを実装
-!2020.08.26 速度勾配テンソルの第二不変量Qを実装
 !2020.09.01 ランダム撹乱を読み込み窓関数を適用し、Jetの流入条件と足し合わせるコードの追加を開始
 !2020.09.06 窓関数には、y方向にランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用。
 !これにより、ランダム撹乱は完全にジェットの中にのみ、存在することにした。
@@ -28,22 +8,17 @@
 !撹乱の強さはジェット中心速度ujetの5%とdis_strengthを設定
 !2020.09.08 NSCBC_x_0を適用することにした。これは矩形ジェットのため、ジェットが流入しないz面での流入境界条件は引き続き必要であるかである。
 !しかし矩形ジェット流入部にはdirichlet条件で、top-hatジェットと撹乱を入れているので、そこのQのみはinflow subroutineで上書きする方式になっている
-!矩形ジェットの計算条件は、矩形ジェットをある一部分だけ切り取った平面ジェットで計算することを指す
-!=>つまり今まで考えていた矩形ジェットとは計算条件が違う
-!dt=1.d-2にした。　これで計算時間が1/5になった=>計算回れば計算精度OK
 !2020.09.09NSCBCの流入/流出条件を見直し、それに伴い撹乱uと流入条件も見直した
-!超音速なので、x=Nxの境界条件では逆流が起きないとして、NSCBCの無反射流出条件で逆流を示すL1を=0にする
-!また、流入条件も領域の中から外に逆流するものがないつまり、L1=0、またuに関してはランダム撹乱を入れない
-!そうすることで、du/dtの計算がなくなるので、結果的に、x=0の超音速流入条件はFx(0)=0だけになる、
 !y方向に関しては亜音速流出条件を適用し、NSCBCの角・縁処理は一旦やらないでおく。
 !2020.09.10 格子数を変更する際にはNUxも変更しなくてはいけない。
 !Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
 !加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
 !2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
 !乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。また乱流チェックタイムを70~75に後ろ倒しした。それは50~55では流れが座標に到達しないため。
+!2020.09.15 Ma数を変えて現象を把握するために、亜音速での計算も行う。NSCBC_x_0とNxを亜音速のものに変更し、
+!Ma=0.5にした。あとは一緒
 
-
-module three_omp
+module three_sub
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -76,7 +51,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.4d0
+  double precision,parameter :: Ma = 0.5d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
@@ -852,31 +827,6 @@ contains
     !そしてそのままQ1,Q2,Qnを求める
     !まずはx方向用のNSCBC　subrouitineを作成
     !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
-    subroutine NSCBC_x_0_super(dFx)
-      !超音速流入条件
-      !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
-      !このNSCBCでは密度ρのみを求めるものである。
-      !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
-      ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
-      !Q(1:4)は上の流入条件で最終的に上書きしてしまうので、Fx(1:4)を求めたとしてもQになってから全て上書き消去されるので
-      !わざわざNSCBCで計算=>上書きしても無駄。=>そのためこのsubroutineでは計算しない!!!!!!!!!!!!!!!!
-      double precision,allocatable,dimension(:,:,:,:):: dFx
-      integer i,k
-      !超音速流入では、領域内部から、外部に逆流するものがないので、L1=0したがって、L5=0
-      !*uが時間変動しないtop-hatのみなので、du/dt=0のため
-      !よって、L2=0そのため、d1=0
-      !*ただし、流入条件のTはCrocce-Busemannで定常なので、時間変動しないdT/dt=0のため
-      !Fx(0)=d1なので、Fx(0)=0。したがって、今回はそれだけを書き換えている
-    !$omp parallel do
-      do k = 0,Nz-1
-        do i = 0,Ny
-      !設定したdからNSCBCで置き換える境界地点のdFxを定義する
-      !i=0の時の差し替えdFx
-      dFx(0,0,i,k) = 0.d0
-        end do
-      end do
-    !$omp end parallel do
-  endsubroutine NSCBC_x_0_super
   subroutine NSCBC_x_0_sub(G,dGx,dFx)
     !亜音速流入条件
     !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
@@ -949,83 +899,6 @@ contains
 
       deallocate(L0,c_NS,Ma_NS)
     endsubroutine NSCBC_x_0_sub
-
-      subroutine NSCBC_x_Nx_super(G,dGx,dFx)
-        !超音速無反射流出条件
-        double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
-        double precision,allocatable,dimension(:,:,:):: LNx,dNx
-        double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
-        integer i,k!,l
-        allocate(LNx(1:5,0:Ny,0:Nz-1),dNx(1:5,0:Ny,0:Nz-1))
-        allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
-        LNx=0.d0;dNx=0.d0;c_NS=0.d0;Ma_NS=0.d0
-
-      !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
-        do k = 0,Nz-1
-          do i = 0,Ny
-        !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
-        c_NS(i,k) = sqrt(gamma * G(4,Nx,i,k) / G(0,Nx,i,k))
-        !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
-        Ma_NS(i,k) = G(1,Nx,i,k) / c_NS(i,k)
-          end do
-        end do
-      !========並列化しない＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝=＝＝＝＝＝＝＝＝＝
-
-      !$omp parallel do
-        do k = 0,Nz-1
-          do i = 0,Ny
-        !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
-        !超音速無反射流出条件にするので、領域外から内部に流入する波が無いとする。したがって、L１=0とする
-        LNx(1,i,k)=0.d0
-        LNx(2,i,k)=G(1,Nx,i,k)*((c_NS(i,k)**2.d0)*dGx(0,Nx,i,k)-dGx(4,Nx,i,k))
-        LNx(3,i,k)=G(1,Nx,i,k)*dGx(2,Nx,i,k)
-        LNx(4,i,k)=G(1,Nx,i,k)*dGx(3,Nx,i,k)
-        LNx(5,i,k)=(G(1,Nx,i,k)+c_NS(i,k))*(G(0,Nx,i,k)*c_NS(i,k)*dGx(1,Nx,i,k)+dGx(4,Nx,i,k))
-          end do
-        end do
-      !$omp end parallel do
-
-        !$omp parallel do
-          do k = 0,Nz-1
-            do i = 0,Ny
-        !設定したL行列からd1~5をi=Nxにおいて設定する
-          dNx(1,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
-          dNx(2,i,k) = (LNx(1,i,k)+LNx(5,i,k))*0.5d0
-          dNx(3,i,k) = 0.5d0/(G(0,Nx,i,k) * c_NS(i,k)) * (-LNx(1,i,k) + LNx(5,i,k))
-          dNx(4,i,k) = LNx(3,i,k)
-          dNx(5,i,k) = LNx(4,i,k)
-            end do
-          end do
-        !$omp end parallel do
-
-        !$omp parallel do
-          do k = 0,Nz-1
-            do i = 0,Ny
-        !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
-        !i=Nxの時の差し替えF
-        dFx(0,Nx,i,k) = dNx(1,i,k)
-        dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
-        dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
-        dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
-        dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
-                      (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+ &
-        (G(0,Nx,i,k)*G(1,Nx,i,k)*dNx(3,i,k))+(G(0,Nx,i,k)*G(2,Nx,i,k)*dNx(4,i,k))+&
-                      (G(0,Nx,i,k)*G(3,Nx,i,k)*dNx(5,i,k))
-            end do
-          end do
-      !$omp end parallel do
-
-    !   !$omp parallel do
-    !     do k = 0,Nz-1
-    !       do l = 0,4
-    !         !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/2ずつ加える)
-    !         dFx(l,Nx,0,k) = dFx(l,Nx,0,k) / 2.d0
-    !         dFx(l,Nx,Ny,k) = dFx(l,Nx,Ny,k) / 2.d0
-    !       end do
-    !     end do
-    ! !$omp end parallel do
-      deallocate(LNx,dNx,c_NS,Ma_NS)
-    endsubroutine NSCBC_x_Nx_super
 
     subroutine NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
       !亜音速無反射流出条件
@@ -1475,10 +1348,10 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_y
-end module three_omp
+end module three_sub
 
     program main
-      use three_omp
+      use three_sub
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1640,7 +1513,7 @@ end module three_omp
       close(32)
       close(33)
 
-      ! open(34,file='result_omp/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_sub/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz-1
       !   z = dz*dble(k)
       !   do i=0,Ny
@@ -1714,7 +1587,7 @@ end module three_omp
        do k=0,Nz-1
          z = dz*dble(k)
          write(z_name, '(i2.2)') k
-         open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_sub/parameter000000_"//trim(z_name)//".txt")
           ! z = dz*dble(Nz/2)
           do i = 0,Ny
             do j = 0,Nx
@@ -1727,10 +1600,10 @@ end module three_omp
           close(10)
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
-   open(41, file = "result_omp/turbulent_check_1.csv")
-   open(42, file = "result_omp/turbulent_check_2.csv")
-   open(43, file = "result_omp/turbulent_check_3.csv")
-   open(44, file = "result_omp/turbulent_check_4.csv")
+   open(41, file = "result_sub/turbulent_check_1.csv")
+   open(42, file = "result_sub/turbulent_check_2.csv")
+   open(43, file = "result_sub/turbulent_check_3.csv")
+   open(44, file = "result_sub/turbulent_check_4.csv")
 
 
       !p_inftyの定義
@@ -1809,10 +1682,8 @@ end module three_omp
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)
-        ! call NSCBC_x_0_sub(G,dGx,dFx)
-        call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0_sub(G,dGx,dFx)
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1896,10 +1767,8 @@ end module three_omp
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)!超音速流入
-        ! call NSCBC_x_0_sub(G,dGx,dFx)!亜音速流入
-        call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0_sub(G,dGx,dFx)!亜音速流入
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1981,10 +1850,8 @@ end module three_omp
         !=====================================================
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)
-        ! call NSCBC_x_0_sub(G,dGx,dFx)
-        call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
+        call NSCBC_x_0_sub(G,dGx,dFx)
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -2066,7 +1933,7 @@ end module three_omp
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_sub/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              z=dz*dble(kk)
              do ii = 0,Ny
                do jj = 0,Nx
@@ -2124,7 +1991,7 @@ end module three_omp
                     do kk= 0,Nz-1
                       z=dz*dble(kk)
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_sub/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
