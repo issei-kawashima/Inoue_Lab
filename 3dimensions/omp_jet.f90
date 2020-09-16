@@ -2164,5 +2164,7 @@ end module three_omp
       ! deallocate(in_G1_du)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       ! deallocate(omega_1,omega_2,omega_3)
-      deallocate(dp,div_u,Invariant_2)
+      deallocate(kakuran_u,kakuran_v,kakuran_w)
+      deallocate(ur,Tu,dp,div_u,Invariant_2)
+      deallocate(zeta_fx,zeta_fy)
     end program main
