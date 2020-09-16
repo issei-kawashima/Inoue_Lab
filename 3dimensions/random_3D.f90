@@ -20,15 +20,19 @@ program kakusan
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
-  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
+  ! double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
+  !撹乱を全て+にするために、y座標を絶対値で計算するようにした。
+  !したがって、幅は半分になるので、Lyも半分になる
+  double precision,parameter :: Ly = Cy+Wry
   double precision,parameter :: Lz = 1.d0
   double precision :: Ymin
 
   integer,parameter::Kmx=10,Kmy=10,Kmz=10!kx,ky,kz(打ち切り波数)
-  double precision,parameter::PI=dacos(-1d0)
-  double precision,parameter::dy=Ly/dble(NY)
+  double precision,parameter::pi= acos(-1d0)
+  !Lyが半分なので、ここは2Lyになる
+  double precision,parameter::dy= 2.d0*Ly/dble(NY)
   double precision,parameter::dz=Lz/dble(NZ)
-  double precision,parameter::Kmax=1d0
+  double precision,parameter::Kmax = dsqrt(3.d0)
 
   integer::i,j,k
   integer::Kx,Ky,Kz
@@ -47,7 +51,9 @@ program kakusan
   !x座標は流入部にしか撹乱を導入しないので、不要
 
   !y座標設定
-  Ymin = -(Ly/2.d0)
+  ! Ymin = -(Ly/2.d0)
+  !Lyは半分なので、Yminも半分
+  Ymin = -Ly
   do i=0,NY
      y(i)=Ymin + dy*dble(i)
   end do
@@ -56,7 +62,6 @@ program kakusan
     ys(i) = b1 * (1.7d0*y(i)-a1*&
   (-dlog(dcosh(a2*(y(i) - y_width))) + dlog(dcosh(a2*(y(i)+ y_width)))))
   enddo
-
   !z座標設定
   do i=0,NZ-1
      z(i)=dz*dble(i)
@@ -76,6 +81,18 @@ program kakusan
   end do
 
   max_E=maxval(ES3d)
+  open(120,file='dirturbance_conditions/E(k)_check.csv')
+  !エネルギースペクトルを確認
+  do Kz=1,Kmz
+    do Ky=1,Kmy
+       do Kx=1,Kmx
+         abs_k=dsqrt(dble(Kx**2)+dble(Ky**2)+dble(Kz**2))
+         write(120,*)abs_k,",",ES3d(Kx,Ky,Kz)/max_E
+      enddo
+     end do
+  end do
+  close(120)
+
   u_d3=0d0
   v_d3=0d0
   w_d3=0d0
@@ -162,15 +179,6 @@ program kakusan
     write(*,*)'w方向撹乱計算完了'
 !$omp end parallel sections
 
-    ! open(120,file='dirturbance_conditions/random_check.csv')
-    ! !u方向の撹乱関数を確認(x=1)
-    ! do k=0,NZ-1
-    !    do j=0,NY
-    !       write(120,*)j,",",k,",",u_d3(j,k)
-    !    end do
-    ! end do
-    !close(120)
-
  open(21,file='dirturbance_conditions/kakuran3D_u.txt',status='replace')
  open(22,file='dirturbance_conditions/kakuran3D_v.txt',status='replace')
  open(23,file='dirturbance_conditions/kakuran3D_w.txt',status='replace')
@@ -198,12 +206,12 @@ program kakusan
  close(22)
  close(23)
 
-!  open(100,file='dirturbance_conditions/check.csv')
-!  !u方向の撹乱関数を確認
-! do k=0,NZ-1
-!    do j=0,NY
-!       write(100,*)j,",",k,",",kakuran_u(j,k)
-!    end do
-! end do
-!close(100)
+ open(100,file='dirturbance_conditions/check.csv')
+ !u方向の撹乱関数を確認
+do k=0,NZ-1
+   do j=0,NY
+      write(100,*)j,",",k,",",kakuran_v(j,k)
+   end do
+end do
+close(100)
 end program kakusan
