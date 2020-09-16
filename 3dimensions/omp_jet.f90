@@ -1529,7 +1529,7 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
 
@@ -1563,8 +1563,9 @@ end module three_omp
       dQx(0:4,0:Nx,0:Ny,0:Nz-1),dQy(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(dzeta_inx(0:Nx),dzeta_iny(0:Ny))
-      allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
-      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
+      ! allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
+      ! omega_3(0:Nx,0:Ny,0:Nz-1))
+      allocate(dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
       Invariant_2(0:Nx,0:Ny,0:Nz-1))
       allocate(kakuran_u(0:Ny,0:Nz-1),kakuran_v(0:Ny,0:Nz-1),&
       kakuran_w(0:Ny,0:Nz-1))
@@ -1589,7 +1590,8 @@ end module three_omp
       in_G0=0.d0;in_G1_top=0.d0;in_G2=0.d0;in_G3=0.d0
       ! in_G1_du=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
-      zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
+      zeta_fx=0.d0;dzeta_inx=0.d0;dp=0.d0;oldG=0.d0
+      ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
 
       !============座標設定======================================================
@@ -2017,10 +2019,10 @@ end module three_omp
           call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
-          write(41,'(f24.16)') dGx(1,2*Nx/3,Ny/2,Nz/2)
-          write(42,'(f24.16)') dGx(1,2*Nx/3,Ny/4,Nz/4)
-          write(43,'(f24.16)') dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)
-          write(44,'(f24.16)') dGx(1,Nx/2,3*Ny/4,3*Nz/4)
+          write(41,'(f24.16)') dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ左中心
+          write(42,'(f24.16)') dGx(1,2*Nx/3,Ny/4,Nz/4)!後ろ左下
+          write(43,'(f24.16)') dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)!後ろ右上
+          write(44,'(f24.16)') dGx(1,Nx/2,3*Ny/4,3*Nz/4)!真ん中右上
         endif
 
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
@@ -2161,5 +2163,6 @@ end module three_omp
       deallocate(in_G0,in_G1_top,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
       ! deallocate(in_G1_du)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
-      deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
+      ! deallocate(omega_1,omega_2,omega_3)
+      deallocate(dp,div_u,Invariant_2)
     end program main

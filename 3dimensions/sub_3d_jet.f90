@@ -835,27 +835,23 @@ contains
     ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
     !Q(1:4)は上の流入条件で最終的に上書きしてしまうので、Fx(1:4)を求めたとしてもQになってから全て上書き消去されるので
     !わざわざNSCBCで計算=>上書きしても無駄。=>そのためこのsubroutineでは計算しない!!!!!!!!!!!!!!!!
-    double precision,allocatable,dimension(:,:,:,:):: dFx
-    double precision,allocatable,dimension(:,:,:,:):: G,dGx
+    double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
     double precision,allocatable,dimension(:,:,:):: L0
-    double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
+    double precision,allocatable,dimension(:,:):: c_NS
     integer i,k!,l
-    ! double precision p0x_infty
     allocate(L0(1:5,0:Ny,0:Nz-1))
-    allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
+    allocate(c_NS(0:Ny,0:Nz-1))
 
-    L0=0.d0;c_NS=0.d0;Ma_NS=0.d0
+    L0=0.d0;c_NS=0.d0
 
-  !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
+  !$omp parallel do
     do k = 0,Nz-1
       do i = 0,Ny
         !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
         c_NS(i,k) = sqrt(gamma * G(4,0,i,k) / G(0,0,i,k))
-        !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
-        Ma_NS(i,k) = G(1,0,i,k) / c_NS(i,k)!uを使う
       end do
     end do
-  !========並列化しない==========================================================
+  !$omp end parallel do
 
   !============L0(2)は同時並列化できないので、並列化をしない===========================
     do k = 0,Nz-1
@@ -867,7 +863,7 @@ contains
     L0(5,i,k)=L0(1,i,k)!-2.d0*c_NS(i,k)*du/dt!
   !   流入速度uを時間変動させないので今回はdu/dt=0となるため省略
     L0(2,i,k)=(0.5d0)*(gamma-1.d0)*(L0(5,i,k)+L0(1,i,k))!+G(0,0,i,k)*c_NS(i,k)**2.d0/T*dT/dtが本来はあるが
-  !   流入条件のTは時間変動させずに、Ceocco-Busemannのやつで固定なので、dT/dt＝0となり計算不要
+  !   流入条件のTは時間変動させずに、Crocco-Busemannのやつで固定なので、dT/dt＝0となり計算不要
       end do
     end do
   !============L0(2)は同時並列化できないので、並列化をしない===========================
@@ -897,7 +893,7 @@ contains
     !   end do
     ! !$omp end parallel do
 
-      deallocate(L0,c_NS,Ma_NS)
+      deallocate(L0,c_NS)
     endsubroutine NSCBC_x_0_sub
 
     subroutine NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
@@ -1402,7 +1398,7 @@ end module three_sub
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
 
@@ -1436,8 +1432,9 @@ end module three_sub
       dQx(0:4,0:Nx,0:Ny,0:Nz-1),dQy(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(dzeta_inx(0:Nx),dzeta_iny(0:Ny))
-      allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
-      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
+      ! allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
+      ! omega_3(0:Nx,0:Ny,0:Nz-1))
+      allocate(dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
       Invariant_2(0:Nx,0:Ny,0:Nz-1))
       allocate(kakuran_u(0:Ny,0:Nz-1),kakuran_v(0:Ny,0:Nz-1),&
       kakuran_w(0:Ny,0:Nz-1))
@@ -1462,7 +1459,8 @@ end module three_sub
       in_G0=0.d0;in_G1_top=0.d0;in_G2=0.d0;in_G3=0.d0
       ! in_G1_du=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
-      zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
+      zeta_fx=0.d0;dzeta_inx=0.d0;dp=0.d0;oldG=0.d0
+      ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
 
       !============座標設定======================================================
@@ -2028,5 +2026,6 @@ end module three_sub
       deallocate(in_G0,in_G1_top,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
       ! deallocate(in_G1_du)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
-      deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
+      ! deallocate(omega_1,omega_2,omega_3)
+      deallocate(dp,div_u,Invariant_2)
     end program main
