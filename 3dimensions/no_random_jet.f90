@@ -40,8 +40,8 @@ module without_random
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(70.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
-  integer,parameter :: observe_end_time = int(75.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
+  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_end_time = int(130.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
