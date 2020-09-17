@@ -1367,7 +1367,8 @@ end module three_omp
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3!渦度を入れる配列
+      double precision,allocatable,dimension(:,:,:) :: dp!圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
 

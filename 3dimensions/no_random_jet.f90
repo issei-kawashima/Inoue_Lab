@@ -1469,7 +1469,8 @@ end module without_random
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3!渦度を入れる配列
+      double precision,allocatable,dimension(:,:,:) :: dp!圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
