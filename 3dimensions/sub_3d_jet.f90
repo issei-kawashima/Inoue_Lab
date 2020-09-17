@@ -1124,10 +1124,8 @@ contains
     endsubroutine Q_boundary
 
     subroutine inflow(M,Q,in_G1_top,in_G2,in_G3)
-    ! subroutine inflow(M,Q,in_G1_top,in_G1_du,in_G2,in_G3)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:):: in_G1_du
       double precision :: fluct_dis_strength
       integer i,k,M
       if (M < times) then
@@ -1147,12 +1145,6 @@ contains
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
-       !uに撹乱を入れるパターン=>そのため、NSCBC流入条件の計算で、時間変動を計算しなくてはいけない
-       ! Q(1,0,i,k) = Q(0,0,i,k)*(in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))!rho*(u_in+kakuran_u)
-       ! Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-       !             +Q(0,0,i,k)*((in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G2(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
       !$omp end parallel do
@@ -1380,7 +1372,6 @@ end module three_sub
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
       double precision,allocatable,dimension(:,:) :: in_G0,in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:) :: in_G1_du
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,pNx_infty
@@ -1398,7 +1389,8 @@ end module three_sub
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3!渦度を入れる配列
+      double precision,allocatable,dimension(:,:,:) :: dp!圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
       double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
 
@@ -1424,7 +1416,6 @@ end module three_sub
       dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(in_G0(0:Ny,0:Nz-1),in_G1_top(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
-      ! allocate(in_G1_du(0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
@@ -1457,7 +1448,6 @@ end module three_sub
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
       in_G0=0.d0;in_G1_top=0.d0;in_G2=0.d0;in_G3=0.d0
-      ! in_G1_du=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;dp=0.d0;oldG=0.d0
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0
@@ -1495,19 +1485,16 @@ end module three_sub
     !$omp end parallel do
     !===============================流入ジェットの計算終了===========================
     !==============================流入ランダム撹乱の読み込み========================
-      ! open(31,file='dirturbance_conditions/kakuran3D_u.txt',status='old')
       open(32,file='dirturbance_conditions/kakuran3D_v.txt',status='old')
       open(33,file='dirturbance_conditions/kakuran3D_w.txt',status='old')
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       do k=0,Nz-1
         do i=0,Ny
-          ! read(31,*) kakuran_u(i,k)
           read(32,*) kakuran_v(i,k)
           read(33,*) kakuran_w(i,k)
         enddo
       enddo
       !=====読み込みは順番が大切だろうから、並列化しない==================================
-      ! close(31)
       close(32)
       close(33)
 
@@ -1538,8 +1525,7 @@ end module three_sub
      in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
      in_G1_top(i,k) = ur(i)
      !本当は窓関数を別で適用するが、今回は窓関数=ur(i)なので、計算量削減のためそのまま適用
-     ! in_G1_du = dis_strength*kakuran_u*窓関数
-     ! in_G1_du(i,k) = dis_strength*kakuran_u(i,k)*ur(i)
+     ! in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
      in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
      in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
    end do
@@ -1711,7 +1697,6 @@ end module three_sub
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      ! call inflow(M,Q1,in_G1_top,in_G1_du,in_G2,in_G3)!dirichlet条件で流入部を固定
       call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
@@ -1791,7 +1776,6 @@ end module three_sub
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        ! call inflow(M,Q2,in_G1_top,in_G1_du,in_G2,in_G3)
         call inflow(M,Q2,in_G1_top,in_G2,in_G3)
       !Qn
       !dF/dxの計算
@@ -1875,7 +1859,6 @@ end module three_sub
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        ! call inflow(M,Qn,in_G1_top,in_G1_du,in_G2,in_G3)
         call inflow(M,Qn,in_G1_top,in_G2,in_G3)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
@@ -2024,7 +2007,6 @@ end module three_sub
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
       deallocate(in_G0,in_G1_top,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
-      ! deallocate(in_G1_du)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       ! deallocate(omega_1,omega_2,omega_3)
       deallocate(dp,div_u,Invariant_2)
