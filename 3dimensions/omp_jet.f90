@@ -844,112 +844,38 @@ contains
 
           deallocate(D2,D4,D6,D8,y,RHS_z)
        endsubroutine dif_z
-    !境界条件をNSCBCで設定
-    !L,d行列を設定することでdfx(0:2,0)とdFx(0:2,Nx)の値を定める
-    !定めたdFxをxm,xpをそれぞれ求めた時点でi=0とNxで置き換える
-    !これが境界条件となる。neumannはNx-1とNx,1と0を同じにしたがNSCBC_xはdFxの境界を定めることで
-    !境界条件を設定している
-    !そしてそのままQ1,Q2,Qnを求める
-    !まずはx方向用のNSCBC　subrouitineを作成
-    !(:,:,:)等で計算を行わせる際は:の配列数が対応していることが要確認
-    subroutine NSCBC_x_0_super(dFx)
-      !超音速流入条件
-      !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
-      !このNSCBCでは密度ρのみを求めるものである。
-      !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
-      ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
-      !Q(1:4)は上の流入条件で最終的に上書きしてしまうので、Fx(1:4)を求めたとしてもQになってから全て上書き消去されるので
-      !わざわざNSCBCで計算=>上書きしても無駄。=>そのためこのsubroutineでは計算しない!!!!!!!!!!!!!!!!
-      double precision,allocatable,dimension(:,:,:,:):: dFx
-      integer i,k
-      !超音速流入では、領域内部から、外部に逆流するものがないので、L1=0したがって、L5=0
-      !*uが時間変動しないtop-hatのみなので、du/dt=0のため
-      !よって、L2=0そのため、d1=0
-      !*ただし、流入条件のTはCrocce-Busemannで定常なので、時間変動しないdT/dt=0のため
-      !Fx(0)=d1なので、Fx(0)=0。したがって、今回はそれだけを書き換えている
-    !$omp parallel do
-      do k = 0,Nz-1
-        do i = 0,Ny
-      !設定したdからNSCBCで置き換える境界地点のdFxを定義する
-      !i=0の時の差し替えdFx
-      dFx(0,0,i,k) = 0.d0
+      !境界条件をNSCBCで設定
+      !L,d行列を設定することでdfx(0:2,0)とdFx(0:2,Nx)の値を定める
+      !定めたdFxをxm,xpをそれぞれ求めた時点でi=0とNxで置き換える
+      !これが境界条件となる。neumannはNx-1とNx,1と0を同じにしたがNSCBC_xはdFxの境界を定めることで
+      !境界条件を設定している
+      !そしてそのままQ1,Q2,Qnを求める
+      !まずはx方向用のNSCBC　subrouitineを作成
+      subroutine NSCBC_x_0_super(dFx)
+        !超音速流入条件
+        !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
+        !このNSCBCでは密度ρのみを求めるものである。
+        !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
+        ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
+        !Q(1:4)は上の流入条件で最終的に上書きしてしまうので、Fx(1:4)を求めたとしてもQになってから全て上書き消去されるので
+        !わざわざNSCBCで計算=>上書きしても無駄。=>そのためこのsubroutineでは計算しない!!!!!!!!!!!!!!!!
+        double precision,allocatable,dimension(:,:,:,:):: dFx
+        integer i,k
+        !超音速流入では、領域内部から、外部に逆流するものがないので、L1=0したがって、L5=0
+        !*uが時間変動しないtop-hatのみなので、du/dt=0のため
+        !よって、L2=0そのため、d1=0
+        !*ただし、流入条件のTはCrocce-Busemannで定常なので、時間変動しないdT/dt=0のため
+        !Fx(0)=d1なので、Fx(0)=0。したがって、今回はそれだけを書き換えている
+      !$omp parallel do
+        do k = 0,Nz-1
+          do i = 0,Ny
+        !設定したdからNSCBCで置き換える境界地点のdFxを定義する
+        !i=0の時の差し替えdFx
+        dFx(0,0,i,k) = 0.d0
+          end do
         end do
-      end do
-    !$omp end parallel do
-  endsubroutine NSCBC_x_0_super
-  subroutine NSCBC_x_0_sub(G,dGx,dFx)
-    !亜音速流入条件
-    !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
-    !このNSCBCでは密度ρのみを求めるものである。
-    !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
-    ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
-    !Q(1:4)は上の流入条件で最終的に上書きしてしまうので、Fx(1:4)を求めたとしてもQになってから全て上書き消去されるので
-    !わざわざNSCBCで計算=>上書きしても無駄。=>そのためこのsubroutineでは計算しない!!!!!!!!!!!!!!!!
-    double precision,allocatable,dimension(:,:,:,:):: dFx
-    double precision,allocatable,dimension(:,:,:,:):: G,dGx
-    double precision,allocatable,dimension(:,:,:):: L0
-    double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
-    integer i,k!,l
-    ! double precision p0x_infty
-    allocate(L0(1:5,0:Ny,0:Nz-1))
-    allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
-
-    L0=0.d0;c_NS=0.d0;Ma_NS=0.d0
-
-  !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
-    do k = 0,Nz-1
-      do i = 0,Ny
-        !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
-        c_NS(i,k) = sqrt(gamma * G(4,0,i,k) / G(0,0,i,k))
-        !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
-        Ma_NS(i,k) = G(1,0,i,k) / c_NS(i,k)!uを使う
-      end do
-    end do
-  !========並列化しない==========================================================
-
-  !============L0(2)は同時並列化できないので、並列化をしない===========================
-    do k = 0,Nz-1
-      do i = 0,Ny
-  !   x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
-    L0(1,i,k)=(G(1,0,i,k)-c_NS(i,k))*(-G(0,0,i,k)*c_NS(i,k)*dGx(1,0,i,k)+dGx(4,0,i,k))
-  !   論文によるとL3,L4は不要
-  !   L1=0.d0&uはtop-hatジェットで程上流なので、du/dt=0
-    L0(5,i,k)=L0(1,i,k)!-2.d0*c_NS(i,k)*du/dt!
-  !   流入速度uを時間変動させないので今回はdu/dt=0となるため省略
-    L0(2,i,k)=(0.5d0)*(gamma-1.d0)*(L0(5,i,k)+L0(1,i,k))!+G(0,0,i,k)*c_NS(i,k)**2.d0/T*dT/dtが本来はあるが
-  !   流入条件のTは時間変動させずに、Ceocco-Busemannのやつで固定なので、dT/dt＝0となり計算不要
-      end do
-    end do
-  !============L0(2)は同時並列化できないので、並列化をしない===========================
-
-    !$omp parallel do
-      do k = 0,Nz-1
-        do i = 0,Ny
-          !設定したL行列からd1をi=0において設定する
-          !設定したd1からNSCBCで置き換える境界地点のdFxを定義する
-          !i=0の時の差し替えdFx
-          ! d1(i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((L0(1,i,k)+L0(5,i,k))*0.5d0 + L0(2,i,k))
-          ! dFx(0,0,i,k) = d1(i,k)
-          !本来は一度d1に格納するが、dFx(0)=d1なので、d1を省略してしまう
-          dFx(0,0,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((L0(1,i,k)+L0(5,i,k))*0.5d0 + L0(2,i,k))
-        end do
-      end do
-    !$omp end parallel do
-
-    ! !$omp parallel do
-    !   do k = 0,Nz-1
-    !     do l = 0,4
-    !   !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/2ずつ加える)
-    !   !z方向に関しyては、周期で今回はz方向の縁の重複の話なので、関係ない。
-    !   dFx(l,0,0,k) = dFx(l,0,0,k) / 2.d0
-    !   dFx(l,0,Ny,k) = dFx(l,0,Ny,k) / 2.d0
-    !     end do
-    !   end do
-    ! !$omp end parallel do
-
-      deallocate(L0,c_NS,Ma_NS)
-    endsubroutine NSCBC_x_0_sub
-
+      !$omp end parallel do
+      endsubroutine NSCBC_x_0_super
       subroutine NSCBC_x_Nx_super(G,dGx,dFx)
         !超音速無反射流出条件
         double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
@@ -1026,85 +952,6 @@ contains
     ! !$omp end parallel do
       deallocate(LNx,dNx,c_NS,Ma_NS)
     endsubroutine NSCBC_x_Nx_super
-
-    subroutine NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
-      !亜音速無反射流出条件
-      double precision,allocatable,dimension(:,:,:,:):: G,dGx,dFx
-      double precision,allocatable,dimension(:,:,:):: LNx,dNx
-      double precision,allocatable,dimension(:,:):: c_NS,Ma_NS
-      double precision pNx_infty
-      integer i,k!,l
-      allocate(LNx(1:5,0:Ny,0:Nz-1),dNx(1:5,0:Ny,0:Nz-1))
-      allocate(c_NS(0:Ny,0:Nz-1),Ma_NS(0:Ny,0:Nz-1))
-      LNx=0.d0;dNx=0.d0;c_NS=0.d0;Ma_NS=0.d0
-
-    !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
-      do k = 0,Nz-1
-        do i = 0,Ny
-      !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
-      c_NS(i,k) = sqrt(gamma * G(4,Nx,i,k) / G(0,Nx,i,k))
-      !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
-      Ma_NS(i,k) = G(1,Nx,i,k) / c_NS(i,k)
-        end do
-      end do
-    !========並列化しない＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝=＝＝＝＝＝＝＝＝＝
-
-    !$omp parallel do
-      do k = 0,Nz-1
-        do i = 0,Ny
-      !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
-      LNx(1,i,k)=NS_sigma*c_NS(i,k)*(1.d0-(Ma_NS(i,k)**2.d0))*(G(4,Nx,i,k)-&
-      &pNx_infty)/Lx
-      LNx(2,i,k)=G(1,Nx,i,k)*((c_NS(i,k)**2.d0)*dGx(0,Nx,i,k)-dGx(4,Nx,i,k))
-      LNx(3,i,k)=G(1,Nx,i,k)*dGx(2,Nx,i,k)
-      LNx(4,i,k)=G(1,Nx,i,k)*dGx(3,Nx,i,k)
-      LNx(5,i,k)=(G(1,Nx,i,k)+c_NS(i,k))*(G(0,Nx,i,k)*c_NS(i,k)*dGx(1,Nx,i,k)+dGx(4,Nx,i,k))
-        end do
-      end do
-    !$omp end parallel do
-
-      !$omp parallel do
-        do k = 0,Nz-1
-          do i = 0,Ny
-      !設定したL行列からd1~5をi=Nxにおいて設定する
-        dNx(1,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
-        dNx(2,i,k) = (LNx(1,i,k)+LNx(5,i,k))*0.5d0
-        dNx(3,i,k) = 0.5d0/(G(0,Nx,i,k) * c_NS(i,k)) * (-LNx(1,i,k) + LNx(5,i,k))
-        dNx(4,i,k) = LNx(3,i,k)
-        dNx(5,i,k) = LNx(4,i,k)
-          end do
-        end do
-      !$omp end parallel do
-
-      !$omp parallel do
-        do k = 0,Nz-1
-          do i = 0,Ny
-      !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
-      !i=Nxの時の差し替えF
-      dFx(0,Nx,i,k) = dNx(1,i,k)
-      dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
-      dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
-      dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
-      dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
-                    (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+ &
-      (G(0,Nx,i,k)*G(1,Nx,i,k)*dNx(3,i,k))+(G(0,Nx,i,k)*G(2,Nx,i,k)*dNx(4,i,k))+&
-                    (G(0,Nx,i,k)*G(3,Nx,i,k)*dNx(5,i,k))
-          end do
-        end do
-    !$omp end parallel do
-
-    !   !$omp parallel do
-    !     do k = 0,Nz-1
-    !       do l = 0,4
-    !         !NSCBCの角処理(x方向,y方向で設定した境界値が重複するため1/2ずつ加える)
-    !         dFx(l,Nx,0,k) = dFx(l,Nx,0,k) / 2.d0
-    !         dFx(l,Nx,Ny,k) = dFx(l,Nx,Ny,k) / 2.d0
-    !       end do
-    !     end do
-    ! !$omp end parallel do
-    deallocate(LNx,dNx,c_NS,Ma_NS)
-    endsubroutine NSCBC_x_Nx_sub
-
     !次にy方向のNSCBC　sunrouineを作成
     subroutine NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
       double precision,allocatable,dimension(:,:,:,:):: G,dGy,dFy
@@ -1255,10 +1102,8 @@ contains
     endsubroutine Q_boundary
 
     subroutine inflow(M,Q,in_G1_top,in_G2,in_G3)
-    ! subroutine inflow(M,Q,in_G1_top,in_G1_du,in_G2,in_G3)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:):: in_G1_du
       double precision :: fluct_dis_strength
       integer i,k,M
       if (M < times) then
@@ -1274,16 +1119,10 @@ contains
        Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
        Q(2,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G2(i,k)!rho*kakuran_v
        Q(3,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G3(i,k)!rho*kakuran_w
-       Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
+       Q(4,0,i,k) = (Q(0,0,i,k)*Tjet)/((Ma**2.d0)*gamma*(gamma-1.d0))&
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
-       !uに撹乱を入れるパターン=>そのため、NSCBC流入条件の計算で、時間変動を計算しなくてはいけない
-       ! Q(1,0,i,k) = Q(0,0,i,k)*(in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))!rho*(u_in+kakuran_u)
-       ! Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
-       !             +Q(0,0,i,k)*((in_G1_top(i,k)+fluct_dis_strength*in_G1_du(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G2(i,k))**2.d0&
-       !             +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
       !$omp end parallel do
@@ -1511,7 +1350,6 @@ end module three_omp
       double precision,allocatable,dimension(:,:) :: LUccsz
       ! NSCBC用
       double precision,allocatable,dimension(:,:) :: in_G0,in_G1_top,in_G2,in_G3
-      ! double precision,allocatable,dimension(:,:) :: in_G1_du
       !x方向
       double precision,allocatable,dimension(:,:,:,:) :: dGx,dFx
       double precision  dx,pNx_infty
@@ -1555,7 +1393,6 @@ end module three_omp
       dUVWTz(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(in_G0(0:Ny,0:Nz-1),in_G1_top(0:Ny,0:Nz-1),in_G2(0:Ny,0:Nz-1),in_G3(0:Ny,0:Nz-1))
-      ! allocate(in_G1_du(0:Ny,0:Nz-1))
       allocate(dGx(0:4,0:Nx,0:Ny,0:Nz-1),dFx(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dGy(0:4,0:Nx,0:Ny,0:Nz-1),dFy(0:4,0:Nx,0:Ny,0:Nz-1))
       allocate(dFz(0:4,0:Nx,0:Ny,0:Nz-1),dGz(0:4,0:Nx,0:Ny,0:Nz-1))
@@ -1588,7 +1425,6 @@ end module three_omp
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
       in_G0=0.d0;in_G1_top=0.d0;in_G2=0.d0;in_G3=0.d0
-      ! in_G1_du=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
       zeta_fx=0.d0;dzeta_inx=0.d0;dp=0.d0;oldG=0.d0
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0
@@ -1626,19 +1462,16 @@ end module three_omp
     !$omp end parallel do
     !===============================流入ジェットの計算終了===========================
     !==============================流入ランダム撹乱の読み込み========================
-      ! open(31,file='dirturbance_conditions/kakuran3D_u.txt',status='old')
       open(32,file='dirturbance_conditions/kakuran3D_v.txt',status='old')
       open(33,file='dirturbance_conditions/kakuran3D_w.txt',status='old')
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       do k=0,Nz-1
         do i=0,Ny
-          ! read(31,*) kakuran_u(i,k)
           read(32,*) kakuran_v(i,k)
           read(33,*) kakuran_w(i,k)
         enddo
       enddo
       !=====読み込みは順番が大切だろうから、並列化しない==================================
-      ! close(31)
       close(32)
       close(33)
 
@@ -1669,8 +1502,7 @@ end module three_omp
      in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
      in_G1_top(i,k) = ur(i)
      !本当は窓関数を別で適用するが、今回は窓関数=ur(i)なので、計算量削減のためそのまま適用
-     ! in_G1_du = dis_strength*kakuran_u*窓関数
-     ! in_G1_du(i,k) = dis_strength*kakuran_u(i,k)*ur(i)
+     ! in_G2 = dis_strength*kakuran_v*窓関数
      in_G2(i,k) = dis_strength*kakuran_v(i,k)*ur(i)
      in_G3(i,k) = dis_strength*kakuran_w(i,k)*ur(i)
    end do
@@ -1812,9 +1644,7 @@ end module three_omp
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
         call NSCBC_x_0_super(dFx)
-        ! call NSCBC_x_0_sub(G,dGx,dFx)
         call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1844,8 +1674,7 @@ end module three_omp
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      ! call inflow(M,Q1,in_G1_top,in_G1_du,in_G2,in_G3)!dirichlet条件で流入部を固定
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部を固定
+      call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1899,9 +1728,7 @@ end module three_omp
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
         call NSCBC_x_0_super(dFx)!超音速流入
-        ! call NSCBC_x_0_sub(G,dGx,dFx)!亜音速流入
         call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -1926,7 +1753,6 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        ! call inflow(M,Q2,in_G1_top,in_G1_du,in_G2,in_G3)
         call inflow(M,Q2,in_G1_top,in_G2,in_G3)
       !Qn
       !dF/dxの計算
@@ -1984,9 +1810,7 @@ end module three_omp
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
         call NSCBC_x_0_super(dFx)
-        ! call NSCBC_x_0_sub(G,dGx,dFx)
         call NSCBC_x_Nx_super(G,dGx,dFx)
-        ! call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
@@ -2012,7 +1836,6 @@ end module three_omp
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        ! call inflow(M,Qn,in_G1_top,in_G1_du,in_G2,in_G3)
         call inflow(M,Qn,in_G1_top,in_G2,in_G3)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
@@ -2161,7 +1984,6 @@ end module three_omp
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
       deallocate(in_G0,in_G1_top,in_G2,in_G3,dGx,dFx,dGy,dFy,dGz,dFz)
-      ! deallocate(in_G1_du)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
       ! deallocate(omega_1,omega_2,omega_3)
       deallocate(kakuran_u,kakuran_v,kakuran_w)

@@ -1223,7 +1223,7 @@ contains
            Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
            Q(2,0,i,k) = 0.d0
            Q(3,0,i,k) = 0.d0
-           Q(4,0,i,k) = 1.d0/((Ma**2.d0)*gamma*(gamma-1.d0))&
+           Q(4,0,i,k) = (Q(0,0,i,k)*Tjet)/((Ma**2.d0)*gamma*(gamma-1.d0))&
                        +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
@@ -1469,9 +1469,8 @@ end module without_random
       double precision,allocatable,dimension(:,:,:,:) :: dQx,dQy
       double precision,allocatable,dimension(:) :: dzeta_iny,dzeta_inx
       double precision,allocatable,dimension(:) :: zeta_fx,zeta_fy
-      double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
+      ! double precision,allocatable,dimension(:,:,:) :: omega_1,omega_2,omega_3,dp!渦度と圧力変動差を入れる配列
       double precision,allocatable,dimension(:,:,:) :: div_u,Invariant_2 !音響成分と渦構造(第二不変量)を入れる配列
-      double precision,allocatable,dimension(:,:) :: kakuran_u,kakuran_v,kakuran_w!ランダム撹乱を入れる配列
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz-1),Q(0:4,0:Nx,0:Ny,0:Nz-1),Q0(0:4,0:Nx,0:Ny,0:Nz-1)&
       ,Q1(0:4,0:Nx,0:Ny,0:Nz-1),Q2(0:4,0:Nx,0:Ny,0:Nz-1),Qn(0:4,0:Nx,0:Ny,0:Nz-1)&
@@ -1502,12 +1501,10 @@ end module without_random
       dQx(0:4,0:Nx,0:Ny,0:Nz-1),dQy(0:4,0:Nx,0:Ny,0:Nz-1))
 
       allocate(dzeta_inx(0:Nx),dzeta_iny(0:Ny))
-      allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
-      omega_3(0:Nx,0:Ny,0:Nz-1),dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
+      allocate(dp(0:Nx,0:Ny,0:Nz-1),div_u(0:Nx,0:Ny,0:Nz-1),&
       Invariant_2(0:Nx,0:Ny,0:Nz-1))
-      allocate(kakuran_u(0:Ny,0:Nz-1),kakuran_v(0:Ny,0:Nz-1),&
-      kakuran_w(0:Ny,0:Nz-1))
-
+      ! allocate(omega_1(0:Nx,0:Ny,0:Nz-1),omega_2(0:Nx,0:Ny,0:Nz-1),&
+      ! omega_3(0:Nx,0:Ny,0:Nz-1))
       allocate(zeta_fx(0:Nx),zeta_fy(0:Ny))
       allocate(ur(0:Ny),Tu(0:Ny))
       !x_axis
@@ -1527,8 +1524,9 @@ end module without_random
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
       in_G0=0.d0;in_G1_top=0.d0
       Ux=0.d0;sigma_x=0.d0;Uy=0.d0;sigma_y=0.d0;zeta_fy=0.d0;dzeta_iny=0.d0
-      zeta_fx=0.d0;dzeta_inx=0.d0;omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;dp=0.d0;oldG=0.d0
-      div_u=0.d0;Invariant_2=0.d0;kakuran_u=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
+      zeta_fx=0.d0;dzeta_inx=0.d0;dp=0.d0;oldG=0.d0
+      ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0
+      div_u=0.d0;Invariant_2=0.d0
 
       !============座標設定======================================================
       !y方向の格子伸長のための座標設定
@@ -2061,5 +2059,7 @@ end module without_random
       deallocate(Vx,dVx,UVWT,dUVWTx,Vy,dVy,dUVWTy,Vz,dVz,dUVWTz)
       deallocate(in_G0,in_G1_top,dGx,dFx,dGy,dFy,dGz,dFz)
       deallocate(Ux,sigma_x,Uy,sigma_y,dQx,dQy,dzeta_iny,dzeta_inx)
-      deallocate(omega_1,omega_2,omega_3,dp,div_u,Invariant_2)
+      ! deallocate(omega_1,omega_2,omega_3)
+      deallocate(ur,Tu,dp,div_u,Invariant_2)
+      deallocate(zeta_fx,zeta_fy)
     end program main

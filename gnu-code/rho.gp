@@ -1,6 +1,6 @@
 reset
 set term x11
-se pm3d map
+#se pm3d map
 #se size square
 #se view 56,333,1,1
 #se view 90,270,1,1
@@ -37,10 +37,11 @@ set yrange [-10:10]
 
 #set dgrid3d
 set term x11 1
-#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter000095_11.txt'u 1:2:4 w pm3d t ""
-splot '/Users/isseyshome/Downloads/kari/parameter005685_19.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_sub/parameter000067_11.txt'u 1:2:4 w pm3d t ""
+#splot '/Users/isseyshome/Dropbox/Lab/3-dimensions/kari/parameter006100_19.txt'u 1:2:4 w pm3d t ""
 set term x11 2
-#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_omp/parameter000095_07.txt'u 1:2:4 w pm3d t ""
+#splot '/Users/isseyshome/Dropbox/Lab/3-dimensions/kari/parameter006100_07.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_sub/parameter000067_07.txt'u 1:2:4 w pm3d t ""
 
 
 
