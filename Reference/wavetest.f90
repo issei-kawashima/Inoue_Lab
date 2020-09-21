@@ -26,7 +26,7 @@ L=0d0
 U=0d0
 LU=0d0
 Q=0d0;f=0d0;y=0d0;x=0d0
-alpha5 = 1.d0/3.d0;Dalpha = 1.d0;sigma=0.25d0!;sigma=0.d0
+alpha5 = 1.d0/3.d0;Dalpha = 1.d0;sigma=025.d0
 D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0
 !!!--------------------------------------A行列
 
