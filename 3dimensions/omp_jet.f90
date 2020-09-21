@@ -49,7 +49,7 @@ module three_omp
   implicit none
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
-  integer,parameter :: t_end = 150 !時刻tの設定
+  integer,parameter :: t_end = 250 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 360
   integer,parameter :: Ny = 200
@@ -82,8 +82,8 @@ module three_omp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
-  integer,parameter :: observe_end_time = int(130.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
+  integer,parameter :: observe_start_time = int(150.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
@@ -915,11 +915,12 @@ contains
           do k = 0,Nz-1
             do i = 0,Ny
         !設定したL行列からd1~5をi=Nxにおいて設定する
-          dNx(1,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
+          dFx(0,Nx,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
+          ! dNx(1,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
           dNx(2,i,k) = (LNx(1,i,k)+LNx(5,i,k))*0.5d0
           dNx(3,i,k) = 0.5d0/(G(0,Nx,i,k) * c_NS(i,k)) * (-LNx(1,i,k) + LNx(5,i,k))
-          dNx(4,i,k) = LNx(3,i,k)
-          dNx(5,i,k) = LNx(4,i,k)
+          ! dNx(4,i,k) = LNx(3,i,k)
+          ! dNx(5,i,k) = LNx(4,i,k)
             end do
           end do
         !$omp end parallel do
@@ -929,14 +930,22 @@ contains
             do i = 0,Ny
         !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
         !i=Nxの時の差し替えF
-        dFx(0,Nx,i,k) = dNx(1,i,k)
-        dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
-        dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
-        dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
+        dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
+        dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*LNx(3,i,k))
+        dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*LNx(4,i,k))
         dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
-                      (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+ &
-        (G(0,Nx,i,k)*G(1,Nx,i,k)*dNx(3,i,k))+(G(0,Nx,i,k)*G(2,Nx,i,k)*dNx(4,i,k))+&
-                      (G(0,Nx,i,k)*G(3,Nx,i,k)*dNx(5,i,k))
+                    (G(3,Nx,i,k)**2.d0))*dFx(0,Nx,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
+                    G(0,Nx,i,k)*(G(1,Nx,i,k)*dNx(3,i,k)+G(2,Nx,i,k)*LNx(3,i,k)+&
+                    G(3,Nx,i,k)*LNx(4,i,k))
+        ! dFx(0,Nx,i,k) = dNx(1,i,k)
+        ! dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
+        ! dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
+        ! dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
+        ! dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
+        !             (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
+        !             G(0,Nx,i,k)*(G(1,Nx,i,k)*dNx(3,i,k)+G(2,Nx,i,k)*dNx(4,i,k)+&
+        !             G(3,Nx,i,k)*dNx(5,i,k))
+
             end do
           end do
       !$omp end parallel do
@@ -1012,19 +1021,23 @@ contains
         do k=0,Nz-1
           do j=0,Nx
       !設定したL行列からd1~5をi=0,Nyの両点においてそれぞれ設定する
-        d0(1,j,k) = (1.d0 / (c_NS0(j,k) **2.d0)) * ((L0(1,j,k)+L0(5,j,k))*0.5d0 + L0(2,j,k))
+        !d0(1)=dFy(0)なので、最初からdFyに入れてしまう
+         dFy(0,j,0,k) = (1.d0 / (c_NS0(j,k) **2.d0)) * ((L0(1,j,k)+L0(5,j,k))*0.5d0 + L0(2,j,k))
+        ! d0(1,j,k) = (1.d0 / (c_NS0(j,k) **2.d0)) * ((L0(1,j,k)+L0(5,j,k))*0.5d0 + L0(2,j,k))
         d0(2,j,k) = (0.5d0) * (L0(1,j,k)+L0(5,j,k))
-        d0(3,j,k) = L0(3,j,k)
+        ! d0(3,j,k) = L0(3,j,k)
 
-        d1(1,j,k) = (1.d0 / (c_NS1(j,k) **2.d0)) * ((L1(1,j,k)+L1(5,j,k))*0.5d0 + L1(2,j,k))
+        !d1(1)=dFy(0)なので、最初からdFyに入れてしまう
+        dFy(0,j,Ny,k) = (1.d0 / (c_NS1(j,k) **2.d0)) * ((L1(1,j,k)+L1(5,j,k))*0.5d0 + L1(2,j,k))
+        ! d1(1,j,k) = (1.d0 / (c_NS1(j,k) **2.d0)) * ((L1(1,j,k)+L1(5,j,k))*0.5d0 + L1(2,j,k))
         d1(2,j,k) = (0.5d0) * (L1(1,j,k)+L1(5,j,k))
-        d1(3,j,k) = L1(3,j,k)
+        ! d1(3,j,k) = L1(3,j,k)
         !d4のみrhoを含むので個別で設定しなければいけない
         d0(4,j,k) = 0.5d0/(G(0,j,0,k) * c_NS0(j,k)) * (-L0(1,j,k) + L0(5,j,k))
         d1(4,j,k) = 0.5d0/(G(0,j,Ny,k) * c_NS1(j,k)) * (-L1(1,j,k) + L1(5,j,k))
 
-        d0(5,j,k) = L0(4,j,k)
-        d1(5,j,k) = L1(4,j,k)
+        ! d0(5,j,k) = L0(4,j,k)
+        ! d1(5,j,k) = L1(4,j,k)
       !設定したdからNySCBCで置き換える境界地点のdFyを定義する
           end do
         end do
@@ -1034,13 +1047,19 @@ contains
       do k=0,Nz-1
         do j=0,Nx
       !i=0の時の差し替えdFy
-      dFy(0,j,0,k) = d0(1,j,k)
-      dFy(1,j,0,k) = G(1,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(3,j,k)
-      dFy(2,j,0,k) = G(2,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(4,j,k)
-      dFy(3,j,0,k) = G(3,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(5,j,k)
-      dFy(4,j,0,k) =(0.5d0)*((G(1,j,0,k)**2.d0)+(G(2,j,0,k)**2.d0)+(G(3,j,0,k)**2.d0))*d0(1,j,k)+&
-                    d0(2,j,k)/(gamma-1.d0)+(G(0,j,0,k)*G(1,j,0,k)*d0(3,j,k))+&
-          (G(0,j,0,k)*G(2,j,0,k)*d0(4,j,k))+(G(0,j,0,k)*G(3,j,0,k)*d0(5,j,k))
+      dFy(1,j,0,k) = G(1,j,0,k)*dFy(0,j,0,k)+G(0,j,0,k)*L0(3,j,k)
+      dFy(2,j,0,k) = G(2,j,0,k)*dFy(0,j,0,k)+G(0,j,0,k)*d0(4,j,k)
+      dFy(3,j,0,k) = G(3,j,0,k)*dFy(0,j,0,k)+G(0,j,0,k)*L0(4,j,k)
+      dFy(4,j,0,k) =(0.5d0)*((G(1,j,0,k)**2.d0)+(G(2,j,0,k)**2.d0)+&
+            (G(3,j,0,k)**2.d0))*dFy(0,j,0,k)+d0(2,j,k)/(gamma-1.d0)+G(0,j,0,k)*&
+            (G(1,j,0,k)*L0(3,j,k)+G(2,j,0,k)*d0(4,j,k)+G(3,j,0,k)*L0(4,j,k))
+      ! dFy(0,j,0,k) = d0(1,j,k)
+      ! dFy(1,j,0,k) = G(1,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(3,j,k)
+      ! dFy(2,j,0,k) = G(2,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(4,j,k)
+      ! dFy(3,j,0,k) = G(3,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(5,j,k)
+      ! dFy(4,j,0,k) =(0.5d0)*((G(1,j,0,k)**2.d0)+(G(2,j,0,k)**2.d0)+&
+      !       (G(3,j,0,k)**2.d0))*d0(1,j,k)+d0(2,j,k)/(gamma-1.d0)+G(0,j,0,k)*&
+      !       (G(1,j,0,k)*d0(3,j,k)+G(2,j,0,k)*d0(4,j,k)+G(3,j,0,k)*d0(5,j,k))
         end do
       end do
     !$omp end parallel do
@@ -1049,13 +1068,22 @@ contains
       do k=0,Nz-1
         do j=0,Nx
       !i=Nyの時の差し替えdFy
-      dFy(0,j,Ny,k) = d1(1,j,k)
-      dFy(1,j,Ny,k) = (G(1,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(3,j,k))
-      dFy(2,j,Ny,k) = (G(2,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(4,j,k))
-      dFy(3,j,Ny,k) = (G(3,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(5,j,k))
-      dFy(4,j,Ny,k) =(0.5d0)*((G(1,j,Ny,k)**2.d0)+(G(2,j,Ny,k)**2.d0)+(G(3,j,Ny,k)**2.d0))*d1(1,j,k)+&
-                  d1(2,j,k)/(gamma-1.d0)+(G(0,j,Ny,k)*G(1,j,Ny,k)*d1(3,j,k))+&
-      (G(0,j,Ny,k)*G(2,j,Ny,k)*d1(4,j,k))+(G(0,j,Ny,k)*G(3,j,Ny,k)*d1(5,j,k))
+      dFy(1,j,Ny,k) = (G(1,j,Ny,k)*dFy(0,j,Ny,k)) + (G(0,j,Ny,k)*L1(3,j,k))
+      dFy(2,j,Ny,k) = (G(2,j,Ny,k)*dFy(0,j,Ny,k)) + (G(0,j,Ny,k)*d1(4,j,k))
+      dFy(3,j,Ny,k) = (G(3,j,Ny,k)*dFy(0,j,Ny,k)) + (G(0,j,Ny,k)*L1(4,j,k))
+      dFy(4,j,Ny,k) =(0.5d0)*((G(1,j,Ny,k)**2.d0)+(G(2,j,Ny,k)**2.d0)+&
+                    (G(3,j,Ny,k)**2.d0))*dFy(0,j,Ny,k)+d1(2,j,k)/(gamma-1.d0)+&
+                    G(0,j,Ny,k)*(G(1,j,Ny,k)*L1(3,j,k)+G(2,j,Ny,k)*d1(4,j,k)+&
+                    G(3,j,Ny,k)*L1(4,j,k))
+
+      ! dFy(0,j,Ny,k) = d1(1,j,k) !d1(1)を入れるだけなので、最初からdFyに格納した。
+      ! dFy(1,j,Ny,k) = (G(1,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(3,j,k))
+      ! dFy(2,j,Ny,k) = (G(2,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(4,j,k))
+      ! dFy(3,j,Ny,k) = (G(3,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(5,j,k))
+      ! dFy(4,j,Ny,k) =(0.5d0)*((G(1,j,Ny,k)**2.d0)+(G(2,j,Ny,k)**2.d0)+&
+      !               (G(3,j,Ny,k)**2.d0))*d1(1,j,k)+d1(2,j,k)/(gamma-1.d0)+&
+      !               G(0,j,Ny,k)*(G(1,j,Ny,k)*d1(3,j,k)+G(2,j,Ny,k)*d1(4,j,k)+&
+      !               G(3,j,Ny,k)*d1(5,j,k))
         end do
       end do
     !$omp end parallel do
@@ -1546,6 +1574,8 @@ end module three_omp
   !まずt=0はループ外で個別に作成
   !もちろん出力もζ_y座標系とζ_x座標系で行う
   !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
+  !$omp parallel sections
+    !$omp section
        do k=0,Nz-1
          z = dz*dble(k)
          write(z_name, '(i2.2)') k
@@ -1562,6 +1592,7 @@ end module three_omp
           close(10)
        enddo
    !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能=======================
+   !$omp section
    open(41, file = "result_omp/turbulent_check_1.csv")
    open(42, file = "result_omp/turbulent_check_2.csv")
    open(43, file = "result_omp/turbulent_check_3.csv")
@@ -1572,20 +1603,25 @@ end module three_omp
       pNx_infty = G(4,Nx,0,0)
       p0y_infty = G(4,0,0,0)
       pNy_infty = G(4,0,Ny,0)
+  !$omp end parallel sections
         !粘性項の計算はCCSを用いるためA,L,U行列がsigma=0となる
         !そのためAp,Amなどとはまた別に設定する
         !CCS用のA,L,U行列はNの値がNx,Nyで異なるので別々に設定する
+        !A行列の設定をF+とF-のそれぞれで行う
+        !LU分解の過程は同じだが用いる値が異なるので別々にcall
         call LU_DecompoNonP(Nx,ccs_sigma,LUccsx)
         call LU_DecompoNonP(Ny,ccs_sigma,LUccsy)
         call LU_DecompoPiriodic(Nz,ccs_sigma,LUccsz)
-        !A行列の設定をF+とF-のそれぞれで行う
-        !LU分解の過程は同じだが用いる値が異なるので別々にcall
-        call LU_DecompoNonP(Nx,psigma,LUpx)
-        call LU_DecompoNonP(Ny,psigma,LUpy)
+
         call LU_DecompoPiriodic(Nz,psigma,LUpz)
-        call LU_DecompoNonP(Nx,msigma,LUmx)
-        call LU_DecompoNonP(Ny,msigma,LUmy)
         call LU_DecompoPiriodic(Nz,msigma,LUmz)
+
+        call LU_DecompoNonP(Nx,psigma,LUpx)
+        call LU_DecompoNonP(Nx,msigma,LUmx)
+
+        call LU_DecompoNonP(Ny,psigma,LUpy)
+        call LU_DecompoNonP(Ny,msigma,LUmy)
+
         call Q_matrix(G,Q)
         Q0 = Q!Bufferの計算で使う初期値のQを保存
       !NSCBCのdGを求める微分も粘性項と同じCCSなのでA,L,U行列の使い回し可能
@@ -1644,11 +1680,11 @@ end module three_omp
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
+        call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_x_0_super(dFx)
         call NSCBC_x_Nx_super(G,dGx,dFx)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
-        call dif_y(ccs_sigma,dy,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         !無反射流出条件の際の境界での粘性項の条件を設定
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
