@@ -3,7 +3,7 @@ implicit none
 integer i,M,j,k,m1,im1,im2,ip1,ip2
 double precision dz,dt,pi,Z_LU,s_1,s_2,s_3,s_4,a,a3,ad,ad3,dzinv
 double precision alpha,alpha3,alphaD,b,bd,sigma,cd,dxinv,alpha5,Dalpha,usum,lsum
-integer,parameter::Nz=101
+integer,parameter::Nz=100
 
 double  precision,parameter :: ra = 14.d0/9.d0, rb = 1.d0/9.d0&
 &,da = 4.d0 / 9.d0,db = 2.d0 / 9.d0 !5次精度のDCSとなるための係数設定
@@ -17,7 +17,7 @@ allocate(AA(0:NZ-1,0:NZ-1),L(0:NZ-1,0:NZ-1),U(0:NZ-1,0:NZ-1))
 allocate(LU(-2:2,0:Nz-1))
 allocate(D2(0:NZ-1),D4(0:NZ-1),D6(0:NZ-1),D8(0:NZ-1))
 allocate(x(0:NZ-1))
-open(10,file ='testz.csv')
+
 pi=dacos(-1d0)
 dz=1d0/dble(NZ)
 
@@ -25,12 +25,9 @@ AA=0d0
 L=0d0
 U=0d0
 LU=0d0
-Q=0d0;f=0d0;y=0d0
-alpha=1d0/3d0;alphaD=1d0;alpha3=0.25d0;a=14d0/9d0;a3=1.5d0
-ad=4d0/9d0;ad3=0.5d0;bd=2d0/9d0;cd=0d0;a3=1.5d0;ad3=0.5d0
-sigma=-0.25d0;alpha5 = 1.d0/3.d0;Dalpha = 1.d0
+Q=0d0;f=0d0;y=0d0;x=0d0
+alpha5 = 1.d0/3.d0;Dalpha = 1.d0;sigma=0.25d0!;sigma=0.d0
 D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0
-x=0d0
 !!!--------------------------------------A行列
 
 !周期条件なので5次精度DCSを使う(sigmaを0にすれば6次CCSとなる)
@@ -97,7 +94,7 @@ enddo
 
 do m=0,Nz-1
 	z(m)=dz*dble(m)
-	f(m)=sin(pi*z(m))
+	f(m)=sin(2.d0*pi*z(m))
 end do
 
 !do M=0,500
@@ -134,10 +131,9 @@ dzinv = 1.d0/dz
        x(i) = (y(i) - LU(1,i)*x(i+1)-LU(-2,i)*x(Nz-1)) / LU(0,i)
      enddo
 
-!!  �O�i����
+open(10,file ='testz.csv')
 do m=0,Nz-1
-write(10,*) dz*(dble(m)),',',f(m),',',x(m)
+write(10,*) z(m),',',f(m),',',x(m)
 end do
-!end do
 close(10)
 end program iryuu6
