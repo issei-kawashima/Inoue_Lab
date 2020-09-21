@@ -24,7 +24,7 @@ module three_sub
   implicit none
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
-  integer,parameter :: t_end = 150 !時刻tの設定
+  integer,parameter :: t_end = 250 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 360
   integer,parameter :: Ny = 200
@@ -57,8 +57,8 @@ module three_sub
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
-  integer,parameter :: observe_end_time = int(130.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
+  integer,parameter :: observe_start_time = int(150.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
@@ -955,9 +955,9 @@ contains
       dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
       dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
       dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
-                    (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+ &
-      (G(0,Nx,i,k)*G(1,Nx,i,k)*dNx(3,i,k))+(G(0,Nx,i,k)*G(2,Nx,i,k)*dNx(4,i,k))+&
-                    (G(0,Nx,i,k)*G(3,Nx,i,k)*dNx(5,i,k))
+                    (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
+                    G(0,Nx,i,k)*(G(1,Nx,i,k)*dNx(3,i,k)+G(2,Nx,i,k)*dNx(4,i,k)+&
+                    G(3,Nx,i,k)*dNx(5,i,k))
           end do
         end do
     !$omp end parallel do
@@ -1041,7 +1041,7 @@ contains
         d1(1,j,k) = (1.d0 / (c_NS1(j,k) **2.d0)) * ((L1(1,j,k)+L1(5,j,k))*0.5d0 + L1(2,j,k))
         d1(2,j,k) = (0.5d0) * (L1(1,j,k)+L1(5,j,k))
         d1(3,j,k) = L1(3,j,k)
-        !d4のみrhoを含むので個別で設定しなければいけない
+
         d0(4,j,k) = 0.5d0/(G(0,j,0,k) * c_NS0(j,k)) * (-L0(1,j,k) + L0(5,j,k))
         d1(4,j,k) = 0.5d0/(G(0,j,Ny,k) * c_NS1(j,k)) * (-L1(1,j,k) + L1(5,j,k))
 
@@ -1060,9 +1060,9 @@ contains
       dFy(1,j,0,k) = G(1,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(3,j,k)
       dFy(2,j,0,k) = G(2,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(4,j,k)
       dFy(3,j,0,k) = G(3,j,0,k)*d0(1,j,k)+G(0,j,0,k)*d0(5,j,k)
-      dFy(4,j,0,k) =(0.5d0)*((G(1,j,0,k)**2.d0)+(G(2,j,0,k)**2.d0)+(G(3,j,0,k)**2.d0))*d0(1,j,k)+&
-                    d0(2,j,k)/(gamma-1.d0)+(G(0,j,0,k)*G(1,j,0,k)*d0(3,j,k))+&
-          (G(0,j,0,k)*G(2,j,0,k)*d0(4,j,k))+(G(0,j,0,k)*G(3,j,0,k)*d0(5,j,k))
+      dFy(4,j,0,k) =(0.5d0)*((G(1,j,0,k)**2.d0)+(G(2,j,0,k)**2.d0)+&
+                  (G(3,j,0,k)**2.d0))*d0(1,j,k)+d0(2,j,k)/(gamma-1.d0)+G(0,j,0,k)*&
+                  (G(1,j,0,k)*d0(3,j,k)+G(2,j,0,k)*d0(4,j,k)+G(3,j,0,k)*d0(5,j,k))
         end do
       end do
     !$omp end parallel do
@@ -1075,9 +1075,10 @@ contains
       dFy(1,j,Ny,k) = (G(1,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(3,j,k))
       dFy(2,j,Ny,k) = (G(2,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(4,j,k))
       dFy(3,j,Ny,k) = (G(3,j,Ny,k)*d1(1,j,k)) + (G(0,j,Ny,k)*d1(5,j,k))
-      dFy(4,j,Ny,k) =(0.5d0)*((G(1,j,Ny,k)**2.d0)+(G(2,j,Ny,k)**2.d0)+(G(3,j,Ny,k)**2.d0))*d1(1,j,k)+&
-                  d1(2,j,k)/(gamma-1.d0)+(G(0,j,Ny,k)*G(1,j,Ny,k)*d1(3,j,k))+&
-      (G(0,j,Ny,k)*G(2,j,Ny,k)*d1(4,j,k))+(G(0,j,Ny,k)*G(3,j,Ny,k)*d1(5,j,k))
+      dFy(4,j,Ny,k) =(0.5d0)*((G(1,j,Ny,k)**2.d0)+(G(2,j,Ny,k)**2.d0)+&
+                    (G(3,j,Ny,k)**2.d0))*d1(1,j,k)+d1(2,j,k)/(gamma-1.d0)+&
+                    G(0,j,Ny,k)*(G(1,j,Ny,k)*d1(3,j,k)+G(2,j,Ny,k)*d1(4,j,k)+&
+                    G(3,j,Ny,k)*d1(5,j,k))
         end do
       end do
     !$omp end parallel do
