@@ -10,24 +10,24 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 360+1 !一行改行分を含めてる
 integer,parameter :: Ny = 200
 integer,parameter :: Nz = 20
-integer,parameter :: CNT = 8600
+integer,parameter :: CNT = 15000
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
 character(len = 16) M_number
 
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz-1,14))
-write(folder_name, '(a)') "no_random"
+write(folder_name, '(a)') "omp"
 write(M_number, '(i6.6)') CNT
 
 do k=0,Nz-1
   write(z_name, '(i2.2)') k
   ! open(11, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_"&
   !                     //trim(folder_name)//"/parameter"//trim(M_number)//"_"//trim(z_name)//".txt")
-  open(11, file = "/Users/isseyshome/Dropbox/Lab/3-dimensions/result_"&
-                      //trim(folder_name)//"/parameter"//trim(M_number)//"_"//trim(z_name)//".txt")
-  ! open(11, file = "/Users/isseyshome/Downloads/"&
+  ! open(11, file = "/Users/isseyshome/Dropbox/Lab/3-dimensions/result_"&
   !                     //trim(folder_name)//"/parameter"//trim(M_number)//"_"//trim(z_name)//".txt")
+  open(11, file = "/Users/isseyshome/Downloads/result_"&
+                      //trim(folder_name)//"/parameter"//trim(M_number)//"_"//trim(z_name)//".txt")
   !入力データの読み込みと確認
   do i=0,Ny
     do j = 0,Nx
