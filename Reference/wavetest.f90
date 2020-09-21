@@ -133,7 +133,7 @@ dzinv = 1.d0/dz
 
 open(10,file ='testz.csv')
 do m=0,Nz-1
-write(10,*) z(m),',',f(m),',',x(m)
+write(10,*) z(m),',',f(m),',',x(m)/(2.d0*pi)
 end do
 close(10)
 end program iryuu6
