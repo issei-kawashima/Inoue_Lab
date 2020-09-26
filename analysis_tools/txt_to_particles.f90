@@ -10,7 +10,7 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 360+1 !一行改行分を含めてる
 integer,parameter :: Ny = 200
 integer,parameter :: Nz = 20
-integer,parameter :: CNT = 15600
+integer,parameter :: CNT = 15000
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
