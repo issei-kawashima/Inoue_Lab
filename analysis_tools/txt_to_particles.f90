@@ -10,14 +10,14 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 360+1 !一行改行分を含めてる
 integer,parameter :: Ny = 200
 integer,parameter :: Nz = 20
-integer,parameter :: CNT = 15000
+integer,parameter :: CNT = 15600
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
 character(len = 16) M_number
 
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz-1,14))
-write(folder_name, '(a)') "omp"
+write(folder_name, '(a)') "omp_1.6"
 write(M_number, '(i6.6)') CNT
 
 do k=0,Nz-1
@@ -40,9 +40,6 @@ do k=0,Nz-1
   close(11)
 enddo
 
-!複数の2次元txtファイルから第二不変量と座標のみを1つのtxtファイルにまとめる時はこちら
-! open(99, file = "/Users/isseyshome/Paper/result_analysis/"&
-!           //trim(folder_name)//"_2ndInvaritant"//trim(M_number)//".txt")
 !paraviewでの等値面可視化用ファイル
 !複数の2次元txtファイルから第二不変量/音響成分/密度と座標のみを1つのparticlesファイルにまとめる時はこちら
 open(97, file = "/Users/isseyshome/Paper/result_analysis/"&
@@ -60,11 +57,6 @@ do k = 0,Nz-1
       if((dim_kukei(j,i,k,1) == 0.d0) .and. (dim_kukei(j,i,k,3) == 0.d0) .and.&
        (dim_kukei(j,i,k,5) == 0.d0) .and. (dim_kukei(j,i,k,7) == 0.d0)) then
       else
-!(通常&NaN直前)第二不変量のみの時のtxtファイル出力はこちら
-        ! write(99,'(f24.16,",",f24.16,",",f24.16,",",f24.16)') &
-        ! dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&
-        ! ! dim_kukei(j,i,k,9)!x,y,z,第二不変量Q(~2020.08.26)
-        ! dim_kukei(j,i,k,11)!x,y,z,第二不変量Q(2020.08.27~出力順を変更した)
 !(通常&NaN直前)第二不変量のみの時のparticlesファイル出力はこちら
         write(97,'(4f24.16)') &
         dim_kukei(j,i,k,1),dim_kukei(j,i,k,3),dim_kukei(j,i,k,5),&

@@ -32,6 +32,7 @@ program kakusan
   !Lyが半分なので、ここは2Lyになる
   double precision,parameter::dy= 2.d0*Ly/dble(NY)
   double precision,parameter::dz=Lz/dble(NZ)
+  ! double precision,parameter::Kmax = pi !pi 2*pi, 4*piにして渡邉さんは境界層で計算してた
   double precision,parameter::Kmax = dsqrt(3.d0)
 
   integer::i,j,k
@@ -75,7 +76,7 @@ program kakusan
           !|k|=(kx^2+ky^2+kz^2)
            abs_k=dsqrt(dble(Kx*Kx)+dble(Ky*Ky)+dble(Kz*Kz))
           !E(k)=(|k|/Kmax)^4 * exp(-2*(|k|/Kmax)^2)
-           ES3d(Kx,Ky,Kz)=(abs_k/Kmax)**4*dexp(-2d0*(abs_k/Kmax)**2)
+          ES3d(Kx,Ky,Kz)=(abs_k/Kmax)**4*dexp(-2d0*(abs_k/Kmax)**2)
         end do
      end do
   end do
