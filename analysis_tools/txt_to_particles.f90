@@ -17,7 +17,7 @@ character(len = 16) folder_name
 character(len = 16) M_number
 
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz-1,14))
-write(folder_name, '(a)') "omp_1.6"
+write(folder_name, '(a)') "no_random"
 write(M_number, '(i6.6)') CNT
 
 do k=0,Nz-1

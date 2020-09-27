@@ -41,6 +41,7 @@
 !加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
 !2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
 !乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。また乱流チェックタイムを70~75に後ろ倒しした。それは50~55では流れが座標に到達しないため。
+!2020.09.28 ランダム撹乱の強さを5%から10%に変更
 
 
 module three_omp
@@ -82,13 +83,13 @@ module three_omp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(150.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
   double precision,parameter :: pi = acos(-1.d0)
   double precision,parameter :: Re = 1.d3
-  double precision,parameter :: A2 = ujet*5.d-2!v方向の撹乱の振幅
+  double precision,parameter :: A2 = ujet*1.d-1!v方向の撹乱の振幅
   double precision,parameter :: T2 = 1.d0!v方向の撹乱の周期 T2=1で1秒に1周期
 contains
   !初期条件G(rho,u,p)を用いてQ行列の設定
@@ -1879,7 +1880,7 @@ end module three_omp
           call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
-          write(41,'(f24.16)') dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ左中心
+          write(41,'(f24.16)') dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
           write(42,'(f24.16)') dGx(1,2*Nx/3,Ny/4,Nz/4)!後ろ左下
           write(43,'(f24.16)') dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)!後ろ右上
           write(44,'(f24.16)') dGx(1,Nx/2,3*Ny/4,3*Nz/4)!真ん中右上
