@@ -41,7 +41,7 @@
 !加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
 !2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
 !乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。また乱流チェックタイムを70~75に後ろ倒しした。それは50~55では流れが座標に到達しないため。
-!2020.09.28 ランダム撹乱の強さを5%から10%に変更
+!2020.09.28 ランダム撹乱の強さを5%から10%に変更. Ma=1.4に戻した
 
 
 module three_omp
@@ -77,7 +77,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.6d0
+  double precision,parameter :: Ma = 1.4d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
@@ -87,10 +87,7 @@ module three_omp
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
-  double precision,parameter :: pi = acos(-1.d0)
   double precision,parameter :: Re = 1.d3
-  double precision,parameter :: A2 = ujet*1.d-1!v方向の撹乱の振幅
-  double precision,parameter :: T2 = 1.d0!v方向の撹乱の周期 T2=1で1秒に1周期
 contains
   !初期条件G(rho,u,p)を用いてQ行列の設定
   subroutine Q_matrix(G,Q)

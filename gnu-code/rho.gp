@@ -5,10 +5,10 @@ set term x11
 #se view 56,333,1,1
 #se view 90,270,1,1
 
-se contour  surface#等高線の表示
+#se contour  surface#等高線の表示
 #se cntrparam levels incremental 0.7,0.02,1#等高線の初期値、間隔、最終値の設定
-se cntrparam levels incremental 0.5,0.05,1.5#等高線の初期値、間隔、最終値の設定
-unset clabel#等高線の凡例の消去
+#se cntrparam levels incremental 0.5,0.05,1.5#等高線の初期値、間隔、最終値の設定
+#unset clabel#等高線の凡例の消去
 
 set colorbox horiz user origin .25,.03 size .65,.04
 set xlabel font "Arial,12"
@@ -18,9 +18,9 @@ set tics font "Arial,12"
 set key below right box font "Arial,12"
 
 
-set palette rgbformulae 22,13,-31	#!コントラストが強い色
-set palette defined (0.5"blue",1"white",1.5"red")
-set cbrange [0:1.5]
+#set palette rgbformulae 22,13,-31	#!コントラストが強い色
+#set palette defined (0.5"blue",1"white",1.5"red")
+#set cbrange [0:1.5]
 
 
 
@@ -37,11 +37,8 @@ set yrange [-10:10]
 
 #set dgrid3d
 set term x11 1
-splot '/Users/isseyshome/Downloads/result_omp_1.6/parameter015620_07.txt'u 1:2:4 w pm3d t ""
-#splot '/Users/isseyshome/Dropbox/Lab/3-dimensions/kari/parameter006100_19.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_sub/parameter021500_19.txt'u 1:2:6 w pm3d t ""
 #set term x11 2
-#splot '/Users/isseyshome/Dropbox/Lab/3-dimensions/kari/parameter006100_07.txt'u 1:2:4 w pm3d t ""
-#splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_sub/parameter000067_07.txt'u 1:2:4 w pm3d t ""
 
 
 
