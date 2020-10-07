@@ -10,16 +10,15 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 360+1 !一行改行分を含めてる
 integer,parameter :: Ny = 200
 integer,parameter :: Nz = 20
-integer,parameter :: CNT = 15000
+integer,parameter :: CNT = 15356
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
 character(len = 16) M_number
 
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz-1,14))
-write(folder_name, '(a)') "no_random"
+write(folder_name, '(a)') "1.4_random_10"!ここは長すぎるとエラーになる
 write(M_number, '(i6.6)') CNT
-
 do k=0,Nz-1
   write(z_name, '(i2.2)') k
   ! open(11, file = "/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_"&
@@ -32,9 +31,9 @@ do k=0,Nz-1
   do i=0,Ny
     do j = 0,Nx
       !通常はこちら
-      read(11,'(14f24.16)') dim_kukei(j,i,k,1:14)
+      ! read(11,'(14f24.16)') dim_kukei(j,i,k,1:14)
       !NaN直前ファイルはこちら
-      ! read(11,'(12f24.16)') dim_kukei(j,i,k,1:12)
+      read(11,'(12f24.16)') dim_kukei(j,i,k,1:12)
     end do
   end do
   close(11)

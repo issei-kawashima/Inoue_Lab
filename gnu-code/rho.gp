@@ -37,12 +37,9 @@ set yrange [-10:10]
 
 #set dgrid3d
 set term x11 1
-splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_sub/parameter021500_19.txt'u 1:2:6 w pm3d t ""
-#set term x11 2
+splot '/Users/isseyshome/Downloads/result_omp_Ma1.4_random_10%/parameter015356_12.txt'u 1:2:4 w pm3d t ""
 
-
-
-#se term jpeg
-#unset colorbox
-#se out "/Users/isseyshome/Documents/Lab/2dimensions/Ma=2.4/rho008000.jpg"
-#rep
+se term jpeg
+unset colorbox
+se out "/Users/isseyshome/Documents/Lab/#3 修士論文/Visual_result/Ma1.4_random_10%/rho015356.jpg"
+rep

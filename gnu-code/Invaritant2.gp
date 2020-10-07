@@ -9,12 +9,12 @@ set term x11
 se pm3d map
 #se size square
 #se view 90,270,1,1
-se contour#等高線の表示
-se cntrparam levels incremental -0.3,0.05,0.3#等高線の初期値、間隔、最終値の設定
-unset clabel#等高線の凡例の消去
-set colorbox horiz user origin .25,.07 size .65,.04
-set cbrange [-0.5:0.5]
-set palette defined (-0.5"blue",0"white",0.5"red")
+#se contour#等高線の表示
+#se cntrparam levels incremental -0.3,0.05,0.3#等高線の初期値、間隔、最終値の設定
+#unset clabel#等高線の凡例の消去
+#set colorbox horiz user origin .25,.07 size .65,.04
+#set cbrange [-0.5:0.5]
+#set palette defined (-0.5"blue",0"white",0.5"red")
 
 set xlabel font "Arial,12"
 set ylabel font "Arial,12"
@@ -39,7 +39,7 @@ set term x11 3
 
 #(通常&NaN)3次元
 #For Mac
-splot "/Users/isseyshome/Downloads/result_sub_end_25000/parameter020000_07.txt" u 1:2:6  w pm3d t ""
+splot "/Users/isseyshome/Downloads/result_omp_Ma1.4_random_10%/parameter015356_12.txt" u 1:2:6  w pm3d t ""
 
 
 #2次元
