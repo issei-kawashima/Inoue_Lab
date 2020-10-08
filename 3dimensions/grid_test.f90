@@ -8,7 +8,7 @@
 !Nx=180,Ny=100,Nz=20,dt=2.d-3で計算。
 !2020.06.11 超音速のFirst Schockを捉えるために、グリッド数をあげる必要がある。
 !しかし現状ではメモリ制限(コンパイラーのせい)で容量が超えてしまうので、allocateに配列を書き換える。
-!Nx=360,Ny=299,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
+!Nx=360,Ny=200,Nz=20でも計算開始できた。したがって、allocateで本当にグリッド数の限界を突破した
 !2020.06.13 Pr=1の理由を探す事に。今回は森山が現実的という0.71で計算する
 !計算高速化のために以下のことをした。
 !1.dif_zのsubrouineをmodを使用しない形に変更。
@@ -39,17 +39,19 @@
 !2020.09.10 格子数を変更する際にはNUxも変更しなくてはいけない。
 !Nx=360でNUx=213とする。Nx=180ではNUx=90で良い。
 !加えて、ランダム撹乱の生成の際に、格子点と格子伸長の関数でメインプログラムと同一のものを使用しているので、そちらも直さなければいけない
+!乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。
 !2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
-!乱流チェックする座標に関して、x,yでBuffer領域ではないようにするため修正した。また乱流チェックタイムを70~75に後ろ倒しした。それは50~55では流れが座標に到達しないため。
-!2020.09.28 ランダム撹乱の強さを5%から10%に変更. Ma=1.4に戻した
+!2020.09.28 Ma=1.4に戻した
+!また乱流チェックタイムを120~250に後ろ倒しした。以前の計測時間は短すぎるのと、流れが座標に到達しないため。
 !2020.10.02 subroutineでdx,dy,dzを読み込んでいたが、すべてグローバル変数で定義していた変数のみを使用してmain programで求めていた。
 !呼び出すのが無駄なので、global変数に追加して呼び出すのをやめた
 !また、z=dz+dble(k)でzの座標を3回計算していたが、無駄なのでz(k)配列を作成し、一番初めに計算した後はそれを呼び出す方式に変更した
 !加えて、乱流チェックファイルについて計算開始時にopenして数日後にデータを毎回書き込むのは非効率だと思ったので、
 !いったんturbulent_check1~4という配列に格納して計算が終了したら書き出すことにした
-!2020.10.08 ランダム撹乱の強さを10%に変更した(9/28は別のものを修正していて間違えていた)
-!!!!!!!!Nx,Ny,Nz,Lx,Ly,Lzをmain codeで変更した際にはrandom_3D.f90も変更しないといけない
-module three_omp
+!2020.10.08 ユーキの計算条件を参考にdx,dy,dzを見直した。dtは一緒なので変更なし
+!!!!!Nx,Ny,Nz,Lx,Ly,Lzをmain codeで変更した際にはrandom_3D.f90も変更しないといけない
+
+module three_grid_test
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -57,11 +59,11 @@ module three_omp
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 360
-  integer,parameter :: Ny = 200
+  integer,parameter :: Nx = 180
+  integer,parameter :: Ny = 100
   integer,parameter :: Nz = 20
-  double precision,parameter :: dt = 5.d-3
-  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
+  double precision,parameter :: dt = 1.d-2
+  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = int(t_end / dt)
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -74,7 +76,7 @@ module three_omp
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!x方向の長さを定義=>流入部にはBufferを入れてはいけないので、Wlxは不要
   double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
-  double precision,parameter :: Lz = 1.d0
+  double precision,parameter :: Lz = 2.d0
   double precision,parameter :: dx = Lx /dble(Nx)
   double precision,parameter :: dy = Ly /dble(Ny)
   double precision,parameter :: dz = Lz / dble(Nz)
@@ -1356,10 +1358,10 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_y
-end module three_omp
+end module three_grid_test
 
     program main
-      use three_omp
+      use three_grid_test
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1520,7 +1522,7 @@ end module three_omp
       close(32)
       close(33)
 
-      ! open(34,file='result_omp/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_grid_test/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz-1
       !   z(k) = dz*dble(k)
       !   do i=0,Ny
@@ -1595,7 +1597,7 @@ end module three_omp
        do k=0,Nz-1
          z(k) = dz*dble(k)
          write(z_name, '(i2.2)') k
-         open(10, file = "result_omp/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_grid_test/parameter000000_"//trim(z_name)//".txt")
           do i = 0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1937,7 +1939,7 @@ end module three_omp
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk= 0,Nz-1
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_grid_test/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1993,7 +1995,7 @@ end module three_omp
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk= 0,Nz-1
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_omp/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_grid_test/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2020,10 +2022,10 @@ end module three_omp
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_omp/turbulent_check_1.csv")
-    open(42, file = "result_omp/turbulent_check_2.csv")
-    open(43, file = "result_omp/turbulent_check_3.csv")
-    open(44, file = "result_omp/turbulent_check_4.csv")
+    open(41, file = "result_grid_test/turbulent_check_1.csv")
+    open(42, file = "result_grid_test/turbulent_check_2.csv")
+    open(43, file = "result_grid_test/turbulent_check_3.csv")
+    open(44, file = "result_grid_test/turbulent_check_4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)

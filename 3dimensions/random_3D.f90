@@ -1,10 +1,11 @@
 !森山が作成したランダム撹乱作成コード(境界層用)
 !を河島がジェット用に改変(2020/08/31)
+!Nx,Ny,Nz,Lx,Ly,Lzをmain codeで変更した際にはこちらも変更しないといけない
 program kakusan
   !$use omp_lib
   implicit none
   ! integer,parameter :: NX = 360!X=0で流入させるので、不要
-  integer,parameter :: NY = 200
+  integer,parameter :: NY = 100
   integer,parameter :: NZ = 20
   !y方向格子伸長
   double precision,parameter :: y_width=3.d0
@@ -24,7 +25,7 @@ program kakusan
   !撹乱を全て+にするために、y座標を絶対値で計算するようにした。
   !したがって、幅は半分になるので、Lyも半分になる
   double precision,parameter :: Ly = Cy+Wry
-  double precision,parameter :: Lz = 1.d0
+  double precision,parameter :: Lz = 2.d0
   double precision :: Ymin
 
   integer,parameter::Kmx=10,Kmy=10,Kmz=10!kx,ky,kz(打ち切り波数)
