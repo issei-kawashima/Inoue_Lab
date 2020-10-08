@@ -1581,8 +1581,8 @@ end module all_outflow
     !$omp end parallel do
     !===============================流入ジェットの計算終了===========================
     !==============================流入ランダム撹乱の読み込み========================
-      open(32,file='dirturbance_conditions/kakuran3D_v.txt',status='old')
-      open(33,file='dirturbance_conditions/kakuran3D_w.txt',status='old')
+      open(32,file='dirturbance_conditions_NPB/kakuran3D_v.txt',status='old')
+      open(33,file='dirturbance_conditions_NPB/kakuran3D_w.txt',status='old')
       !=====読み込みは順番が大切だろうから、並列化しない==================================
       do k=0,Nz
         do i=0,Ny
