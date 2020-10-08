@@ -6,7 +6,7 @@ program kakusan
   implicit none
   ! integer,parameter :: NX = 360!X=0で流入させるので、不要
   integer,parameter :: NY = 100
-  integer,parameter :: NZ = 20
+  integer,parameter :: NZ = 50
   !y方向格子伸長
   double precision,parameter :: y_width=3.d0
   double precision,parameter :: a1=1d0/14d0
@@ -22,7 +22,7 @@ program kakusan
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
   double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
-  double precision,parameter :: Lz = 2.d0
+  double precision,parameter :: Lz = 5.d0
   double precision :: Ymin
 
   integer,parameter::Kmx=10,Kmy=10,Kmz=10!kx,ky,kz(打ち切り波数)
