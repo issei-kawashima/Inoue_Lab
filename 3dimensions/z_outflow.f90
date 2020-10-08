@@ -1110,9 +1110,10 @@ contains
       deallocate(L1,d1,c_NS1,Ma_NS1)
     endsubroutine NSCBC_z
 
-    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3)
+    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
+      double precision,allocatable,dimension(:):: Tu
       double precision :: fluct_dis_strength
       integer i,k,M
       if (M < times) then
@@ -1128,7 +1129,7 @@ contains
        Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
        Q(2,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G2(i,k)!rho*kakuran_v
        Q(3,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G3(i,k)!rho*kakuran_w
-       Q(4,0,i,k) = (Q(0,0,i,k)*Tjet)/((Ma**2.d0)*gamma*(gamma-1.d0))&
+       Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))&
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
@@ -1628,6 +1629,7 @@ end module all_outflow
 !$omp end parallel do
  !まず最初に、流入条件をGのx=0の場所にのみ適用する
  !G(1,2,3)に撹乱入れない。時間進行によって徐々に強くするから初期条件で撹乱は0
+ !pに関しては流入温度Tuを使用して求める
  !$omp parallel do
   do k=0,Nz
     do i=0,Ny
@@ -1635,7 +1637,7 @@ end module all_outflow
       G(0,0,i,k) = in_G0(i,k)!ρ
       !top-hat Jetのみ
       G(1,0,i,k) = in_G1_top(i,k)!u
-      G(4,0,i,k) = 1.d0*Tjet/((Ma**2.d0)*gamma)!p
+      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
     enddo
   enddo
  !$omp end parallel do
@@ -1802,7 +1804,7 @@ end module all_outflow
       enddo
     !$omp end parallel do
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部の密度以外を固定
+      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1884,7 +1886,7 @@ end module all_outflow
            enddo
          enddo
        !$omp end parallel do
-        call inflow(M,Q2,in_G1_top,in_G2,in_G3)
+        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1972,7 +1974,7 @@ end module all_outflow
          enddo
        !$omp end parallel do
 
-        call inflow(M,Qn,in_G1_top,in_G2,in_G3)
+        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)

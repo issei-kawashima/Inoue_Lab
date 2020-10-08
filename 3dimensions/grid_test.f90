@@ -1138,9 +1138,10 @@ contains
       !$omp end parallel do
     endsubroutine Q_boundary
 
-    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3)
+    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
+      double precision,allocatable,dimension(:):: Tu
       double precision :: fluct_dis_strength
       integer i,k,M
       if (M < times) then
@@ -1565,7 +1566,7 @@ end module three_grid_test
       G(0,0,i,k) = in_G0(i,k)!ρ
       !top-hat Jetのみ
       G(1,0,i,k) = in_G1_top(i,k)!u
-      G(4,0,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
+      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
     enddo
   enddo
  !$omp end parallel do
@@ -1723,7 +1724,7 @@ end module three_grid_test
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3)!dirichlet条件で流入部の密度以外を固定
+      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1802,7 +1803,7 @@ end module three_grid_test
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        call inflow(M,Q2,in_G1_top,in_G2,in_G3)
+        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1885,7 +1886,7 @@ end module three_grid_test
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        call inflow(M,Qn,in_G1_top,in_G2,in_G3)
+        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
