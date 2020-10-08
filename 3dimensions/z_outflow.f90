@@ -1594,7 +1594,7 @@ end module all_outflow
       close(32)
       close(33)
 
-      ! open(34,file='result_grid_test/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_all_outflow/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz
       !   do i=0,Ny
       !     write(34,'(3f24.16)') zeta_fy(i),zeta_fz(k),kakuran_v(i,k)
@@ -1669,7 +1669,7 @@ end module all_outflow
     !$omp section
        do k=0,Nz
          write(z_name, '(i2.2)') k
-         open(10, file = "result_grid_test/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_all_outflow/parameter000000_"//trim(z_name)//".txt")
           do i = 0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2030,7 +2030,7 @@ end module all_outflow
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk=0,Nz
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_grid_test/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2086,7 +2086,7 @@ end module all_outflow
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk=0,Nz
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_grid_test/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2113,10 +2113,10 @@ end module all_outflow
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_grid_test/turbulent_check_1.csv")
-    open(42, file = "result_grid_test/turbulent_check_2.csv")
-    open(43, file = "result_grid_test/turbulent_check_3.csv")
-    open(44, file = "result_grid_test/turbulent_check_4.csv")
+    open(41, file = "result_all_outflow/turbulent_check_1.csv")
+    open(42, file = "result_all_outflow/turbulent_check_2.csv")
+    open(43, file = "result_all_outflow/turbulent_check_3.csv")
+    open(44, file = "result_all_outflow/turbulent_check_4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)
