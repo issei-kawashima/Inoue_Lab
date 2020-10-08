@@ -1,6 +1,6 @@
 !森山が作成したランダム撹乱作成コード(境界層用)
 !を河島がジェット用に改変(2020/08/31)
-!Nx,Ny,Nz,Lx,Ly,Lzをmain codeで変更した際にはこちらも変更しないといけない
+!Ny,Nz,Lx,Ly,Lzをmain codeで変更した際にはこちらも変更しないといけない
 program kakusan
   !$use omp_lib
   implicit none
@@ -21,19 +21,15 @@ program kakusan
   double precision,parameter :: Wry = 2.d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wly = Wry!Buffer領域y方向左側の幅
   double precision,parameter :: Lx =  Cx+Wrx!+Wlx x方向の長さを定義.x軸左側にもbufferをかけるなら変更が必要
-  ! double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
-  !撹乱を全て+にするために、y座標を絶対値で計算するようにした。
-  !したがって、幅は半分になるので、Lyも半分になる
-  double precision,parameter :: Ly = Cy+Wry
+  double precision,parameter :: Ly = 2.d0*Cy+Wry+Wly!y方向の長さを定義 計算領域がy軸対称なのでCyは*2にしている
   double precision,parameter :: Lz = 2.d0
   double precision :: Ymin
 
   integer,parameter::Kmx=10,Kmy=10,Kmz=10!kx,ky,kz(打ち切り波数)
   double precision,parameter::pi= acos(-1d0)
-  !Lyが半分なので、ここは2Lyになる
-  double precision,parameter::dy= 2.d0*Ly/dble(NY)
+  double precision,parameter::dy= Ly/dble(NY)
   double precision,parameter::dz=Lz/dble(NZ)
-  ! double precision,parameter::Kmax = pi !pi 2*pi, 4*piにして渡邉さんは境界層で計算してた
+  ! double precision,parameter::Kmax = pi !pi,2*pi,4*piにして渡邉さんは境界層で計算してた
   double precision,parameter::Kmax = dsqrt(3.d0)
 
   integer::i,j,k
@@ -53,9 +49,7 @@ program kakusan
   !x座標は流入部にしか撹乱を導入しないので、不要
 
   !y座標設定
-  ! Ymin = -(Ly/2.d0)
-  !Lyは半分なので、Yminも半分
-  Ymin = -Ly
+  Ymin = -(Ly/2.d0)
   do i=0,NY
      y(i)=Ymin + dy*dble(i)
   end do
@@ -186,7 +180,6 @@ program kakusan
  open(23,file='dirturbance_conditions/kakuran3D_w.txt',status='replace')
 
 
- ! do k=0,NZ-1
    do j=0,Ny
     max_u=maxval(dabs(u_d3(j,:)))
     max_v=maxval(dabs(v_d3(j,:)))
@@ -195,7 +188,6 @@ program kakusan
     kakuran_v(j,:)=v_d3(j,:)/max_v
     kakuran_w(j,:)=w_d3(j,:)/max_w
   enddo
- ! end do
 
  do k=0,NZ-1
    do j=0,NY
