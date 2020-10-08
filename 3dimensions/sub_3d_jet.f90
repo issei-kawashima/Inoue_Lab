@@ -1143,7 +1143,7 @@ contains
        Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
        Q(2,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G2(i,k)!rho*kakuran_v
        Q(3,0,i,k) = Q(0,0,i,k)*fluct_dis_strength*in_G3(i,k)!rho*kakuran_w
-       Q(4,0,i,k) = (Q(0,0,i,k)*Tjet)/((Ma**2.d0)*gamma*(gamma-1.d0))&
+       Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))&
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
