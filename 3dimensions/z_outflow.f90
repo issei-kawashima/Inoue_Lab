@@ -632,7 +632,7 @@ contains
          allocate(x(0:4,0:Nx,0:Ny,0:Nz),y(0:4,0:Nx,0:Ny,0:Nz),&
          RHS_z(0:4,0:Nx,0:Ny,0:Nz))
 
-         D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0;Lsum=0.d0
+         D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0
          dzinv = 1.d0 / dz
 
          !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
@@ -1040,12 +1040,12 @@ contains
         do i=0,Ny
           do j=0,Nx
       !設定したL行列からd1~5をk=0,Nzの両点においてそれぞれ設定する
-        !d0(1)=dFy(0)なので、最初からdFyに入れてしまう
-         dFy(0,j,i,0) = (1.d0 / (c_NS0(j,i) **2.d0)) * ((L0(1,j,i)+L0(5,j,i))*0.5d0 + L0(2,j,i))
+        !d0(1)=dFz(0)なので、最初からdFzに入れてしまう
+         dFz(0,j,i,0) = (1.d0 / (c_NS0(j,i) **2.d0)) * ((L0(1,j,i)+L0(5,j,i))*0.5d0 + L0(2,j,i))
         ! d0(1,j,i) = (1.d0 / (c_NS0(j,i) **2.d0)) * ((L0(1,j,i)+L0(5,j,i))*0.5d0 + L0(2,j,i))
 
-        !d1(1)=dFy(0)なので、最初からdFyに入れてしまう
-        dFy(0,j,i,Nz) = (1.d0 / (c_NS1(j,i) **2.d0)) * ((L1(1,j,i)+L1(5,j,i))*0.5d0 + L1(2,j,i))
+        !d1(1)=dFz(0)なので、最初からdFzに入れてしまう
+        dFz(0,j,i,Nz) = (1.d0 / (c_NS1(j,i) **2.d0)) * ((L1(1,j,i)+L1(5,j,i))*0.5d0 + L1(2,j,i))
         ! d1(1,j,i) = (1.d0 / (c_NS1(j,i) **2.d0)) * ((L1(1,j,i)+L1(5,j,i))*0.5d0 + L1(2,j,i))
 
         d0(2,j,i) = (0.5d0) * (L0(1,j,i)+L0(5,j,i))
@@ -1057,7 +1057,7 @@ contains
         ! d1(4,j,i) = L1(4,j,i)
         d0(5,j,i) = 0.5d0/(G(0,j,i,0) * c_NS0(j,i)) * (-L0(1,j,i) + L0(5,j,i))
         d1(5,j,i) = 0.5d0/(G(0,j,i,Nz) * c_NS1(j,i)) * (-L1(1,j,i) + L1(5,j,i))
-      !設定したdからNySCBCで置き換える境界地点のdFyを定義する
+      !設定したdからNSCBCで置き換える境界地点のdFzを定義する
           end do
         end do
       !$omp end parallel do
@@ -1982,9 +1982,9 @@ end module all_outflow
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
           !Nx=180, Ny=100ならx=0~131, y=9~91でOK
           turbulent_check1(M) = dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
-          turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/4)!後ろ左下
-          turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)!後ろ右上
-          turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/4)!真ん中右上
+          turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
+          turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
+          turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
         endif
 
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定

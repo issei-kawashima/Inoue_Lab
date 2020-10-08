@@ -1892,10 +1892,11 @@ end module three_grid_test
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
+          !Nx=180, Ny=100ならx=0~131, y=9~91でOK
           turbulent_check1(M) = dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
-          turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/4)!後ろ左下
-          turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/4)!後ろ右上
-          turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/4)!真ん中右上
+          turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
+          turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
+          turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
         endif
 
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
