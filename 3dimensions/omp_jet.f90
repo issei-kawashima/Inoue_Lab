@@ -1611,8 +1611,8 @@ end module three_omp
    !$omp section
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
-      p0y_infty = G(4,0,0,0)
-      pNy_infty = G(4,0,Ny,0)
+      p0y_infty = G(4,Nx,0,0)
+      pNy_infty = G(4,Nx,Ny,0)
   !$omp end parallel sections
         !粘性項の計算はCCSを用いるためA,L,U行列がsigma=0となる
         !そのためAp,Amなどとはまた別に設定する

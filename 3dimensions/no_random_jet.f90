@@ -1212,9 +1212,10 @@ contains
       !$omp end parallel do
     endsubroutine Q_boundary
 
-    subroutine inflow(Q,in_G1_top)
+    subroutine inflow(Q,in_G1_top,Tu)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top
+      double precision,allocatable,dimension(:):: Tu
       integer i,k
       !$omp parallel do
         do k =0,Nz-1
@@ -1223,7 +1224,7 @@ contains
            Q(1,0,i,k) = Q(0,0,i,k)*in_G1_top(i,k)!rho*u_in
            Q(2,0,i,k) = 0.d0
            Q(3,0,i,k) = 0.d0
-           Q(4,0,i,k) = (Q(0,0,i,k)*Tjet)/((Ma**2.d0)*gamma*(gamma-1.d0))&
+           Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))&
                        +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0)*0.5d0!Et
           enddo
         end do
@@ -1588,7 +1589,7 @@ end module without_random
       G(0,0,i,k) = in_G0(i,k)!ρ
       !top-hat Jetのみ
       G(1,0,i,k) = in_G1_top(i,k)!u
-      G(4,0,i,k) = 1.d0*Temp/((Ma**2.d0)*gamma)!p
+      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
     enddo
   enddo
  !$omp end parallel do
@@ -1640,8 +1641,8 @@ end module without_random
 
       !p_inftyの定義
       pNx_infty = G(4,Nx,0,0)
-      p0y_infty = G(4,0,0,0)
-      pNy_infty = G(4,0,Ny,0)
+      p0y_infty = G(4,Nx,0,0)
+      pNy_infty = G(4,Nx,Ny,0)
         !粘性項の計算はCCSを用いるためA,L,U行列がsigma=0となる
         !そのためAp,Amなどとはまた別に設定する
         !CCS用のA,L,U行列はNの値がNx,Nyで異なるので別々に設定する
@@ -1747,7 +1748,7 @@ end module without_random
     !$omp end parallel do
       !call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(Q1,in_G1_top)!dirichlet条件で流入部を固定
+      call inflow(Q1,in_G1_top,Tu)!dirichlet条件で流入部を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1828,7 +1829,7 @@ end module without_random
        !$omp end parallel do
 
 !        call Q_boundary(Q2)
-        call inflow(Q2,in_G1_top)
+        call inflow(Q2,in_G1_top,Tu)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1913,7 +1914,7 @@ end module without_random
        !$omp end parallel do
 
 !        call Q_boundary(Qn)
-        call inflow(Qn,in_G1_top)
+        call inflow(Qn,in_G1_top,Tu)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,dx,G,dGx,LUccsx,dzeta_inx)
