@@ -635,7 +635,7 @@ contains
          D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0
          dzinv = 1.d0 / dz
 
-         !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
+        !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
        !$omp parallel do
          do i=0,Ny
           do j=0,Nx
