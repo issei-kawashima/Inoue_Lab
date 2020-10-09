@@ -29,7 +29,7 @@ allocate(LU(-2:2,0:Nz))
 allocate(D2(2:Nz-2),D4(2:Nz-2),D6(2:Nz-2),D8(2:Nz-2))
 allocate(x(0:Nz))
 
-  sigma = psigma
+  sigma = msigma
   pi=dacos(-1d0)
   dz=Lz/dble(Nz)
 
@@ -135,10 +135,9 @@ allocate(x(0:Nz))
 
   !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
   !片側DCSの右辺設定
- RHS_z(0) = ((-17.d0/6.d0)*Fz(0)+1.5d0*(Fz(1)+&
-                  Fz(2))-Fz(3)/6.d0)*dzinv
- RHS_z(Nz)=((1.d0/6.d0)*Fz(Nz-3)-1.5d0*(Fz(Nz-2)+&
-                  Fz(Nz-1))+(17.d0/6.d0)*Fz(Nz))*dzinv
+ RHS_z(0) = ((-17.d0/6.d0)*Fz(0)+1.5d0*(Fz(1)+Fz(2))-Fz(3)/6.d0)*dzinv
+ RHS_z(Nz)=((1.d0/6.d0)*Fz(Nz-3)-1.5d0*(Fz(Nz-2)+Fz(Nz-1))+&
+            (17.d0/6.d0)*Fz(Nz))*dzinv
 
  !3次精度DCSの右辺設定
  RHS_z(1)=((1.5d0)*(-Fz(0)+Fz(2))*(0.5d0*dzinv))+sigma*&

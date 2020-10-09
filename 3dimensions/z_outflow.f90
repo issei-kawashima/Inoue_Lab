@@ -43,6 +43,8 @@
 !2020.09.14 inflow subroutineでQ(1)~Q(4)を求めるのに、密度をin_G(0)にしてしまっていた。Q(0)に修正
 !2020.10.08 ユーキの計算条件を参考にdx,dy,dzを見直した。dtは一緒なので変更なし
 !z方向を周期条件ではなく、亜音速流出条件に変更する
+!t=11付近で、計算破綻したので、微分チェックを確認したが、問題なさそう。次に境界条件を疑ってみる
+!2020.10.09 Neumann条件を適用して試してみる
 
 
 module all_outflow
@@ -1425,6 +1427,22 @@ contains
       end do
       !$omp end parallel do
     endsubroutine combine_z
+    !超音速・亜音速に関係なく、全体にNeumann条件を設定したい時に使うsubroutine
+    subroutine Q_boundary(Q)
+      double precision,allocatable,dimension(:,:,:,:):: Q
+      integer i,j,l
+      !$omp parallel do
+      !z方向の境界条件
+        do i=0,Ny
+          do j=0,Nx
+            do l=0,4
+              Q(l,j,i,0) = Q(l,j,i,1)
+              Q(l,j,i,Nz) = Q(l,j,i,Nz-1)
+            end do
+          enddo
+        end do
+      !$omp end parallel do
+    endsubroutine Q_boundary
 end module all_outflow
 
     program main
@@ -1767,19 +1785,18 @@ end module all_outflow
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
-        call dif_y(ccs_sigma,G,dGy,LUccsy,dzeta_iny)
-        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
         call NSCBC_x_0_super(dFx)
         call NSCBC_x_Nx_super(G,dGx,dFx)
+        !無反射流出条件の際の境界での粘性項の条件を設定
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
+        call dif_y(ccs_sigma,G,dGy,LUccsy,dzeta_iny)
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
-        !無反射流出条件の際の境界での粘性項の条件を設定
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        !無反射流出条件の際の境界での粘性項の条件を設定
-        call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         !計算に必要なdQ/dx,dQ/dyをCCSで導出。今まではdQ/dtしか求めていなかった
         !dQ/dx,dQ/dy自体はdG/dx,dG/dyを組み合わせて作ることができるのでそうして作成すると微分せずに済み計算の短縮に繋がる
@@ -1803,6 +1820,7 @@ end module all_outflow
         enddo
       enddo
     !$omp end parallel do
+      call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
       call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
@@ -1865,9 +1883,9 @@ end module all_outflow
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
-        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q1,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q1,dQy,LUccsy,dzeta_iny)
@@ -1886,6 +1904,7 @@ end module all_outflow
            enddo
          enddo
        !$omp end parallel do
+        call Q_boundary(Q2)
         call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu)
       !Qn
       !dF/dxの計算
@@ -1950,9 +1969,9 @@ end module all_outflow
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
-        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q2,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q2,dQy,LUccsy,dzeta_iny)
@@ -1974,6 +1993,7 @@ end module all_outflow
          enddo
        !$omp end parallel do
 
+        call Q_boundary(Qn)
         call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
