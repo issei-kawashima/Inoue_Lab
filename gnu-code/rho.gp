@@ -1,6 +1,6 @@
 reset
 set term x11
-#se pm3d map
+se pm3d map
 #se size square
 #se view 56,333,1,1
 #se view 90,270,1,1
@@ -36,10 +36,10 @@ set yrange [-10:10]
 #set zrange [0:0.2]
 
 #set dgrid3d
-set term x11 1
-splot '/Users/isseyshome/Downloads/result_omp_Ma1.4_random_10%/parameter015356_12.txt'u 1:2:4 w pm3d t ""
+set term x11 2
+splot '/Users/isseyshome/Downloads/result_all_outflow/parameter001198_00.txt'u 1:2:4 w pm3d t ""
 
-se term jpeg
-unset colorbox
-se out "/Users/isseyshome/Documents/Lab/#3 修士論文/Visual_result/Ma1.4_random_10%/rho015356.jpg"
-rep
+#se term jpeg
+#unset colorbox
+#se out "/Users/isseyshome/Documents/Lab/#3 修士論文/Visual_result/Ma1.4_random_10%/rho015356.jpg"
+#rep
