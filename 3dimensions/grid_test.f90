@@ -59,8 +59,8 @@ module three_grid_test
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360
+  integer,parameter :: Ny = 200
   integer,parameter :: Nz = 50
   double precision,parameter :: dt = 1.d-2
   integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
