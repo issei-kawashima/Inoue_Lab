@@ -49,7 +49,7 @@
 !撹乱10%で計算が回るかどうかはまだ不明なので、5%&NSCBCで格子点数少なめ(180・100)で計算してみる。
 
 
-module flow_square
+module all_outflow
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -78,8 +78,6 @@ module flow_square
   double precision,parameter :: Wrz = 0.5d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wlz = Wrz!Buffer領域y方向左側の幅
   double precision,parameter :: Lz = 2.d0*Cz+Wrz+Wlz!z方向長さ.計算領域の中心を0にする
-  double precision,parameter :: L_kukei_min = -0.5d0
-  double precision,parameter :: L_kukei_max = 0.5d0
   double precision,parameter :: dx = Lx /dble(Nx)
   double precision,parameter :: dy = Ly /dble(Ny)
   double precision,parameter :: dz = Lz /dble(Nz)
@@ -1116,20 +1114,19 @@ contains
       deallocate(L1,d1,c_NS1,Ma_NS1)
     endsubroutine NSCBC_z
 
-    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
+    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
       double precision,allocatable,dimension(:):: Tu
       double precision :: fluct_dis_strength
       integer i,k,M
-      integer N_kukei_min,N_kukei_max
       if (M < times) then
         fluct_dis_strength = dis_strength*dble(M)/dble(times)
       else
         fluct_dis_strength = dis_strength
       endif
       !$omp parallel do
-        do k=N_kukei_min,N_kukei_max
+        do k=0,Nz
           do i=0,Ny
             !Q(0)に関しては、NSCBCを使用して求めたF,Vから求めたQ(0)の密度を使用する
         !uに撹乱を入れないパターン=>これで、流入条件の計算で、時間変動を気にしなくて良くなる
@@ -1448,10 +1445,10 @@ contains
         end do
       !$omp end parallel do
     endsubroutine Q_boundary
-end module flow_square
+end module all_outflow
 
     program main
-      use flow_square
+      use all_outflow
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1494,7 +1491,6 @@ end module flow_square
       double precision,allocatable,dimension(:,:,:,:) :: dGz,dFz
       double precision p0z_infty,pNz_infty
       integer i,j,k,l,M,ii,jj,kk
-      integer N_kukei_min,N_kukei_max
       ! double precision theta !時間での周期的撹乱用の変数
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
@@ -1571,7 +1567,6 @@ end module flow_square
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;kakuran_u=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
       turbulent_check1=0.d0;turbulent_check2=0.d0;turbulent_check3=0.d0;turbulent_check4=0.d0
-      N_kukei_min=0.d0;N_kukei_max=0.d0
 
       !============座標設定======================================================
       !y方向の格子伸長のための座標設定
@@ -1580,17 +1575,6 @@ end module flow_square
       call lattice_x(zeta_fx,dzeta_inx)
       !z方向も
       call lattice_z(zeta_fz,dzeta_inz)
-      do k=0,Nz-1
-        if((zeta_fz(i) >= L_kukei_min).and.(L_kukei_max >= zeta_fz(i))) then
-          if(N_kukei_min >= i) then
-            N_kukei_min = i
-          endif
-          if(i >= N_kukei_max) then
-            N_kukei_max = i
-          endif
-        endif
-      enddo
-
       !=========================================================================
   !!!!!!============流入条件設定==================================================
     !top-hat型ジェットの導出・計算
@@ -1630,7 +1614,7 @@ end module flow_square
       close(32)
       close(33)
 
-      ! open(34,file='result_square/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_all_outflow/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz
       !   do i=0,Ny
       !     write(34,'(3f24.16)') zeta_fy(i),zeta_fz(k),kakuran_v(i,k)
@@ -1705,7 +1689,7 @@ end module flow_square
     !$omp section
        do k=0,Nz
          write(z_name, '(i2.2)') k
-         open(10, file = "result_square/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_all_outflow/parameter000000_"//trim(z_name)//".txt")
           do i = 0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2068,7 +2052,7 @@ end module flow_square
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk=0,Nz
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2124,7 +2108,7 @@ end module flow_square
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk=0,Nz
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2151,10 +2135,10 @@ end module flow_square
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_square/turbulent_check_1.csv")
-    open(42, file = "result_square/turbulent_check_2.csv")
-    open(43, file = "result_square/turbulent_check_3.csv")
-    open(44, file = "result_square/turbulent_check_4.csv")
+    open(41, file = "result_all_outflow/turbulent_check_1.csv")
+    open(42, file = "result_all_outflow/turbulent_check_2.csv")
+    open(43, file = "result_all_outflow/turbulent_check_3.csv")
+    open(44, file = "result_all_outflow/turbulent_check_4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)
