@@ -49,7 +49,7 @@
 !撹乱10%で計算が回るかどうかはまだ不明なので、5%&NSCBCで格子点数少なめ(180・100)で計算してみる。
 
 
-module all_outflow
+module flow_square
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -78,6 +78,8 @@ module all_outflow
   double precision,parameter :: Wrz = 0.5d0*b!Buffer領域y方向右側の幅
   double precision,parameter :: Wlz = Wrz!Buffer領域y方向左側の幅
   double precision,parameter :: Lz = 2.d0*Cz+Wrz+Wlz!z方向長さ.計算領域の中心を0にする
+  double precision,parameter :: L_kukei_min = -0.5d0
+  double precision,parameter :: L_kukei_max = 0.5d0
   double precision,parameter :: dx = Lx /dble(Nx)
   double precision,parameter :: dy = Ly /dble(Ny)
   double precision,parameter :: dz = Lz /dble(Nz)
@@ -1114,19 +1116,20 @@ contains
       deallocate(L1,d1,c_NS1,Ma_NS1)
     endsubroutine NSCBC_z
 
-    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu)
+    subroutine inflow(M,Q,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
       double precision,allocatable,dimension(:,:,:,:):: Q
       double precision,allocatable,dimension(:,:):: in_G1_top,in_G2,in_G3
       double precision,allocatable,dimension(:):: Tu
       double precision :: fluct_dis_strength
       integer i,k,M
+      integer N_kukei_min,N_kukei_max
       if (M < times) then
         fluct_dis_strength = dis_strength*dble(M)/dble(times)
       else
         fluct_dis_strength = dis_strength
       endif
       !$omp parallel do
-        do k=0,Nz
+        do k=N_kukei_min,N_kukei_max
           do i=0,Ny
             !Q(0)に関しては、NSCBCを使用して求めたF,Vから求めたQ(0)の密度を使用する
         !uに撹乱を入れないパターン=>これで、流入条件の計算で、時間変動を気にしなくて良くなる
@@ -1445,10 +1448,10 @@ contains
         end do
       !$omp end parallel do
     endsubroutine Q_boundary
-end module all_outflow
+end module flow_square
 
     program main
-      use all_outflow
+      use flow_square
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1491,6 +1494,7 @@ end module all_outflow
       double precision,allocatable,dimension(:,:,:,:) :: dGz,dFz
       double precision p0z_infty,pNz_infty
       integer i,j,k,l,M,ii,jj,kk
+      integer N_kukei_min,N_kukei_max
       ! double precision theta !時間での周期的撹乱用の変数
       double precision c_infty
       double precision,allocatable,dimension(:) :: ur,Tu
@@ -1504,6 +1508,7 @@ end module all_outflow
       ! double precision,allocatable,dimension(:,:) :: kakuran_u
       double precision,allocatable,dimension(:,:) :: kakuran_v,kakuran_w!ランダム撹乱を入れる配列
       double precision,allocatable,dimension(:) :: turbulent_check1,turbulent_check2,turbulent_check3,turbulent_check4
+      integer,allocatable,dimension(:) ::z_tempo
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz),Q(0:4,0:Nx,0:Ny,0:Nz),Q0(0:4,0:Nx,0:Ny,0:Nz)&
       ,Q1(0:4,0:Nx,0:Ny,0:Nz),Q2(0:4,0:Nx,0:Ny,0:Nz),Qn(0:4,0:Nx,0:Ny,0:Nz)&
@@ -1557,6 +1562,7 @@ end module all_outflow
       !z_axis
       allocate(LUmz(-1:1,0:Nz),LUpz(-1:1,0:Nz))
       allocate(LUccsz(-1:1,0:Nz))
+      allocate(z_tempo(0:Nz))
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
@@ -1567,6 +1573,7 @@ end module all_outflow
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;kakuran_u=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
       turbulent_check1=0.d0;turbulent_check2=0.d0;turbulent_check3=0.d0;turbulent_check4=0.d0
+      N_kukei_min=0;N_kukei_max=0;z_tempo=0!int型なので0
 
       !============座標設定======================================================
       !y方向の格子伸長のための座標設定
@@ -1575,6 +1582,24 @@ end module all_outflow
       call lattice_x(zeta_fx,dzeta_inx)
       !z方向も
       call lattice_z(zeta_fz,dzeta_inz)
+      do k=0,Nz
+        if((zeta_fz(k) >= L_kukei_min).and.(L_kukei_max >= zeta_fz(k))) then
+          z_tempo(k) = k
+        endif
+      enddo
+      N_kukei_min = minval(z_tempo)
+      N_kukei_max = maxval(z_tempo)
+      if((N_kukei_min /=0).and.(N_kukei_max /=0)) then
+        write(*,*) "N_kukei_min&max Setted !"
+        write(*,*)"N_kukei_min : ",N_kukei_min
+        write(*,*)"N_kukei_max : ",N_kukei_max
+      else
+        write(*,*) "Failed to set N_kukei_min&max"
+        write(*,*) "Reset properly Nz and dz"
+        stop
+      endif
+      deallocate(z_tempo)
+
       !=========================================================================
   !!!!!!============流入条件設定==================================================
     !top-hat型ジェットの導出・計算
@@ -1614,7 +1639,7 @@ end module all_outflow
       close(32)
       close(33)
 
-      ! open(34,file='result_all_outflow/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_square/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz
       !   do i=0,Ny
       !     write(34,'(3f24.16)') zeta_fy(i),zeta_fz(k),kakuran_v(i,k)
@@ -1636,7 +1661,7 @@ end module all_outflow
  !ランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用
  !これにより、ランダム撹乱は完全にジェットの中にのみ、存在する
 !$omp parallel do
- do k=0,Nz
+ do k=,N_kukei_min,N_kukei_max
    do i=0,Ny
      in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
      in_G1_top(i,k) = ur(i)
@@ -1647,27 +1672,13 @@ end module all_outflow
    end do
  enddo
 !$omp end parallel do
- !まず最初に、流入条件をGのx=0の場所にのみ適用する
- !G(1,2,3)に撹乱入れない。時間進行によって徐々に強くするから初期条件で撹乱は0
- !pに関しては流入温度Tuを使用して求める
- !$omp parallel do
-  do k=0,Nz
-    do i=0,Ny
-      !Crocco-Busemannの関係式より
-      G(0,0,i,k) = in_G0(i,k)!ρ
-      !top-hat Jetのみ
-      G(1,0,i,k) = in_G1_top(i,k)!u
-      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
-    enddo
-  enddo
- !$omp end parallel do
 
- !次にx=1~Nxの残りの部分に一括で、初期値を入れる
+ !最初に上書き覚悟で一括で、初期値を入れる
 !=====大きいDoループなので並列化する=================================================
   !$omp parallel do
    do k=0,Nz
      do i=0,Ny
-       do j=1,Nx
+       do j=0,Nx
          G(0,j,i,k) = 1.d0!ρ
          !以下は上で0クリアしているので、再度やるのは無駄
          ! G(1,j,i,k) = 0.d0!u
@@ -1681,6 +1692,20 @@ end module all_outflow
    enddo
   !$omp end parallel do
   !=====大きいDoループなので並列化する==============================================
+  !次に、流入条件をGのx=0&zの該当箇所のみに適用する
+  !G(1,2,3)に撹乱入れない。時間進行によって徐々に強くするから初期条件で撹乱は0
+  !pに関しては流入温度Tuを使用して求める
+  !$omp parallel do
+   do k=,N_kukei_min,N_kukei_max
+     do i=0,Ny
+       !Crocco-Busemannの関係式より
+       G(0,0,i,k) = in_G0(i,k)!ρ
+       !top-hat Jetのみ
+       G(1,0,i,k) = in_G1_top(i,k)!u
+       G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
+     enddo
+   enddo
+  !$omp end parallel do
   !初期値の出力
   !まずt=0はループ外で個別に作成
   !もちろん出力もζ_y座標系とζ_x座標系で行う
@@ -1689,7 +1714,7 @@ end module all_outflow
     !$omp section
        do k=0,Nz
          write(z_name, '(i2.2)') k
-         open(10, file = "result_all_outflow/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_square/parameter000000_"//trim(z_name)//".txt")
           do i = 0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1824,7 +1849,7 @@ end module all_outflow
     !$omp end parallel do
       ! call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu)!dirichlet条件で流入部の密度以外を固定
+      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1907,7 +1932,7 @@ end module all_outflow
          enddo
        !$omp end parallel do
         ! call Q_boundary(Q2)
-        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu)
+        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -1996,7 +2021,7 @@ end module all_outflow
        !$omp end parallel do
 
         ! call Q_boundary(Qn)
-        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu)
+        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
@@ -2052,7 +2077,7 @@ end module all_outflow
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk=0,Nz
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2108,7 +2133,7 @@ end module all_outflow
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk=0,Nz
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_all_outflow/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2135,10 +2160,10 @@ end module all_outflow
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_all_outflow/turbulent_check_1.csv")
-    open(42, file = "result_all_outflow/turbulent_check_2.csv")
-    open(43, file = "result_all_outflow/turbulent_check_3.csv")
-    open(44, file = "result_all_outflow/turbulent_check_4.csv")
+    open(41, file = "result_square/turbulent_check_1.csv")
+    open(42, file = "result_square/turbulent_check_2.csv")
+    open(43, file = "result_square/turbulent_check_3.csv")
+    open(44, file = "result_square/turbulent_check_4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)
