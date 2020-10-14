@@ -1572,7 +1572,7 @@ end module flow_square
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;kakuran_u=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
       turbulent_check1=0.d0;turbulent_check2=0.d0;turbulent_check3=0.d0;turbulent_check4=0.d0
-      N_kukei_min=0;N_kukei_max=0;z_tempo=0!int型なので0
+      N_kukei_min=0;N_kukei_max=0!int型なので0
 
       !============座標設定======================================================
       !y方向の格子伸長のための座標設定
@@ -1581,13 +1581,27 @@ end module flow_square
       call lattice_x(zeta_fx,dzeta_inx)
       !z方向も
       call lattice_z(zeta_fz,dzeta_inz)
+      !まずはz_tempoを全てデカすぎる値にする。
+      !絶対にNzのDoループでkの値にならないものを設定
+      z_tempo = 10*Nz
       do k=0,Nz
         if((zeta_fz(k) >= L_kukei_min).and.(L_kukei_max >= zeta_fz(k))) then
           z_tempo(k) = k
         endif
       enddo
+      !基本デカすぎ中で一部だけ、正しい値が入った。
+      !その中で最小値が今欲しいN_kukei_minになる
       N_kukei_min = minval(z_tempo)
+      !最小値が取得できたら最初で設定したデカすぎる値を-1にする
+      !Nzは0始まりなので、-1はありえない。
+      do k=0,Nz
+        if(z_tempo(k) == 10*Nz)then
+          z_tempo(k) = -1
+        endif
+      enddo
+      !そして、その中での最大値は欲しいN_kukei_maxになる
       N_kukei_max = maxval(z_tempo)
+
       if((N_kukei_min /=0).and.(N_kukei_max /=0)) then
         write(*,*) "N_kukei_min&max Setted !"
         write(*,*)"N_kukei_min : ",N_kukei_min
@@ -1595,6 +1609,8 @@ end module flow_square
       else
         write(*,*) "Failed to set N_kukei_min&max"
         write(*,*) "Reset properly Nz and dz"
+        write(*,*)"N_kukei_min : ",N_kukei_min
+        write(*,*)"N_kukei_max : ",N_kukei_max
         stop
       endif
       open(50, file = "result_square/Conditon_list.csv")
@@ -1603,7 +1619,7 @@ end module flow_square
       write(50,'(7A)') "Lx","Ly","Lz","L_kukei_min","L_kukei_max","dt","ランダム撹乱強さ"
       write(50,'(7f24.16)') Lx,Ly,Lz,L_kukei_min,L_kukei_max,dt,dis_strength
       write(50,'(2A)') "Re","Ma"
-      write(50,'(2f24.16)') Re,Ma,
+      write(50,'(2f24.16)') Re,Ma
       close(20)
       deallocate(z_tempo)
 
@@ -1668,7 +1684,7 @@ end module flow_square
  !ランダム撹乱の窓関数はtop-hat型ジェットの関数をそのまま使用
  !これにより、ランダム撹乱は完全にジェットの中にのみ、存在する
 !$omp parallel do
- do k=,N_kukei_min,N_kukei_max
+ do k=N_kukei_min,N_kukei_max
    do i=0,Ny
      in_G0(i,k) = 1.d0/Tu(i)!密度ρは理想気体状態方程式に従うから
      in_G1_top(i,k) = ur(i)
@@ -1703,7 +1719,7 @@ end module flow_square
   !G(1,2,3)に撹乱入れない。時間進行によって徐々に強くするから初期条件で撹乱は0
   !pに関しては流入温度Tuを使用して求める
   !$omp parallel do
-   do k=,N_kukei_min,N_kukei_max
+   do k=N_kukei_min,N_kukei_max
      do i=0,Ny
        !Crocco-Busemannの関係式より
        G(0,0,i,k) = in_G0(i,k)!ρ
@@ -1856,7 +1872,7 @@ end module flow_square
     !$omp end parallel do
       ! call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
-      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)!dirichlet条件で流入部の密度以外を固定
+      call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
       !またL,Uなどは DCSという方法が変わらないので同じものを使用できる)
       !dF/dxの計算
@@ -1939,7 +1955,7 @@ end module flow_square
          enddo
        !$omp end parallel do
         ! call Q_boundary(Q2)
-        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)
+        call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
       !Qn
       !dF/dxの計算
       Fpx=0.d0;Fmx=0.d0;xp=0.d0;xm=0.d0;Fpy=0.d0;Fmy=0.d0;yp=0.d0;ym=0.d0;Fpz=0.d0;Fmz=0.d0;zp=0.d0;zm=0.d0
@@ -2028,7 +2044,7 @@ end module flow_square
        !$omp end parallel do
 
         ! call Q_boundary(Qn)
-        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu,,N_kukei_min,N_kukei_max)
+        call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
