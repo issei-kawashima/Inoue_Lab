@@ -1614,13 +1614,14 @@ end module flow_square
         stop
       endif
       open(50, file = "result_square/Conditon_list.csv")
-      write(50,'(5A)') "Nx","Ny","Nz","N_kukei_min","N_kukei_max"
-      write(50,'(5I5)') Nx,Ny,Nz,N_kukei_min,N_kukei_max
-      write(50,'(7A)') "Lx","Ly","Lz","L_kukei_min","L_kukei_max","dt","ランダム撹乱強さ"
-      write(50,'(7f24.16)') Lx,Ly,Lz,L_kukei_min,L_kukei_max,dt,dis_strength
-      write(50,'(2A)') "Re","Ma"
-      write(50,'(2f24.16)') Re,Ma
-      close(20)
+      write(50,'(A,",",A,",",A,",",A,",",A)') "Nx","Ny","Nz","N_kukei_min","N_kukei_max"
+      write(50,'(i5,",",i5,",",i5,",",i5,",",i5)') Nx,Ny,Nz,N_kukei_min,N_kukei_max
+      write(50,'(A,",",A,",",A,",",A,",",A)') "Lx","Ly","Lz","L_kukei_min","L_kukei_max"
+      write(50,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16)') &
+      Lx,Ly,Lz,zeta_fz(N_kukei_min),zeta_fz(N_kukei_max)
+      write(50,'(A,",",A,",",A,",",A)') "dt","Random_Disturbance_Strength","Re","Ma"
+      write(50,'(f24.16,",",f24.16,",",f24.16,",",f24.16)') dt,dis_strength,Re,Ma
+      close(50)
       deallocate(z_tempo)
 
       !=========================================================================
