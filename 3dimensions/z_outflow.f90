@@ -45,6 +45,8 @@
 !z方向を周期条件ではなく、亜音速流出条件に変更する
 !t=11付近で、計算破綻したので、微分チェックを確認したが、問題なさそう。次に境界条件を疑ってみる
 !2020.10.09 Neumann条件を適用して試してみる
+!2020.10.14 NSCBCのoutflowのV=0とする配列を一箇所修正し忘れていたので、直した。
+!撹乱10%で計算が回るかどうかはまだ不明なので、5%&NSCBCで格子点数少なめ(180・100)で計算してみる。
 
 
 module all_outflow
@@ -78,7 +80,7 @@ module all_outflow
   double precision,parameter :: Lz = 2.d0*Cz+Wrz+Wlz!z方向長さ.計算領域の中心を0にする
   double precision,parameter :: dx = Lx /dble(Nx)
   double precision,parameter :: dy = Ly /dble(Ny)
-  double precision,parameter :: dz = Lz / dble(Nz)
+  double precision,parameter :: dz = Lz /dble(Nz)
 
   double precision,parameter :: psigma = -0.25d0
   double precision,parameter :: msigma = 0.25d0
@@ -90,7 +92,7 @@ module all_outflow
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
-  double precision,parameter :: dis_strength = 1.d-1*ujet!ジェット中心速度の10%撹乱
+  double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
@@ -635,7 +637,7 @@ contains
          RHS_z(0:4,0:Nx,0:Ny,0:Nz))
 
          D2=0.d0;D4=0.d0;D6=0.d0;D8=0.d0;RHS_z=0.d0;y=0.d0;x=0.d0
-         dzinv = 1.d0 / dz
+         dzinv = 1.d0/dz
 
         !片側DCS,3次精度DCSも入れた非周期条件の際のbの設定
        !$omp parallel do
@@ -1205,7 +1207,7 @@ contains
         !τ31*du/dz+τ32*dv/dz+dτ33/dz*w+τ33*dw/dz
         !z方向右側の条件設定
         dVz(1,j,i,Nz) = 0.d0
-        dVz(3,j,i,Nz) = 0.d0
+        dVz(2,j,i,Nz) = 0.d0
         dVz(4,j,i,Nz) = Vz(1,j,i,Nz)*dUVWTz(1,j,i,Nz)+Vz(2,j,i,Nz)*dUVWTz(2,j,i,Nz)&
                       +dVz(3,j,i,Nz)*UVWT(3,j,i,Nz)+Vz(3,j,i,Nz)*dUVWTz(3,j,i,Nz)
           end do
@@ -1553,8 +1555,8 @@ end module all_outflow
       allocate(LUmy(-1:1,0:Ny),LUpy(-1:1,0:Ny))
       allocate(LUccsy(-1:1,0:Ny))
       !z_axis
-      allocate(LUmz(-2:2,0:Nz),LUpz(-2:2,0:Nz))
-      allocate(LUccsz(-2:2,0:Nz))
+      allocate(LUmz(-1:1,0:Nz),LUpz(-1:1,0:Nz))
+      allocate(LUccsz(-1:1,0:Nz))
 !一応ゼロクリア
       G=0.d0;Q=0.d0;Qn=0.d0;Q0=0.d0;Q1=0.d0;Q2=0.d0
       pNx_infty=0.d0;p0y_infty=0.d0;pNy_infty=0.d0;ur=0.d0;Tu=0.d0
@@ -1794,9 +1796,9 @@ end module all_outflow
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
-        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         !計算に必要なdQ/dx,dQ/dyをCCSで導出。今まではdQ/dtしか求めていなかった
         !dQ/dx,dQ/dy自体はdG/dx,dG/dyを組み合わせて作ることができるのでそうして作成すると微分せずに済み計算の短縮に繋がる
@@ -1820,7 +1822,7 @@ end module all_outflow
         enddo
       enddo
     !$omp end parallel do
-      call Q_boundary(Q1)
+      ! call Q_boundary(Q1)
       !i=0で流入条件させるのでその部分のQ1を上書きして流入させ続ける
       call inflow(M,Q1,in_G1_top,in_G2,in_G3,Tu)!dirichlet条件で流入部の密度以外を固定
       !Q2(Q,F,x+-,y+-,f+-はそれぞれの計算過程において分ける必要がある。
@@ -1883,9 +1885,9 @@ end module all_outflow
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
-        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q1,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q1,dQy,LUccsy,dzeta_iny)
@@ -1904,7 +1906,7 @@ end module all_outflow
            enddo
          enddo
        !$omp end parallel do
-        call Q_boundary(Q2)
+        ! call Q_boundary(Q2)
         call inflow(M,Q2,in_G1_top,in_G2,in_G3,Tu)
       !Qn
       !dF/dxの計算
@@ -1969,9 +1971,9 @@ end module all_outflow
         call NSCBC_y(G,dGy,dFy,pNy_infty,p0y_infty)
         call outflow_y(UVWT,dUVWTy,Vy,dVy)
         !z方向
-        ! call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
-        ! call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
-        ! call outflow_z(UVWT,dUVWTz,Vz,dVz)
+        call dif_z(ccs_sigma,G,dGz,LUccsz,dzeta_inz)
+        call NSCBC_z(G,dGz,dFz,pNz_infty,p0z_infty)
+        call outflow_z(UVWT,dUVWTz,Vz,dVz)
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q2,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q2,dQy,LUccsy,dzeta_iny)
@@ -1993,7 +1995,7 @@ end module all_outflow
          enddo
        !$omp end parallel do
 
-        call Q_boundary(Qn)
+        ! call Q_boundary(Qn)
         call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then

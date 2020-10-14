@@ -1014,8 +1014,8 @@ contains
       do k=0,Nz-1
         do j=0,Nx
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
-      L1(1,j,k) = NS_sigma * c_NS1(j,k) * (1.d0 - (Ma_NS1(j,k) ** 2.d0))*(G(4,j,Ny,k) - &
-    &  pNy_infty)/Ly
+      L1(1,j,k) = NS_sigma*c_NS1(j,k)*(1.d0-(Ma_NS1(j,k)**2.d0))*(G(4,j,Ny,k)-&
+                  pNy_infty)/Ly
       L1(2,j,k) = G(2,j,Ny,k) * ((c_NS1(j,k) ** 2.d0)*dGy(0,j,Ny,k) - dGy(4,j,Ny,k))
       L1(3,j,k) = G(2,j,Ny,k) * dGy(1,j,Ny,k)
       L1(4,j,k) = G(2,j,Ny,k) * dGy(3,j,Ny,k)
