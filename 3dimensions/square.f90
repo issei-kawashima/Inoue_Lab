@@ -56,7 +56,6 @@ module flow_square
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
-  integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
   integer,parameter :: Nx = 180
   integer,parameter :: Ny = 100
   integer,parameter :: Nz = 50
@@ -1598,6 +1597,14 @@ end module flow_square
         write(*,*) "Reset properly Nz and dz"
         stop
       endif
+      open(50, file = "result_square/Conditon_list.csv")
+      write(50,'(5A)') "Nx","Ny","Nz","N_kukei_min","N_kukei_max"
+      write(50,'(5I5)') Nx,Ny,Nz,N_kukei_min,N_kukei_max
+      write(50,'(7A)') "Lx","Ly","Lz","L_kukei_min","L_kukei_max","dt","ランダム撹乱強さ"
+      write(50,'(7f24.16)') Lx,Ly,Lz,L_kukei_min,L_kukei_max,dt,dis_strength
+      write(50,'(2A)') "Re","Ma"
+      write(50,'(2f24.16)') Re,Ma,
+      close(20)
       deallocate(z_tempo)
 
       !=========================================================================
