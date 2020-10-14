@@ -57,10 +57,10 @@ module three_omp
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
   integer,parameter :: p_output = 10 !時間毎の局所圧力を出力させる際のステップ間隔
-  integer,parameter :: Nx = 360
-  integer,parameter :: Ny = 200
+  integer,parameter :: Nx = 180
+  integer,parameter :: Ny = 100
   integer,parameter :: Nz = 20
-  double precision,parameter :: dt = 5.d-3
+  double precision,parameter :: dt = 1.d-2
   integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = int(t_end / dt)
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
@@ -85,7 +85,7 @@ module three_omp
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.4d0
+  double precision,parameter :: Ma = 1.6d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
