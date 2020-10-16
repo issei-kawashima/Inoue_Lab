@@ -1278,7 +1278,7 @@ contains
       double precision,allocatable,dimension(:):: Uz,sigma_z
       double precision,allocatable,dimension(:):: zeta_fz
       double precision,parameter ::alpha_u=1.5d0,alpha_sigma=1.125d0,beta_r=0.01d0,beta_l=0.01d0
-      Zmax = (Lz/2.d0);Zmin = -(Lz/2d0)
+      Zmax = (Lz/2.d0);Zmin = -(Lz/2.d0)
       !$omp parallel do
         do i = 0,Nz
           Uz(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(zeta_fz(i)-Zmax)/(-Wrz))&
@@ -1666,7 +1666,7 @@ end module all_outflow
       G(0,0,i,k) = in_G0(i,k)!ρ
       !top-hat Jetのみ
       G(1,0,i,k) = in_G1_top(i,k)!u
-      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p
+      G(4,0,i,k) = 1.d0*Tu(i)/((Ma**2.d0)*gamma)!p 流入ジェットの温度はTu(i)で指定すべきでは？
     enddo
   enddo
  !$omp end parallel do
