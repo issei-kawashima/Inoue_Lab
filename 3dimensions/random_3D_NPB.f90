@@ -67,10 +67,11 @@ program kakusan
   do i=0,NZ
      z(i)=Zmin + dz*dble(i)
   end do
-  do i= 0,Nz
-    zs(i) = b1*((1.7d0*z(i))-a1*&
-  (-dlog(dcosh(a2*(z(i)-z_width)))+dlog(dcosh(a2*(z(i)+z_width)))))
-  enddo
+  z=zs!格子伸長を外す！！！
+  ! do i= 0,Nz
+  !   zs(i) = b1*((1.7d0*z(i))-a1*&
+  ! (-dlog(dcosh(a2*(z(i)-z_width)))+dlog(dcosh(a2*(z(i)+z_width)))))
+  ! enddo
 
   !撹乱エネルギースペクトルE(k)の計算
   do kx=1,Kmx
