@@ -47,9 +47,9 @@
 !2020.10.09 Neumann条件を適用して試してみる
 !2020.10.14 NSCBCのoutflowのV=0とする配列を一箇所修正し忘れていたので、直した。
 !計算条件をあとで把握できるように計算条件を書き出すコードを追加した
-!何が悪いのかわからないので、一旦Bufferと格子伸長を外す
-!外し方 : BufferはQ1,Q2,Qnの式でsigmaとUzを含まないもとの式に戻し、call文をコメントアウト
+!何が悪いのかわからないので、一旦格子伸長を外す
 !外し方 : 格子伸長はzeta_fzをただのz座標に変更するようにsubroutineの中身を変更。それに伴ってcombineも何もしないように変更
+!Bufferと格子伸長を外したら改善しつつあるので、Bufferあり、格子伸長なしverを作成してこちらも試す
 
 
 module test_z
@@ -1646,7 +1646,7 @@ end module test_z
    !Buffer領域の計算に使うUx,Uy,sigma_x,sigma_y,Uz,sigma_zの計算
    call buffer_x(c_infty,Ux,sigma_x,zeta_fx)
    call buffer_y(c_infty,Uy,sigma_y,zeta_fy)
-   ! call buffer_z(c_infty,Uz,sigma_z,zeta_fz)
+   call buffer_z(c_infty,Uz,sigma_z,zeta_fz)
  !==========初期値の設定==========================================================
  !流入条件
  !x=0の軸上にのみ流入条件を適用することでここからどんどん流入が起こる
@@ -1824,21 +1824,17 @@ end module test_z
         !だがこの場合Etは単体で定義していないので今回はそれができない。そのためQを直接微分する
         call dif_x(ccs_sigma,Q,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q,dQy,LUccsy,dzeta_iny)
-        ! call dif_z(ccs_sigma,Q,dQz,LUccsz,dzeta_inz)
+        call dif_z(ccs_sigma,Q,dQz,LUccsz,dzeta_inz)
        !計算して求めたdF,dVそしてBuffer領域の計算のための値などを組み合わせ、代入してdQ/dtを求める
      !$omp parallel do
        do k=0,Nz
         do i=0,Ny
           do j=0,Nx
             do l=0,4
-            ! Q1(l,j,i,k) = Q(l,j,i,k) + c*dt*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)&
-            !   &-dFy(l,j,i,k)-dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*&
-            !   (Q(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)&
-            !   -Uz(k)*dQz(l,j,i,k))
-
             Q1(l,j,i,k) = Q(l,j,i,k) + c*dt*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)&
-              &-dFy(l,j,i,k)-dFz(l,j,i,k)-sigma_x(j)*(Q(l,j,i,k)-Q0(l,j,i,k))&
-              -sigma_y(i)*(Q(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k))
+              &-dFy(l,j,i,k)-dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*&
+              (Q(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)&
+              -Uz(k)*dQz(l,j,i,k))
             end do
           end do
         enddo
@@ -1913,21 +1909,16 @@ end module test_z
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q1,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q1,dQy,LUccsy,dzeta_iny)
-        ! call dif_z(ccs_sigma,Q1,dQz,LUccsz,dzeta_inz)
+        call dif_z(ccs_sigma,Q1,dQz,LUccsz,dzeta_inz)
       !$omp parallel do
         do k=0,Nz
          do i=0,Ny
            do j=0,Nx
              do l=0,4
-              ! Q2(l,j,i,k) = (0.75d0)*Q(l,j,i,k) +(0.25d0) * Q1(l,j,i,k) + c* (dt*0.25d0)&
-              !     &*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)-dFy(l,j,i,k)&
-              !     -dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*(Q1(l,j,i,k)-Q0(l,j,i,k))&
-              !     -Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)-Uz(k)*dQz(l,j,i,k))
-
               Q2(l,j,i,k) = (0.75d0)*Q(l,j,i,k) +(0.25d0) * Q1(l,j,i,k) + c* (dt*0.25d0)&
                   &*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)-dFy(l,j,i,k)&
-                  -dFz(l,j,i,k)-sigma_x(j)*(Q1(l,j,i,k)-Q0(l,j,i,k))&
-                  -sigma_y(i)*(Q1(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k))
+                  -dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*(Q1(l,j,i,k)-Q0(l,j,i,k))&
+                  -Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)-Uz(k)*dQz(l,j,i,k))
                end do
              end do
            enddo
@@ -2004,23 +1995,18 @@ end module test_z
         !Buffer領域の計算
         call dif_x(ccs_sigma,Q2,dQx,LUccsx,dzeta_inx)
         call dif_y(ccs_sigma,Q2,dQy,LUccsy,dzeta_iny)
-        ! call dif_z(ccs_sigma,Q2,dQz,LUccsz,dzeta_inz)
+        call dif_z(ccs_sigma,Q2,dQz,LUccsz,dzeta_inz)
 
       !$omp parallel do
         do k=0,Nz
          do i=0,Ny
            do j=0,Nx
              do l=0,4
-               ! Qn(l,j,i,k)=Q(l,j,i,k)/3.d0+(2.d0/3.d0)*Q2(l,j,i,k)+c*&
-               ! &((2.d0*dt)/3.d0)*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)&
-               ! -dFy(l,j,i,k)-dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*&
-               ! (Q2(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)&
-               ! -Uz(k)*dQz(l,j,i,k))
-
                Qn(l,j,i,k)=Q(l,j,i,k)/3.d0+(2.d0/3.d0)*Q2(l,j,i,k)+c*&
                &((2.d0*dt)/3.d0)*(dVx(l,j,i,k)+dVy(l,j,i,k)+dVz(l,j,i,k)-dFx(l,j,i,k)&
-               -dFy(l,j,i,k)-dFz(l,j,i,k)-sigma_x(j)*(Q2(l,j,i,k)-Q0(l,j,i,k))&
-               -sigma_y(i)*(Q2(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k))
+               -dFy(l,j,i,k)-dFz(l,j,i,k)-(sigma_x(j)+sigma_y(i)+sigma_z(k))*&
+               (Q2(l,j,i,k)-Q0(l,j,i,k))-Ux(j)*dQx(l,j,i,k)-Uy(i)*dQy(l,j,i,k)&
+               -Uz(k)*dQz(l,j,i,k))
                end do
              end do
            enddo
