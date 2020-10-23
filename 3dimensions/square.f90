@@ -1383,13 +1383,6 @@ contains
           dzeta_inz(i) = 1.d0/dzeta(i)
         enddo
       !$omp end parallel do
-
-      open(100,file ="z_zeta.csv")
-      do i =0,Nz
-        z =-Lz/2.d0+dz*dble(i)
-        write(100,*) z,",",zeta(i)
-      enddo
-      close(100)
       deallocate(dzeta)
     endsubroutine lattice_z
     !作成したdx/dζをdF/dyなどに掛けて微分変換を行うsubroutine
