@@ -37,7 +37,7 @@ set yrange [-10:10]
 
 #set dgrid3d
 set term x11 2
-splot '/Users/isseyshome/Downloads/result_square/parameter000041_44.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Documents/GitHub/Inoue_Lab/3dimensions/result_square/parameter000040_50.txt'u 1:2:4 w pm3d t ""
 
 #se term jpeg
 #unset colorbox
