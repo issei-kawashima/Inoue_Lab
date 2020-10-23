@@ -1296,6 +1296,11 @@ contains
           endif
         enddo
       !$omp end parallel do
+      ! open(100,file="uz-check.csv")
+      ! do i=0,Nz
+      ! write(100,*) zeta_fz(i),",",Uz(i)
+      ! enddo
+      ! close(100)
     endsubroutine buffer_z
     !ζ,dζ/dxの定義subroutine
     subroutine lattice_x(zeta_fx,dzeta_inx)
@@ -1361,7 +1366,7 @@ contains
       double precision,allocatable,dimension(:):: dzeta,dzeta_inz
       double precision width,a1,a2,b1,Zmin
       allocate(dzeta(0:Nz))
-      dzeta=0.d0;width=0.5d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
+      dzeta=0.d0;width=0.5d0;a1=3.d0/20.d0;a2=5.d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=z<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数

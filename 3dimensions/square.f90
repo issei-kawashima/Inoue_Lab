@@ -47,6 +47,8 @@
 !2020.10.09 Neumann条件を適用して試してみる
 !2020.10.14 NSCBCのoutflowのV=0とする配列を一箇所修正し忘れていたので、直した。
 !計算条件をあとで把握できるように計算条件を書き出すコードを追加した
+!2020.10.23 z方向の格子伸長の係数をうまく調整できていなかったので、z=-2.5,2.5の箇所が-2.67,2.67などになってしまっていた
+!したがって、今後Lzや格子伸長の幅widthを変更する際にはパラメータを調整しなくてはいけない
 
 
 module flow_square
@@ -1346,6 +1348,7 @@ contains
         (-dtanh(a2*((Ymin + dy*dble(i)) - width)) + dtanh(a2*((Ymin + dy*dble(i)) + width))))
         enddo
       !$omp end parallel do
+
       !$omp parallel do
         do i= 0,Ny
           dzeta_iny(i) = 1.d0/dzeta(i)
@@ -1360,7 +1363,7 @@ contains
       double precision,allocatable,dimension(:):: dzeta,dzeta_inz
       double precision width,a1,a2,b1,Zmin
       allocate(dzeta(0:Nz))
-      dzeta=0.d0;width=0.5d0;a1=1d0/14d0;a2=7d0;b1=1.d0/1.4d0
+      dzeta=0.d0;width=0.5d0;a1=3.d0/20.d0;a2=5.d0;b1=1.d0/1.4d0
       !widthは格子間隔を細かくする範囲。この式では-width<=z<=widthの範囲で適用される
       !a2は粗い所と細かい所の境界の傾きの大きさを設定している
       !a1はどの程度の格子数の差をつけるかを設定する係数
@@ -1380,6 +1383,13 @@ contains
           dzeta_inz(i) = 1.d0/dzeta(i)
         enddo
       !$omp end parallel do
+
+      open(100,file ="z_zeta.csv")
+      do i =0,Nz
+        z =-Lz/2.d0+dz*dble(i)
+        write(100,*) z,",",zeta(i)
+      enddo
+      close(100)
       deallocate(dzeta)
     endsubroutine lattice_z
     !作成したdx/dζをdF/dyなどに掛けて微分変換を行うsubroutine

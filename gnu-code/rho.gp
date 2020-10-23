@@ -1,6 +1,6 @@
 reset
 set term x11
-se pm3d map
+#se pm3d map
 #se size square
 #se view 56,333,1,1
 #se view 90,270,1,1
@@ -37,7 +37,7 @@ set yrange [-10:10]
 
 #set dgrid3d
 set term x11 2
-splot '/Users/isseyshome/Downloads/result_all_outflow/parameter001198_00.txt'u 1:2:4 w pm3d t ""
+splot '/Users/isseyshome/Downloads/result_square/parameter000041_44.txt'u 1:2:4 w pm3d t ""
 
 #se term jpeg
 #unset colorbox

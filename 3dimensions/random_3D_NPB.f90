@@ -10,6 +10,8 @@ program kakusan
   !y方向格子伸長
   double precision,parameter :: y_width=3.d0
   double precision,parameter :: z_width=0.5d0
+  double precision,parameter :: z_a1=3.d0/20.d0
+  double precision,parameter :: z_a2=5.d0
   double precision,parameter :: a1=1d0/14d0
   double precision,parameter :: a2=7.d0
   double precision,parameter :: b1=1.d0/1.4d0
@@ -49,6 +51,7 @@ program kakusan
   double precision::abs_k
   double precision,dimension(0:NY,0:NZ)::kakuran_u,kakuran_v,kakuran_w
 
+
 !!!初期座標および格子伸長
   !x座標は流入部にしか撹乱を導入しないので、不要
 
@@ -67,11 +70,11 @@ program kakusan
   do i=0,NZ
      z(i)=Zmin + dz*dble(i)
   end do
-  z=zs!格子伸長を外す！！！
-  ! do i= 0,Nz
-  !   zs(i) = b1*((1.7d0*z(i))-a1*&
-  ! (-dlog(dcosh(a2*(z(i)-z_width)))+dlog(dcosh(a2*(z(i)+z_width)))))
-  ! enddo
+  ! z=zs!格子伸長を外す！！！
+  do i= 0,Nz
+    zs(i) = b1*((1.7d0*z(i))-z_a1*&
+  (-dlog(dcosh(z_a2*(z(i)-z_width)))+dlog(dcosh(z_a2*(z(i)+z_width)))))
+  enddo
 
   !撹乱エネルギースペクトルE(k)の計算
   do kx=1,Kmx
