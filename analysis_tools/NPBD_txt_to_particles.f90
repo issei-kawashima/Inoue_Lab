@@ -11,7 +11,7 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 180+1 !一行改行分を含めてる
 integer,parameter :: Ny = 100
 integer,parameter :: Nz = 50
-integer,parameter :: CNT = 41
+integer,parameter :: CNT = 23
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
@@ -19,7 +19,7 @@ character(len = 16) M_number
 
 !z方向非周期
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz,14))
-write(folder_name, '(a)') "square"!ここは長すぎるとエラーになる
+write(folder_name, '(a)') "sub_square"!ここは長すぎるとエラーになる
 write(M_number, '(i6.6)') CNT
 do k=0,Nz
   write(z_name, '(i2.2)') k
