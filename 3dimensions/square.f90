@@ -1131,6 +1131,18 @@ contains
       else
         fluct_dis_strength = dis_strength
       endif
+      !Top-hat型ジェットとランダム撹乱を流入させない範囲には、u,v,w=0とその条件でのEtを与える
+      !$omp parallel do
+        do k=0,N_kukei_min-1
+          do i=0,Ny
+            Q(1,0,i,k) = 0.d0
+            Q(2,0,i,k) = 0.d0
+            Q(3,0,i,k) = 0.d0
+            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
+          enddo
+        end do
+      !$omp end parallel do
+
       !$omp parallel do
         do k=N_kukei_min,N_kukei_max
           do i=0,Ny
@@ -1143,6 +1155,17 @@ contains
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
+          enddo
+        end do
+      !$omp end parallel do
+
+      !$omp parallel do
+        do k=N_kukei_max+1,Nz
+          do i=0,Ny
+           Q(1,0,i,k) = 0.d0
+           Q(2,0,i,k) = 0.d0
+           Q(3,0,i,k) = 0.d0
+           Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
       !$omp end parallel do
