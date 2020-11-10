@@ -51,6 +51,8 @@
 !Lx,Ly,Lzを変える => random_3Dと格子伸長のパラメータa1,a2と乱流チェックポイントの座標を変える
 !格子伸長の条件を変える => 始まりと終わりの座標がもともと狙っていた領域長さになるようにパラメーターを変える&random_3Dの方も直す
 !Buffer領域を変える => 乱流チェックポイントがBuffer領域外になることを確認する
+!2020.11.10 矩形ジェットかつz方向流出境界条件で計算がうまくいった！！！！しかし、密度の流入条件の設定に不備がありそうなので修正してみる。
+!矩形ジェットを流入させない箇所の密度=Q(0)は初期条件0.1にする(この箇所ではNSCBCは使用しない)
 
 
 module flow_square
@@ -1135,6 +1137,7 @@ contains
       !$omp parallel do
         do k=0,N_kukei_min-1
           do i=0,Ny
+            Q(0,0,i,k) = 1.d0
             Q(1,0,i,k) = 0.d0
             Q(2,0,i,k) = 0.d0
             Q(3,0,i,k) = 0.d0
@@ -1162,10 +1165,11 @@ contains
       !$omp parallel do
         do k=N_kukei_max+1,Nz
           do i=0,Ny
-           Q(1,0,i,k) = 0.d0
-           Q(2,0,i,k) = 0.d0
-           Q(3,0,i,k) = 0.d0
-           Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
+            Q(0,0,i,k) = 1.d0
+            Q(1,0,i,k) = 0.d0
+            Q(2,0,i,k) = 0.d0
+            Q(3,0,i,k) = 0.d0
+            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
       !$omp end parallel do
