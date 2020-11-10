@@ -54,6 +54,7 @@
 !2020.11.10 矩形ジェットかつz方向流出境界条件で計算がうまくいった！！！！しかし、密度の流入条件の設定に不備がありそうなので修正してみる。
 !矩形ジェットを流入させない箇所の密度=Q(0)は初期条件0.1にする(この箇所ではNSCBCは使用しない)
 !2020.11.11 ランダム撹乱を10%にしてみる。
+!ランダム撹乱とショックノイズのダブルパンチを喰らわないように、最大出力になる時間をt=36から正確な計算領域Cxの2倍の距離をUjetが通過するt=48に変更
 
 
 module flow_square
@@ -101,7 +102,7 @@ module flow_square
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 1.d-1*ujet!ジェット中心速度の5%撹乱
-  integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
+  integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
