@@ -55,6 +55,9 @@
 !矩形ジェットを流入させない箇所の密度=Q(0)は初期条件0.1にする(この箇所ではNSCBCは使用しない)
 !2020.11.11 ランダム撹乱を10%にしてみる。
 !ランダム撹乱とショックノイズのダブルパンチを喰らわないように、最大出力になる時間をt=36から正確な計算領域Cxの2倍の距離をUjetが通過するt=48に変更
+!2020.11.12 結局10%攪乱では計算破綻してしまうので、攪乱を8%にして弱くする。
+!またスペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設ける
+!配列とファイルは作成したのであとは、出力する値を計算・指定すればOK
 
 
 module flow_square
@@ -101,7 +104,7 @@ module flow_square
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
-  double precision,parameter :: dis_strength = 1.d-1*ujet!ジェット中心速度の5%撹乱
+  double precision,parameter :: dis_strength = 8.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
@@ -1541,6 +1544,7 @@ end module flow_square
       ! double precision,allocatable,dimension(:,:) :: kakuran_u
       double precision,allocatable,dimension(:,:) :: kakuran_v,kakuran_w!ランダム撹乱を入れる配列
       double precision,allocatable,dimension(:) :: turbulent_check1,turbulent_check2,turbulent_check3,turbulent_check4
+      double precision,allocatable,dimension(:) :: spectrum1,spectrum2,spectrum3,spectrum4
       integer,allocatable,dimension(:) ::z_tempo
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz),Q(0:4,0:Nx,0:Ny,0:Nz),Q0(0:4,0:Nx,0:Ny,0:Nz)&
@@ -1581,6 +1585,10 @@ end module flow_square
       turbulent_check2(observe_start_time:observe_end_time),&
       turbulent_check3(observe_start_time:observe_end_time),&
       turbulent_check4(observe_start_time:observe_end_time))
+      allocate(spectrum1(observe_start_time:observe_end_time)&
+      ,spectrum2(observe_start_time:observe_end_time),&
+      spectrum3(observe_start_time:observe_end_time),&
+      spectrum4(observe_start_time:observe_end_time))
       ! allocate(kakuran_u(0:Ny,0:Nz))
       allocate(kakuran_v(0:Ny,0:Nz),kakuran_w(0:Ny,0:Nz))
 
@@ -1606,6 +1614,7 @@ end module flow_square
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;kakuran_u=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
       turbulent_check1=0.d0;turbulent_check2=0.d0;turbulent_check3=0.d0;turbulent_check4=0.d0
+      spectrum1=0.d0;spectrum2=0.d0;spectrum3=0.d0;spectrum4=0.d0
       N_kukei_min=0;N_kukei_max=0!int型なので0
 
       !============座標設定======================================================
@@ -2090,6 +2099,11 @@ end module flow_square
           turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
           turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
           turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
+
+          spectrum1(M) = XXX(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
+          spectrum2(M) = XXX(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
+          spectrum3(M) = XXX(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
+          spectrum4(M) = XXX(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
         endif
 
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
@@ -2222,16 +2236,28 @@ end module flow_square
     open(42, file = "result_square/turbulent_check_2.csv")
     open(43, file = "result_square/turbulent_check_3.csv")
     open(44, file = "result_square/turbulent_check_4.csv")
+    open(51, file = "result_square/spectrum1.csv")
+    open(52, file = "result_square/spectrum2.csv")
+    open(53, file = "result_square/spectrum3.csv")
+    open(54, file = "result_square/spectrum4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)
       write(43,'(f24.16)') turbulent_check3(M)
       write(44,'(f24.16)') turbulent_check4(M)
+      write(51,'(f24.16)') spectrum1(M)
+      write(52,'(f24.16)') spectrum2(M)
+      write(53,'(f24.16)') spectrum3(M)
+      write(54,'(f24.16)') spectrum4(M)
     enddo
      close(41)
      close(42)
      close(43)
      close(44)
+     close(51)
+     close(52)
+     close(53)
+     close(54)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
@@ -2245,4 +2271,5 @@ end module flow_square
       deallocate(ur,Tu,dp,div_u,Invariant_2)
       deallocate(zeta_fx,zeta_fy,zeta_fz)
       deallocate(turbulent_check1,turbulent_check2,turbulent_check3,turbulent_check4)
+      deallocate(spectrum1,spectrum2,spectrum3,spectrum4)
     end program main
