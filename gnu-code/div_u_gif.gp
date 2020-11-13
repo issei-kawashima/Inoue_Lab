@@ -53,7 +53,6 @@ to = 75000 #計算ステップ数
 dt = 0.0020 #時間ステップ刻み幅
 offset = 1/dt #使用するコマの間隔(1秒毎に設定)
 do for[i = st : to : offset]{
-	#input1 = sprintf("/Users/isseyshome/Documents/Lab/ex_20/result_gradient/rho%05d.d", i)
 	input1 = sprintf('\Users\Kawashima\Desktop\2-dimensions\result_super_2d-3Ma1.5\parameter%06d.txt', i)
 	time =sprintf("t = %.1f",i/500.0)
 	splot input1 u 1:2:6 w pm3d ti time

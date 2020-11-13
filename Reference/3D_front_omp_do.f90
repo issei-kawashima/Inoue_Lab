@@ -203,7 +203,9 @@ contains
     !$omp end parallel do
   end subroutine Q_g_in
 
-  function fBDCS(n,NN,gdh,F,LUcom,sig)!!!nからNNまで計算
+  function fBDCS(n,NN,gdh,F,LUcom,sig), result(fBDCS)!!!nからNNまで計算
+    !,resultが大事！
+    !返す変数にはintent(in)をつけず、仮引数(function()で読み込む引数)にはintent(in)をつける
     implicit none
     integer::i,j,k,NN,n
     double precision,dimension(n:NN),intent(in)::F
