@@ -105,6 +105,7 @@ module flow_square
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 8.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
+  ! integer,parameter :: times = int((Lx/ujet)/dt)!(旧)時間変動基準
   integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
@@ -2250,14 +2251,8 @@ end module flow_square
       write(53,'(f24.16)') spectrum3(M)
       write(54,'(f24.16)') spectrum4(M)
     enddo
-     close(41)
-     close(42)
-     close(43)
-     close(44)
-     close(51)
-     close(52)
-     close(53)
-     close(54)
+     close(41);close(42);close(43);close(44)
+     close(51);close(52);close(53);close(54)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)

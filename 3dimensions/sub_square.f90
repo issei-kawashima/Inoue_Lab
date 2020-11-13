@@ -99,8 +99,9 @@ module flow_square_sub
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
-  integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
+  ! integer,parameter :: times = int((Lx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
+  integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
@@ -1148,6 +1149,20 @@ contains
       else
         fluct_dis_strength = dis_strength
       endif
+
+      !Top-hat型ジェットとランダム撹乱を流入させない範囲には、u,v,w=0とその条件でのEtを与える
+      !$omp parallel do
+        do k=0,N_kukei_min-1
+          do i=0,Ny
+            Q(0,0,i,k) = 1.d0
+            Q(1,0,i,k) = 0.d0
+            Q(2,0,i,k) = 0.d0
+            Q(3,0,i,k) = 0.d0
+            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
+          enddo
+        end do
+      !$omp end parallel do
+
       !$omp parallel do
         do k=N_kukei_min,N_kukei_max
           do i=0,Ny
@@ -1160,6 +1175,18 @@ contains
                    +Q(0,0,i,k)*((in_G1_top(i,k))**2.d0&
                    +(fluct_dis_strength*in_G2(i,k))**2.d0&
                    +(fluct_dis_strength*in_G3(i,k))**2.d0)*0.5d0!Et
+          enddo
+        end do
+      !$omp end parallel do
+
+      !$omp parallel do
+        do k=N_kukei_max+1,Nz
+          do i=0,Ny
+            Q(0,0,i,k) = 1.d0
+            Q(1,0,i,k) = 0.d0
+            Q(2,0,i,k) = 0.d0
+            Q(3,0,i,k) = 0.d0
+            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
       !$omp end parallel do
@@ -1529,6 +1556,7 @@ end module flow_square_sub
       ! double precision,allocatable,dimension(:,:) :: kakuran_u
       double precision,allocatable,dimension(:,:) :: kakuran_v,kakuran_w!ランダム撹乱を入れる配列
       double precision,allocatable,dimension(:) :: turbulent_check1,turbulent_check2,turbulent_check3,turbulent_check4
+      double precision,allocatable,dimension(:) :: spectrum1,spectrum2,spectrum3,spectrum4
       integer,allocatable,dimension(:) ::z_tempo
 
       allocate(G(0:4,0:Nx,0:Ny,0:Nz),Q(0:4,0:Nx,0:Ny,0:Nz),Q0(0:4,0:Nx,0:Ny,0:Nz)&
@@ -1569,6 +1597,10 @@ end module flow_square_sub
       turbulent_check2(observe_start_time:observe_end_time),&
       turbulent_check3(observe_start_time:observe_end_time),&
       turbulent_check4(observe_start_time:observe_end_time))
+      allocate(spectrum1(observe_start_time:observe_end_time)&
+      ,spectrum2(observe_start_time:observe_end_time),&
+      spectrum3(observe_start_time:observe_end_time),&
+      spectrum4(observe_start_time:observe_end_time))
       ! allocate(kakuran_u(0:Ny,0:Nz))
       allocate(kakuran_v(0:Ny,0:Nz),kakuran_w(0:Ny,0:Nz))
 
@@ -1594,6 +1626,7 @@ end module flow_square_sub
       ! omega_1=0.d0;omega_2=0.d0;omega_3=0.d0;kakuran_u=0.d0
       div_u=0.d0;Invariant_2=0.d0;kakuran_v=0.d0;kakuran_w=0.d0
       turbulent_check1=0.d0;turbulent_check2=0.d0;turbulent_check3=0.d0;turbulent_check4=0.d0
+      spectrum1=0.d0;spectrum2=0.d0;spectrum3=0.d0;spectrum4=0.d0
       N_kukei_min=0;N_kukei_max=0!int型なので0
 
       !============座標設定======================================================
@@ -2070,6 +2103,12 @@ end module flow_square_sub
         call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
+          !p-p∞を計算することで、音圧を出力する
+          spectrum1(M) = G(4,2*Nx/3,Ny/2,Nz/2)-pNx_infty!後ろ中心真ん中(ジェットの中)
+          spectrum2(M) = G(4,2*Nx/3,Ny/4,Nz/5)-pNx_infty!後ろ左下
+          spectrum3(M) = G(4,2*Nx/3,3*Ny/4,3*Nz/5)-pNx_infty!後ろ右上
+          spectrum4(M) = G(4,Nx/2,3*Ny/4,3*Nz/5)-pNx_infty!真ん中右上
+
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
@@ -2206,20 +2245,26 @@ end module flow_square_sub
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_sub_square/turbulent_check_1.csv")
-    open(42, file = "result_sub_square/turbulent_check_2.csv")
-    open(43, file = "result_sub_square/turbulent_check_3.csv")
-    open(44, file = "result_sub_square/turbulent_check_4.csv")
-    do M = observe_start_time, observe_end_time
-      write(41,'(f24.16)') turbulent_check1(M)
-      write(42,'(f24.16)') turbulent_check2(M)
-      write(43,'(f24.16)') turbulent_check3(M)
-      write(44,'(f24.16)') turbulent_check4(M)
-    enddo
-     close(41)
-     close(42)
-     close(43)
-     close(44)
+      open(41, file = "result_sub_square/turbulent_check_1.csv")
+      open(42, file = "result_sub_square/turbulent_check_2.csv")
+      open(43, file = "result_sub_square/turbulent_check_3.csv")
+      open(44, file = "result_sub_square/turbulent_check_4.csv")
+      open(51, file = "result_sub_square/spectrum1.csv")
+      open(52, file = "result_sub_square/spectrum2.csv")
+      open(53, file = "result_sub_square/spectrum3.csv")
+      open(54, file = "result_sub_square/spectrum4.csv")
+      do M = observe_start_time, observe_end_time
+        write(41,'(f24.16)') turbulent_check1(M)
+        write(42,'(f24.16)') turbulent_check2(M)
+        write(43,'(f24.16)') turbulent_check3(M)
+        write(44,'(f24.16)') turbulent_check4(M)
+        write(51,'(f24.16)') spectrum1(M)
+        write(52,'(f24.16)') spectrum2(M)
+        write(53,'(f24.16)') spectrum3(M)
+        write(54,'(f24.16)') spectrum4(M)
+      enddo
+       close(41);close(42);close(43);close(44)
+       close(51);close(52);close(53);close(54)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
