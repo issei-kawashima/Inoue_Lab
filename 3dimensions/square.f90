@@ -56,8 +56,7 @@
 !2020.11.11 ランダム撹乱を10%にしてみる。
 !ランダム撹乱とショックノイズのダブルパンチを喰らわないように、最大出力になる時間をt=36から正確な計算領域Cxの2倍の距離をUjetが通過するt=48に変更
 !2020.11.12 結局10%攪乱では計算破綻してしまうので、攪乱を8%にして弱くする。
-!またスペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設ける
-!配列とファイルは作成したのであとは、出力する値を計算・指定すればOK
+!2020.11.13 音圧スペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設けた(p-p∞を出力する)
 
 
 module flow_square
@@ -106,7 +105,7 @@ module flow_square
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 8.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  integer,parameter :: observe_start_time = int(120.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
+  integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
   double precision,parameter :: zeta = 1.d0
@@ -2091,6 +2090,12 @@ end module flow_square
         call inflow(M,Qn,in_G1_top,in_G2,in_G3,Tu,N_kukei_min,N_kukei_max)
         call rho_u_p(G,Qn)
         if((M >= observe_start_time).and.(observe_end_time >= M)) then
+          !p-p∞を計算することで、音圧を出力する
+          spectrum1(M) = G(4,2*Nx/3,Ny/2,Nz/2)-pNx_infty!後ろ中心真ん中(ジェットの中)
+          spectrum2(M) = G(4,2*Nx/3,Ny/4,Nz/5)-pNx_infty!後ろ左下
+          spectrum3(M) = G(4,2*Nx/3,3*Ny/4,3*Nz/5)-pNx_infty!後ろ右上
+          spectrum4(M) = G(4,Nx/2,3*Ny/4,3*Nz/5)-pNx_infty!真ん中右上
+
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
           ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
@@ -2099,11 +2104,6 @@ end module flow_square
           turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
           turbulent_check3(M) = dGx(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
           turbulent_check4(M) = dGx(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
-
-          spectrum1(M) = XXX(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
-          spectrum2(M) = XXX(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
-          spectrum3(M) = XXX(1,2*Nx/3,3*Ny/4,3*Nz/5)!後ろ右上
-          spectrum4(M) = XXX(1,Nx/2,3*Ny/4,3*Nz/5)!真ん中右上
         endif
 
         if(mod(M,output_count) == 0) then!dt=1.d-4で0.01秒刻みで出力するためにMの条件を設定
