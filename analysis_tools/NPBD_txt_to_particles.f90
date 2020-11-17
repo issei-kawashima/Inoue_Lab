@@ -11,7 +11,7 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 180+1 !一行改行分を含めてる
 integer,parameter :: Ny = 100
 integer,parameter :: Nz = 50
-integer,parameter :: CNT = 1000
+integer,parameter :: CNT = 25000
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
@@ -19,7 +19,7 @@ character(len = 16) M_number
 
 !z方向非周期
 allocate(dim_kukei(0:Nx,0:Ny,0:Nz,14))
-write(folder_name, '(a)') "square_10%"!ここは長すぎるとエラーになる
+write(folder_name, '(a)') "square_5%_imp"!ここは長すぎるとエラーになる
 write(M_number, '(i6.6)') CNT
 do k=0,Nz
   write(z_name, '(i2.2)') k
@@ -33,9 +33,9 @@ do k=0,Nz
   do i=0,Ny
     do j = 0,Nx
       !通常はこちら
-      ! read(11,'(14f24.16)') dim_kukei(j,i,k,1:14)
+      read(11,'(14f24.16)') dim_kukei(j,i,k,1:14)
       !NaN直前ファイルはこちら
-      read(11,'(12f24.16)') dim_kukei(j,i,k,1:12)
+      ! read(11,'(12f24.16)') dim_kukei(j,i,k,1:12)
     end do
   end do
   close(11)
