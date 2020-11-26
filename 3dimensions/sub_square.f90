@@ -2225,7 +2225,7 @@ end module flow_square_sub
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                          &f24.,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
+                          &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
                           oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),oldG(1,jj,ii,kk)
                         enddo
                         write(10,*)
