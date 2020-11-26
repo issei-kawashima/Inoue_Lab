@@ -761,8 +761,8 @@ contains
       L0=0.d0;c_NS=0.d0
 
     !$omp parallel do
-      do k = 0,Nz
-        do i = 0,Ny
+      do k=0,Nz
+        do i=0,Ny
           !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
           c_NS(i,k) = sqrt(gamma * G(4,0,i,k) / G(0,0,i,k))
         end do
@@ -770,8 +770,8 @@ contains
     !$omp end parallel do
 
     !============L0(2)は同時並列化できないので、並列化をしない===========================
-      do k = 0,Nz
-        do i = 0,Ny
+      do k=0,Nz
+        do i=0,Ny
     !   x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
       L0(1,i,k)=(G(1,0,i,k)-c_NS(i,k))*(-G(0,0,i,k)*c_NS(i,k)*dGx(1,0,i,k)+dGx(4,0,i,k))
     !   論文によるとL3,L4は不要
@@ -785,8 +785,8 @@ contains
     !============L0(2)は同時並列化できないので、並列化をしない===========================
 
       !$omp parallel do
-        do k = 0,Nz
-          do i = 0,Ny
+        do k=0,Nz
+          do i=0,Ny
             !設定したL行列からd1をi=0において設定する
             !設定したd1からNSCBCで置き換える境界地点のdFxを定義する
             !i=0の時の差し替えdFx
@@ -812,8 +812,8 @@ contains
         LNx=0.d0;dNx=0.d0;c_NS=0.d0;Ma_NS=0.d0
 
       !========並列化しない(Maにはcが必要なため、Doループを分割しないといけないから)＝＝＝＝＝＝＝＝＝
-        do k = 0,Nz
-          do i = 0,Ny
+        do k=0,Nz
+          do i=0,Ny
         !音速cはi=0,Nxの両点においてそれぞれ定義しなければならない
         c_NS(i,k) = sqrt(gamma * G(4,Nx,i,k) / G(0,Nx,i,k))
         !マッハ数Ma_NSはi=0,Nxで使うので別々に定義する
@@ -823,8 +823,8 @@ contains
       !========並列化しない＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝=＝＝＝＝＝＝＝＝＝
 
       !$omp parallel do
-        do k = 0,Nz
-          do i = 0,Ny
+        do k=0,Nz
+          do i=0,Ny
         !x方向左側つまりi=Nxの点において無反射流出条件でL行列を設定する
         LNx(1,i,k)=NS_sigma*c_NS(i,k)*(1.d0-(Ma_NS(i,k)**2.d0))*(G(4,Nx,i,k)-&
         &pNx_infty)/Lx
@@ -837,8 +837,8 @@ contains
       !$omp end parallel do
 
         !$omp parallel do
-          do k = 0,Nz
-            do i = 0,Ny
+          do k=0,Nz
+            do i=0,Ny
         !設定したL行列からd1~5をi=Nxにおいて設定する
           dFx(0,Nx,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
           ! dNx(1,i,k) = (1.d0 / (c_NS(i,k) **2.d0)) * ((LNx(1,i,k)+LNx(5,i,k))*0.5d0 + LNx(2,i,k))
@@ -851,19 +851,26 @@ contains
         !$omp end parallel do
 
         !$omp parallel do
-          do k = 0,Nz
-            do i = 0,Ny
+          do k=0,Nz
+            do i=0,Ny
         !設定したdからNxSCBCで置き換える境界地点のdFxを定義する
         !dFx(0)や、dNx(4),dNx(5)はただ代入しているだけなので、その計算を省略した
         !i=Nxの時の差し替えF
-        ! dFx(0,Nx,i,k) = dNx(1,i,k)
-        dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
-        dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*LNx(3,i,k))
-        dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*LNx(4,i,k))
+        dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
+        dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*LNx(3,i,k))
+        dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dFx(0,Nx,i,k)) + (G(0,Nx,i,k)*LNx(4,i,k))
         dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
-                      (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
+                      (G(3,Nx,i,k)**2.d0))*dFx(0,Nx,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
                       G(0,Nx,i,k)*(G(1,Nx,i,k)*dNx(3,i,k)+G(2,Nx,i,k)*LNx(3,i,k)+&
                       G(3,Nx,i,k)*LNx(4,i,k))
+        ! dFx(0,Nx,i,k) = dNx(1,i,k)
+        ! dFx(1,Nx,i,k) = (G(1,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(3,i,k))
+        ! dFx(2,Nx,i,k) = (G(2,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(4,i,k))
+        ! dFx(3,Nx,i,k) = (G(3,Nx,i,k)*dNx(1,i,k)) + (G(0,Nx,i,k)*dNx(5,i,k))
+        ! dFx(4,Nx,i,k) =(0.5d0)*((G(1,Nx,i,k)**2.d0)+(G(2,Nx,i,k)**2.d0)+&
+        !             (G(3,Nx,i,k)**2.d0))*dNx(1,i,k)+dNx(2,i,k)/(gamma-1.d0)+&
+        !             G(0,Nx,i,k)*(G(1,Nx,i,k)*dNx(3,i,k)+G(2,Nx,i,k)*dNx(4,i,k)+&
+        !             G(3,Nx,i,k)*dNx(5,i,k))
             end do
           end do
       !$omp end parallel do
@@ -1310,7 +1317,7 @@ contains
       Ymax = (Ly/2.d0);Ymin = -(Ly/2d0)
       !格子伸長を行うので新しい座標ζ_yを用いてUyとsigma_yを設定する
       !$omp parallel do
-        do i = 0,Ny
+        do i=0,Ny
           Uy(i) = alpha_u*c_infty*(dtanh(dble(atanh(beta_r/alpha_u-1.d0))*(zeta_fy(i)-Ymax)/(-Wry))&
           -dtanh(dble(atanh(beta_l/alpha_u-1.d0))*(zeta_fy(i)-Ymin)/Wly))
 
@@ -1797,7 +1804,7 @@ end module flow_square_sub
        do k=0,Nz
          write(z_name, '(i2.2)') k
          open(10, file = "result_sub_square/parameter000000_"//trim(z_name)//".txt")
-          do i = 0,Ny
+          do i=0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
               &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),zeta_fz(k),&
@@ -2166,7 +2173,7 @@ end module flow_square_sub
            do kk=0,Nz
              write(z_name, '(i2.2)') kk
              open(10, file = "result_sub_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
-             do ii = 0,Ny
+             do ii=0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                  &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
@@ -2222,7 +2229,7 @@ end module flow_square_sub
                     do kk=0,Nz
                       write(z_name, '(i2.2)') kk
                       open(10, file = "result_sub_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
-                      do ii = 0,Ny
+                      do ii=0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                           &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&

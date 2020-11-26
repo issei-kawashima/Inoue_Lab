@@ -104,7 +104,7 @@ module flow_square
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
-  double precision,parameter :: dis_strength = 8.d-2*ujet!ジェット中心速度の5%撹乱
+  double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
   integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   ! integer,parameter :: times = int((Lx/ujet)/dt)!(旧)時間変動基準
   integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
