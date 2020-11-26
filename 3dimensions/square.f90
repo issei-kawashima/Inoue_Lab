@@ -51,8 +51,9 @@
 !Lx,Ly,Lzを変える => random_3Dと格子伸長のパラメータa1,a2と乱流チェックポイントの座標を変える
 !格子伸長の条件を変える => 始まりと終わりの座標がもともと狙っていた領域長さになるようにパラメーターを変える&random_3Dの方も直す
 !Buffer領域を変える => 乱流チェックポイントがBuffer領域外になることを確認する
+!矩形ジェットを流入させない箇所には初期条件及び速度u ,v ,w=0とする。
 !2020.11.10 矩形ジェットかつz方向流出境界条件で計算がうまくいった！！！！しかし、密度の流入条件の設定に不備がありそうなので修正してみる。
-!矩形ジェットを流入させない箇所の密度=Q(0)は初期条件0.1にする(この箇所ではNSCBCは使用しない)
+!矩形ジェットを流入させない箇所の密度=Q(0)は初期条件1にする(この箇所ではNSCBCは使用しない)
 !2020.11.11 ランダム撹乱を10%にしてみる。
 !ランダム撹乱とショックノイズのダブルパンチを喰らわないように、最大出力になる時間をt=36から正確な計算領域Cxの2倍の距離をUjetが通過するt=48に変更
 !2020.11.12 結局10%攪乱では計算破綻してしまうので、攪乱を8%にして弱くする。
@@ -1786,7 +1787,7 @@ end module flow_square
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
               &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),zeta_fz(k),&
-              G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt
+              G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),G(1,j,i,k)
             enddo
             write(10,*)
           enddo
@@ -2155,7 +2156,7 @@ end module flow_square
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                  &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
-                 G(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),dp(jj,ii,kk)
+                 G(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),G(1,jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -2210,8 +2211,8 @@ end module flow_square
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                          &f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
-                          oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk)
+                          &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
+                          oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),oldG(1,jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
