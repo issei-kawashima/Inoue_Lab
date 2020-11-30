@@ -69,11 +69,11 @@ module flow_square_sub
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
-  integer,parameter :: Nx = 180
-  integer,parameter :: Ny = 100
+  integer,parameter :: Nx = 360!180
+  integer,parameter :: Ny = 200!100
   integer,parameter :: Nz = 50
   double precision,parameter :: dt = 1.d-2
-  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
+  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = int(t_end / dt)
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -780,7 +780,7 @@ contains
      !   x方向右側つまりi=0の点において亜音速流入条件でL行列を設定する
        L0(1,i,k)=(G(1,0,i,k)-c_NS(i,k))*(-G(0,0,i,k)*c_NS(i,k)*dGx(1,0,i,k)+dGx(4,0,i,k))
      !   論文によるとL3,L4は不要
-     !   L1=0.d0&uはtop-hatジェットで程上流なので、du/dt=0
+     !   L1=0.d0&uはtop-hatジェットで定常流なので、du/dt=0
        L0(5,i,k)=L0(1,i,k)!-2.d0*c_NS(i,k)*du/dt!
      !   流入速度uを時間変動させないので今回はdu/dt=0となるため省略
        L0(2,i,k)=(0.5d0)*(gamma-1.d0)*(L0(5,i,k)+L0(1,i,k))!+G(0,0,i,k)*c_NS(i,k)**2.d0/T*dT/dtが本来はあるが

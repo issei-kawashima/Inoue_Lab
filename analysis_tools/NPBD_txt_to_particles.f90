@@ -11,7 +11,7 @@ integer i,j,k,l,time
 integer,parameter :: Nx = 180+1 !一行改行分を含めてる
 integer,parameter :: Ny = 100
 integer,parameter :: Nz = 50
-integer,parameter :: CNT = 32
+integer,parameter :: CNT = 100
 double precision,allocatable,dimension(:,:,:,:) :: dim_kukei
 character(len = 16) z_name
 character(len = 16) folder_name
