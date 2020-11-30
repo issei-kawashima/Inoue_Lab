@@ -62,7 +62,7 @@
 !2020.11.30 inflow subroutineで矩形ジェットを流入させない区間に関しては密度も=1と与えているがその場合はparalell doを使用できないので解除した
 !sub_square.f90はM=33で毎回NaNになるので、今動くsquareをもとにして亜音速のプログラムを作成することにした。
 
-module flow_square
+module flow_square_sub
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
   !これらの式をまとめて基礎式と呼ぶ
   implicit none
@@ -1509,10 +1509,10 @@ contains
         end do
       !$omp end parallel do
     endsubroutine Q_boundary
-end module flow_square
+end module flow_square_sub
 
     program main
-      use flow_square
+      use flow_square_sub
       implicit none
       character(len = 16) filename
       character(len = 16) z_name
@@ -1681,7 +1681,7 @@ end module flow_square
         write(*,*)"N_kukei_max : ",N_kukei_max
         stop
       endif
-      open(50, file = "result_square/Conditon_list.csv")
+      open(50, file = "result_sub_square/Conditon_list.csv")
       write(50,'(A,",",A,",",A,",",A,",",A)') "Nx","Ny","Nz","N_kukei_min","N_kukei_max"
       write(50,'(i5,",",i5,",",i5,",",i5,",",i5)') Nx,Ny,Nz,N_kukei_min,N_kukei_max
       write(50,'(A,",",A,",",A,",",A,",",A)') "Lx","Ly","Lz","L_kukei_min","L_kukei_max"
@@ -1731,7 +1731,7 @@ end module flow_square
       close(32)
       close(33)
 
-      ! open(34,file='result_square/kakkuran_kakunin.txt',status='replace')
+      ! open(34,file='result_sub_square/kakkuran_kakunin.txt',status='replace')
       ! do k=0,Nz
       !   do i=0,Ny
       !     write(34,'(3f24.16)') zeta_fy(i),zeta_fz(k),kakuran_v(i,k)
@@ -1806,7 +1806,7 @@ end module flow_square
     !$omp section
        do k=0,Nz
          write(z_name, '(i2.2)') k
-         open(10, file = "result_square/parameter000000_"//trim(z_name)//".txt")
+         open(10, file = "result_sub_square/parameter000000_"//trim(z_name)//".txt")
           do i = 0,Ny
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -1904,8 +1904,8 @@ end module flow_square
         !NSCBCの計算開始
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)
-        call NSCBC_x_Nx_super(G,dGx,dFx)
+        call NSCBC_x_0_sub(G,dGx,dFx)
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         !無反射流出条件の際の境界での粘性項の条件を設定
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
@@ -1994,8 +1994,8 @@ end module flow_square
         call rho_u_p(G,Q1)
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)!超音速流入
-        call NSCBC_x_Nx_super(G,dGx,dFx)
+        call NSCBC_x_0_sub(G,dGx,dFx)
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,G,dGy,LUccsy,dzeta_iny)
@@ -2080,8 +2080,8 @@ end module flow_square
         !=====================================================
         !x方向のNSCBCの計算
         call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
-        call NSCBC_x_0_super(dFx)
-        call NSCBC_x_Nx_super(G,dGx,dFx)
+        call NSCBC_x_0_sub(G,dGx,dFx)
+        call NSCBC_x_Nx_sub(G,dGx,dFx,pNx_infty)
         call outflow_x(UVWT,dUVWTx,Vx,dVx)
         !y方向
         call dif_y(ccs_sigma,G,dGy,LUccsy,dzeta_iny)
@@ -2175,7 +2175,7 @@ end module flow_square
       !=======ファイルへの書き出しはもちろん順番が大切なので、並列化不可能====================
            do kk=0,Nz
              write(z_name, '(i2.2)') kk
-             open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+             open(10, file = "result_sub_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
              do ii = 0,Ny
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2231,7 +2231,7 @@ end module flow_square
                     !計算破綻直前の値を出力するので1step前の結果になる
                     do kk=0,Nz
                       write(z_name, '(i2.2)') kk
-                      open(10, file = "result_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
+                      open(10, file = "result_sub_square/parameter"//trim(filename)//"_"//trim(z_name)//".txt")
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
@@ -2258,14 +2258,14 @@ end module flow_square
         write(*,*) "M=",M!計算に時間がかかるので進行状況の確認用に出力
       enddo DNS
 ! ===========メイン計算終了========================================================
-    open(41, file = "result_square/turbulent_check_1.csv")
-    open(42, file = "result_square/turbulent_check_2.csv")
-    open(43, file = "result_square/turbulent_check_3.csv")
-    open(44, file = "result_square/turbulent_check_4.csv")
-    open(51, file = "result_square/spectrum1.csv")
-    open(52, file = "result_square/spectrum2.csv")
-    open(53, file = "result_square/spectrum3.csv")
-    open(54, file = "result_square/spectrum4.csv")
+    open(41, file = "result_sub_square/turbulent_check_1.csv")
+    open(42, file = "result_sub_square/turbulent_check_2.csv")
+    open(43, file = "result_sub_square/turbulent_check_3.csv")
+    open(44, file = "result_sub_square/turbulent_check_4.csv")
+    open(51, file = "result_sub_square/spectrum1.csv")
+    open(52, file = "result_sub_square/spectrum2.csv")
+    open(53, file = "result_sub_square/spectrum3.csv")
+    open(54, file = "result_sub_square/spectrum4.csv")
     do M = observe_start_time, observe_end_time
       write(41,'(f24.16)') turbulent_check1(M)
       write(42,'(f24.16)') turbulent_check2(M)
