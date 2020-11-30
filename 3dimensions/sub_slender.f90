@@ -750,7 +750,7 @@ contains
        !まずはx方向用のNSCBC　subrouitineを作成
        subroutine NSCBC_x_0_sub(G,dGx,dFx)
        !亜音速流入条件
-       !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
+       !u,v,w,Tはtop-hat,Crocco-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
        !このNSCBCでは密度ρのみを求めるものである。
        !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
        ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
@@ -917,8 +917,8 @@ contains
       L0(2,j,k) = G(2,j,0,k) * ((c_NS0(j,k) ** 2.d0)*dGy(0,j,0,k) - dGy(4,j,0,k))
       L0(3,j,k) = G(2,j,0,k) * dGy(1,j,0,k)
       L0(4,j,k) = G(2,j,0,k) * dGy(3,j,0,k)
-      L0(5,j,k) = NS_sigma * c_NS0(j,k) * (1.d0 - (Ma_NS0(j,k) ** 2.d0))*(G(4,j,0,k) - &
-                    &p0y_infty)/Ly
+      L0(5,j,k) = NS_sigma * c_NS0(j,k) * (1.d0 - (Ma_NS0(j,k) ** 2.d0))*(G(4,j,0,k)-&
+                  p0y_infty)/Ly
         end do
       end do
     !$omp end parallel do
@@ -927,8 +927,8 @@ contains
       do k=0,Nz
         do j=0,Nx
       !y方向左側つまりi=Nyの点において無反射流出条件でL行列を設定する
-      L1(1,j,k) = NS_sigma * c_NS1(j,k) * (1.d0 - (Ma_NS1(j,k) ** 2.d0))*(G(4,j,Ny,k) - &
-    &  pNy_infty)/Ly
+      L1(1,j,k) = NS_sigma*c_NS1(j,k)*(1.d0-(Ma_NS1(j,k)**2.d0))*(G(4,j,Ny,k)&
+                  -pNy_infty)/Ly
       L1(2,j,k) = G(2,j,Ny,k) * ((c_NS1(j,k) ** 2.d0)*dGy(0,j,Ny,k) - dGy(4,j,Ny,k))
       L1(3,j,k) = G(2,j,Ny,k) * dGy(1,j,Ny,k)
       L1(4,j,k) = G(2,j,Ny,k) * dGy(3,j,Ny,k)

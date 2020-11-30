@@ -750,7 +750,7 @@ contains
       !まずはx方向用のNSCBC　subrouitineを作成
       subroutine NSCBC_x_0_super(dFx)
         !超音速流入条件
-        !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
+        !u,v,w,Tはtop-hat,Crocco-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
         !このNSCBCでは密度ρのみを求めるものである。
         !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
         ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
@@ -761,7 +761,7 @@ contains
         !超音速流入では、領域内部から、外部に逆流するものがないので、L1=0したがって、L5=0
         !*uが時間変動しないtop-hatのみなので、du/dt=0のため
         !よって、L2=0そのため、d1=0
-        !*ただし、流入条件のTはCrocce-Busemannで定常なので、時間変動しないdT/dt=0のため
+        !*ただし、流入条件のTはCrocco-Busemannで定常なので、時間変動しないdT/dt=0のため
         !Fx(0)=d1なので、Fx(0)=0。したがって、今回はそれだけを書き換えている
       !$omp parallel do
         do k=0,Nz
