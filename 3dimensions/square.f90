@@ -1140,7 +1140,7 @@ contains
         fluct_dis_strength = dis_strength
       endif
       !Top-hat型ジェットとランダム撹乱を流入させない範囲には、u,v,w=0とその条件でのEtを与える
-      !$omp parallel do
+      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
         do k=0,N_kukei_min-1
           do i=0,Ny
             Q(0,0,i,k) = 1.d0
@@ -1150,7 +1150,7 @@ contains
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-      !$omp end parallel do
+        !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
 
       !$omp parallel do
         do k=N_kukei_min,N_kukei_max
@@ -1167,8 +1167,7 @@ contains
           enddo
         end do
       !$omp end parallel do
-
-      !$omp parallel do
+      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
         do k=N_kukei_max+1,Nz
           do i=0,Ny
             Q(0,0,i,k) = 1.d0
@@ -1178,7 +1177,7 @@ contains
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-      !$omp end parallel do
+      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
     endsubroutine inflow
     !NSCBC_x_Nxが不要ならoutflowも不要なので、outflowをxとyに分割する
     !矩型Jetなどを流入させるようになったら、部分的に必要なので、修正して適用する
