@@ -60,6 +60,7 @@
 !2020.11.13 音圧スペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設けた(p-p∞を出力する)
 !2020.11.27 dp/dtのかわりにuを出力することにした。
 !2020.11.30 inflow subroutineで矩形ジェットを流入させない区間に関しては密度も=1と与えているがその場合はparalell doを使用できないので解除した
+!2020.12.1ランダム撹乱を5%に戻したので、最大出力になる時間も戻す
 
 
 module flow_square
@@ -107,8 +108,8 @@ module flow_square
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
   double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
-  integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
-  ! integer,parameter :: times = int((Lx/ujet)/dt)!(旧)時間変動基準
+  integer,parameter :: times = int((Lx/ujet)/dt)!(旧)時間変動基準
+  ! integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
