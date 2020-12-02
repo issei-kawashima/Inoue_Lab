@@ -4,8 +4,8 @@
 program kakusan
   !$use omp_lib
   implicit none
-  ! integer,parameter :: NX = 360!X=0で流入させるので、不要
-  integer,parameter :: NY = 200
+  ! integer,parameter :: NX = 180!X=0で流入させるので、不要
+  integer,parameter :: NY = 100
   integer,parameter :: NZ = 50
   !y方向格子伸長
   double precision,parameter :: y_width=3.d0
