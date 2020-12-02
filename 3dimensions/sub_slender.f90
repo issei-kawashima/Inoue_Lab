@@ -47,7 +47,8 @@
 !計算条件をあとで把握できるように計算条件を書き出すコードを追加した
 !2020.10.23 z方向の格子伸長の係数をうまく調整できていなかったので、z=-2.5,2.5の箇所が-2.67,2.67などになってしまっていた
 !したがって、今後Lzや格子伸長の幅widthを変更する際にはパラメータを調整しなくてはいけない
-!Nx,Ny,Nzを変える => random_3DとBufferのUxを0にする範囲と乱流チェックポイントの座標を変える
+!Nxを変える => BufferのUxを0にする範囲と乱流チェックポイントの座標を変える
+!Ny,Nzを変える => random_3DとBufferのUxを0にする範囲と乱流チェックポイントの座標を変える
 !Lx,Ly,Lzを変える => random_3Dと格子伸長のパラメータa1,a2と乱流チェックポイントの座標を変える
 !格子伸長の条件を変える => 始まりと終わりの座標がもともと狙っていた領域長さになるようにパラメーターを変える&random_3Dの方も直す
 !Buffer領域を変える => 乱流チェックポイントがBuffer領域外になることを確認する
@@ -75,7 +76,7 @@ module flow_square_sub
   integer,parameter :: Ny = 100
   integer,parameter :: Nz = 50
   double precision,parameter :: dt = 1.d-2
-  integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
+  integer,parameter :: NUx = 90!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
   integer,parameter :: Mmax = int(t_end / dt)
   integer,parameter :: output_count = int(1.d0/dt)!出力ファイルを1sec間隔で出力するように設定
   double precision,parameter :: b = 1.d0!Jet半径は1で固定してしまう
@@ -2126,7 +2127,7 @@ end module flow_square_sub
 
           call dif_x(ccs_sigma,G,dGx,LUccsx,dzeta_inx)
           !xとy座標の位置はBuffer領域にならないように気をつける
-          ! Nx=360,Ny=200ならx=0~262, y=17~183でOK
+          !Nx=360,Ny=200ならx=0~262, y=17~183でOK
           !Nx=180, Ny=100ならx=0~131, y=9~91でOK
           turbulent_check1(M) = dGx(1,2*Nx/3,Ny/2,Nz/2)!後ろ中心真ん中(ジェットの中)
           turbulent_check2(M) = dGx(1,2*Nx/3,Ny/4,Nz/5)!後ろ左下
