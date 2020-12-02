@@ -70,8 +70,8 @@ module flow_square_sub
   !計算条件値の設定
   double precision,parameter :: gamma = 1.4d0
   integer,parameter :: t_end = 250 !時刻tの設定
-  integer,parameter :: Nx = 360!180
-  integer,parameter :: Ny = 200!100
+  integer,parameter :: Nx = 180
+  integer,parameter :: Ny = 100
   integer,parameter :: Nz = 50
   double precision,parameter :: dt = 1.d-2
   integer,parameter :: NUx = 213!buffer_xのUxで流入側のUxを0にする座標(格子点番号)Nx=180ならNUx=90,Nx=360ならNUx=213
@@ -1167,15 +1167,15 @@ contains
       endif
       !Top-hat型ジェットとランダム撹乱を流入させない範囲には、u,v,w=0とその条件でのEtを与える
       !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
-        do k=0,N_kukei_min-1
-          do i=0,Ny
-            Q(0,0,i,k) = 1.d0
-            Q(1,0,i,k) = 0.d0
-            Q(2,0,i,k) = 0.d0
-            Q(3,0,i,k) = 0.d0
-            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
-          enddo
-        end do
+        ! do k=0,N_kukei_min-1
+        !   do i=0,Ny
+        !     Q(0,0,i,k) = 1.d0
+        !     Q(1,0,i,k) = 0.d0
+        !     Q(2,0,i,k) = 0.d0
+        !     Q(3,0,i,k) = 0.d0
+        !     Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
+        !   enddo
+        ! end do
         !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
 
       !$omp parallel do
@@ -1194,15 +1194,15 @@ contains
         end do
       !$omp end parallel do
       !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
-        do k=N_kukei_max+1,Nz
-          do i=0,Ny
-            Q(0,0,i,k) = 1.d0
-            Q(1,0,i,k) = 0.d0
-            Q(2,0,i,k) = 0.d0
-            Q(3,0,i,k) = 0.d0
-            Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
-          enddo
-        end do
+        ! do k=N_kukei_max+1,Nz
+        !   do i=0,Ny
+        !     Q(0,0,i,k) = 1.d0
+        !     Q(1,0,i,k) = 0.d0
+        !     Q(2,0,i,k) = 0.d0
+        !     Q(3,0,i,k) = 0.d0
+        !     Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
+        !   enddo
+        ! end do
       !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
     endsubroutine inflow
     !NSCBC_x_Nxが不要ならoutflowも不要なので、outflowをxとyに分割する
