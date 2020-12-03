@@ -59,9 +59,9 @@
 !2020.11.12 結局10%攪乱では計算破綻してしまうので、攪乱を8%にして弱くする。
 !2020.11.13 音圧スペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設けた(p-p∞を出力する)
 !2020.11.27 dp/dtのかわりにuを出力することにした。
-!2020.11.30 inflow subroutineで矩形ジェットを流入させない区間に関しては密度も=1と与えているがその場合はparalell doを使用できないので解除した
-!2020.12.1ランダム撹乱を5%に戻したので、最大出力になる時間も戻す
-
+!2020.12.1 ランダム撹乱を5%に戻したので、最大出力になる時間も戻す
+!2020.12.3 inflow subroutineで矩形ジェット流入部以外の箇所でQ(0)=密度を設定するのはよく考えたら
+!Dirichlet条件になってしまうので、設定するのをやめた。したがって、paralell doも適用させた
 
 module flow_square
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -1143,17 +1143,17 @@ contains
         fluct_dis_strength = dis_strength
       endif
       !Top-hat型ジェットとランダム撹乱を流入させない範囲には、u,v,w=0とその条件でのEtを与える
-      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
+      !$omp parallel do
         do k=0,N_kukei_min-1
           do i=0,Ny
-            Q(0,0,i,k) = 1.d0
+            ! Q(0,0,i,k) = 1.d0
             Q(1,0,i,k) = 0.d0
             Q(2,0,i,k) = 0.d0
             Q(3,0,i,k) = 0.d0
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-        !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
+        !$omp end parallel do
 
       !$omp parallel do
         do k=N_kukei_min,N_kukei_max
@@ -1170,17 +1170,17 @@ contains
           enddo
         end do
       !$omp end parallel do
-      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
+      !$omp parallel do
         do k=N_kukei_max+1,Nz
           do i=0,Ny
-            Q(0,0,i,k) = 1.d0
+            ! Q(0,0,i,k) = 1.d0
             Q(1,0,i,k) = 0.d0
             Q(2,0,i,k) = 0.d0
             Q(3,0,i,k) = 0.d0
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-      !!!Q(0)を設定してからQ(4)を求めるので並列不可!!!!!!!!!!!!!!!!!!!!!!!
+        !$omp end parallel do
     endsubroutine inflow
     !NSCBC_x_Nxが不要ならoutflowも不要なので、outflowをxとyに分割する
     !矩型Jetなどを流入させるようになったら、部分的に必要なので、修正して適用する
