@@ -51,13 +51,17 @@
 !Lx,Ly,Lzを変える => random_3Dと格子伸長のパラメータa1,a2と乱流チェックポイントの座標を変える
 !格子伸長の条件を変える => 始まりと終わりの座標がもともと狙っていた領域長さになるようにパラメーターを変える&random_3Dの方も直す
 !Buffer領域を変える => 乱流チェックポイントがBuffer領域外になることを確認する
+!矩形ジェットを流入させない箇所には初期条件及び速度u ,v ,w=0とする。
 !2020.11.10 矩形ジェットかつz方向流出境界条件で計算がうまくいった！！！！しかし、密度の流入条件の設定に不備がありそうなので修正してみる。
-!矩形ジェットを流入させない箇所の密度=Q(0)は初期条件0.1にする(この箇所ではNSCBCは使用しない)
+!矩形ジェットを流入させない箇所の密度=Q(0)は初期条件1にする(この箇所ではNSCBCは使用しない)
 !2020.11.11 ランダム撹乱を10%にしてみる。
 !ランダム撹乱とショックノイズのダブルパンチを喰らわないように、最大出力になる時間をt=36から正確な計算領域Cxの2倍の距離をUjetが通過するt=48に変更
 !2020.11.12 結局10%攪乱では計算破綻してしまうので、攪乱を8%にして弱くする。
 !2020.11.13 音圧スペクトルを出力するために乱流判定のための配列作成の箇所にスペクトル用データ格納配列を設けた(p-p∞を出力する)
-
+!2020.11.27 dp/dtのかわりにuを出力することにした。
+!2020.12.1 ランダム撹乱を5%に戻したので、最大出力になる時間も戻す
+!2020.12.3 inflow subroutineで矩形ジェット流入部以外の箇所でQ(0)=密度を設定するのはよく考えたら
+!Dirichlet条件になってしまうので、設定するのをやめた。したがって、paralell doも適用させた
 
 module flow_square
   !連続の式、Eulerの運動方程式、エネルギー方程式を並列に並べた行列Q,Fの設定等をする
@@ -99,12 +103,13 @@ module flow_square
   double precision,parameter :: ccs_sigma = 0.d0
   double precision,parameter :: c = 1.d0
   double precision,parameter :: Pr = 0.71d0
-  double precision,parameter :: Ma = 1.6d0
+  double precision,parameter :: Ma = 1.2d0
   double precision,parameter :: Temp = 1.d0
   double precision,parameter :: Tjet = 1.4d0*Temp
   double precision,parameter :: ujet = 1.d0
-  double precision,parameter :: dis_strength = 8.d-2*ujet!ジェット中心速度の5%撹乱
-  integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
+  double precision,parameter :: dis_strength = 5.d-2*ujet!ジェット中心速度の5%撹乱
+  integer,parameter :: times = int((Lx/ujet)/dt)!(旧)時間変動基準
+  ! integer,parameter :: times = int((2.d0*Cx/ujet)/dt)!流入撹乱の時間変動基準(timesを超えたらフルパワー)
   integer,parameter :: observe_start_time = int(100.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する開始時刻
   integer,parameter :: observe_end_time = int(250.d0/dt)!ランダム撹乱で乱流化したかどうかを時間変動で、集計する終了時刻
   double precision,parameter :: Sc = 120.d0 / (273.15d0 + 18.d0)
@@ -746,7 +751,7 @@ contains
       !まずはx方向用のNSCBC　subrouitineを作成
       subroutine NSCBC_x_0_super(dFx)
         !超音速流入条件
-        !u,v,w,Tはtop-hat,Crocce-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
+        !u,v,w,Tはtop-hat,Crocco-Busemannとランダム撹乱により流入条件として固定してる(imposed, 課されている)ので、
         !このNSCBCでは密度ρのみを求めるものである。
         !密度ρはQ(0)である。Q(0)はFx,y,z(0)とVx,y,z(0)から求められる
         ! NSCBCではFxの書き換えを行う。その中で、必要なのは、Fx(0)のみである。
@@ -757,7 +762,7 @@ contains
         !超音速流入では、領域内部から、外部に逆流するものがないので、L1=0したがって、L5=0
         !*uが時間変動しないtop-hatのみなので、du/dt=0のため
         !よって、L2=0そのため、d1=0
-        !*ただし、流入条件のTはCrocce-Busemannで定常なので、時間変動しないdT/dt=0のため
+        !*ただし、流入条件のTはCrocco-Busemannで定常なので、時間変動しないdT/dt=0のため
         !Fx(0)=d1なので、Fx(0)=0。したがって、今回はそれだけを書き換えている
       !$omp parallel do
         do k=0,Nz
@@ -1141,14 +1146,14 @@ contains
       !$omp parallel do
         do k=0,N_kukei_min-1
           do i=0,Ny
-            Q(0,0,i,k) = 1.d0
+            ! Q(0,0,i,k) = 1.d0
             Q(1,0,i,k) = 0.d0
             Q(2,0,i,k) = 0.d0
             Q(3,0,i,k) = 0.d0
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-      !$omp end parallel do
+        !$omp end parallel do
 
       !$omp parallel do
         do k=N_kukei_min,N_kukei_max
@@ -1165,18 +1170,17 @@ contains
           enddo
         end do
       !$omp end parallel do
-
       !$omp parallel do
         do k=N_kukei_max+1,Nz
           do i=0,Ny
-            Q(0,0,i,k) = 1.d0
+            ! Q(0,0,i,k) = 1.d0
             Q(1,0,i,k) = 0.d0
             Q(2,0,i,k) = 0.d0
             Q(3,0,i,k) = 0.d0
             Q(4,0,i,k) = (Q(0,0,i,k)*Tu(i))/((Ma**2.d0)*gamma*(gamma-1.d0))!Et
           enddo
         end do
-      !$omp end parallel do
+        !$omp end parallel do
     endsubroutine inflow
     !NSCBC_x_Nxが不要ならoutflowも不要なので、outflowをxとyに分割する
     !矩型Jetなどを流入させるようになったら、部分的に必要なので、修正して適用する
@@ -1785,7 +1789,7 @@ end module flow_square
             do j = 0,Nx
               write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
               &f24.16,",",f24.16)') zeta_fx(j),zeta_fy(i),zeta_fz(k),&
-              G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),dp(j,i,k)/dt
+              G(0,j,i,k),div_u(j,i,k),Invariant_2(j,i,k),G(1,j,i,k)
             enddo
             write(10,*)
           enddo
@@ -2154,7 +2158,7 @@ end module flow_square
                do jj = 0,Nx
                  write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
                  &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
-                 G(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),dp(jj,ii,kk)
+                 G(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),G(1,jj,ii,kk)
                enddo
                write(10,*)
                !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -2209,8 +2213,8 @@ end module flow_square
                       do ii = 0,Ny
                         do jj = 0,Nx
                           write(10,'(f24.16,",",f24.16,",",f24.16,",",f24.16,",",f24.16,",",&
-                          &f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
-                          oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk)
+                          &f24.16,",",f24.16)') zeta_fx(jj),zeta_fy(ii),zeta_fz(kk),&
+                          oldG(0,jj,ii,kk),div_u(jj,ii,kk),Invariant_2(jj,ii,kk),oldG(1,jj,ii,kk)
                         enddo
                         write(10,*)
                         !一度に全てを出力する際にはデータの切れ目として空白を一行挿入しなくてはいけない
@@ -2250,14 +2254,8 @@ end module flow_square
       write(53,'(f24.16)') spectrum3(M)
       write(54,'(f24.16)') spectrum4(M)
     enddo
-     close(41)
-     close(42)
-     close(43)
-     close(44)
-     close(51)
-     close(52)
-     close(53)
-     close(54)
+     close(41);close(42);close(43);close(44)
+     close(51);close(52);close(53);close(54)
       deallocate(G,Q,Q0,Q1,Q2,Qn,Fpx,Fmx,xp,xm,oldG)
       deallocate(Fpy,Fmy,yp,ym,Fpz,Fmz,zp,zm,myu)
       deallocate(LUmx,LUpx,LUmy,LUpy,LUmz,LUpz,LUccsx,LUccsy,LUccsz)
